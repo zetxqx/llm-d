@@ -462,8 +462,6 @@ jobs:
             helm list -n "${NAMESPACE}" || true
             echo ""
             echo "=== Wide-EP-specific resources ==="
-            echo "Inference Models:"
-            kubectl get inferencemodels -n "${NAMESPACE}" || true
             echo "Inference Pools:"
             kubectl get inferencepools -n "${NAMESPACE}" || true
             echo "HTTP Routes:"
