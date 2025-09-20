@@ -23,31 +23,17 @@ repositories:
     url: https://llm-d-incubation.github.io/llm-d-infra/
 
 releases:
-  - name: {{ printf "infra-%s" $rn | quote }}
-    namespace: {{ $ns }}
-    chart: llm-d-infra/llm-d-infra
-    version: v1.3.0
-    installed: true
-    labels:
-      type: infrastructure
-      kind: inference-stack
-    values:
-      - {{ .Environment.Values | toYaml | nindent 8  }}
-      - gateway:
-          destinationRule:
-            host: {{ printf "gaie-%s-epp.%s.svc.cluster.local" $rn $ns | quote }}
-
   - name: {{ printf "gaie-%s" $rn | quote }}
     namespace: {{ $ns }}
     chart: oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool
     version: v0.5.1
     installed: true
-    needs:
-      - {{ printf "infra-%s" $rn | quote }}
     values:
       - gaie-kv-events/values.yaml
     {{- if eq .Environment.Name "gke" }}
-      - provider: {{ .Environment.Values.provider }}
+    set:
+      - name: "provider.name"
+        value: gke
     {{- end }}
     labels:
       kind: inference-stack
@@ -58,7 +44,6 @@ releases:
     version: v0.2.7
     installed: true
     needs:
-      - {{ printf "infra-%s" $rn | quote }}
       - {{ printf "gaie-%s" $rn | quote }}
     values:
       - ms-kv-events/values.yaml

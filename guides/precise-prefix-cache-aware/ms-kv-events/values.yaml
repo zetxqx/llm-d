@@ -1,13 +1,13 @@
 multinode: false
 
 modelArtifacts:
-  uri: "hf://Qwen/Qwen3-0.6B"
-  size: 20Gi
+  uri: "hf://meta-llama/Llama-3.1-70B-Instruct"
+  size: 160Gi
   authSecretName: "llm-d-hf-token"
-  name: "Qwen/Qwen3-0.6B"
+  name: "meta-llama/Llama-3.1-70B"
 
 routing:
-  modelName: Qwen/Qwen3-0.6B
+  modelName: meta-llama/Llama-3.1-70B-Instruct
   servicePort: 8000
   parentRefs:
     - group: gateway.networking.k8s.io
@@ -28,13 +28,16 @@ routing:
 
   httpRoute:
     create: true
+    timeouts: null
 
   epp:
     create: false
 
 decode:
   create: true
-  replicas: 2
+  parallelism:
+    tensor: 4 
+  replicas: 4
   monitoring:
     podmonitor:
       enabled: false
@@ -50,14 +53,15 @@ decode:
       - '-c'
     args:
       - |
-        vllm serve Qwen/Qwen3-0.6B \
+        vllm serve meta-llama/Llama-3.1-70B-Instruct \
         --host 0.0.0.0 \
+        --tensor-parallel-size 4 \
         --port 8200 \
         --block-size 64 \
         --prefix-caching-hash-algo sha256_cbor_64bit \
         --enforce-eager \
         --kv-transfer-config '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}' \
-        --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://gaie-kv-events-epp.${NAMESPACE}.svc.cluster.local:5557\",\"topic\":\"kv@${POD_IP}@Qwen/Qwen3-0.6B\"}" \
+        --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://gaie-kv-events-epp.${NAMESPACE}.svc.cluster.local:5557\",\"topic\":\"kv@${POD_IP}@meta-llama/Llama-3.1-70B-Instruct\"}" \
     env:
       - name: NAMESPACE
         valueFrom:
@@ -65,13 +69,15 @@ decode:
             fieldPath: metadata.namespace # assumed to be the same as the EPP's
       - name: PYTHONHASHSEED
         value: "42"
+      - name: LD_LIBRARY_PATH
+        value: "/usr/local/nvidia/lib64"
       - name: POD_IP
         valueFrom:
           fieldRef:
             apiVersion: v1
             fieldPath: status.podIP
       - name: CUDA_VISIBLE_DEVICES
-        value: "0"
+        value: "0,1,2,3"
       - name: UCX_TLS
         value: "cuda_ipc,cuda_copy,tcp"
       - name: VLLM_NIXL_SIDE_CHANNEL_HOST
@@ -90,20 +96,28 @@ decode:
         protocol: TCP
     resources:
       limits:
-        nvidia.com/gpu: "1"
+        nvidia.com/gpu: 4
       requests:
-        nvidia.com/gpu: "1"
+        nvidia.com/gpu: 4
     mountModelVolume: true
     volumeMounts:
     - name: metrics-volume
       mountPath: /.config
     - name: torch-compile-cache
       mountPath: /.cache
+      # https://github.com/gpustack/gpustack/issues/835
+    - name: cache-volume
+      mountPath: /dev/shm    
   volumes:
   - name: metrics-volume
     emptyDir: {}
   - name: torch-compile-cache
     emptyDir: {}
+  - name: cache-volume
+    emptyDir:
+      medium: Memory
+      sizeLimit: 256Mi
+        
 
 # PD disabled in this example
 prefill:
