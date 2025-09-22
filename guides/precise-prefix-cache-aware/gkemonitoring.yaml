@@ -1,0 +1,74 @@
+---
+# Source: inferencepool/templates/gke.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: epc-infpool-metrics-reader-role-binding
+subjects:
+- kind: ServiceAccount
+  name: infpool-metrics-reader-sa
+roleRef:
+  kind: ClusterRole
+  name: epc-infpool-metrics-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: inferencepool/templates/gke.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infpool-metrics-reader-secret
+  namespace: epc
+  labels:
+    app.kubernetes.io/name: infpool-epp
+    app.kubernetes.io/version: "0.0.0"
+  annotations:
+    kubernetes.io/service-account.name: infpool-metrics-reader-sa
+type: kubernetes.io/service-account-token
+---
+# Source: inferencepool/templates/gke.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: infpool-metrics-reader-secret-read
+rules:
+- resources:
+  - secrets
+  apiGroups: [""]
+  verbs: ["get", "list", "watch"]
+  resourceNames: ["infpool-metrics-reader-secret"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gmp-system:collector:epc-infpool-metrics-reader-secret-read
+roleRef:
+  name: infpool-metrics-reader-secret-read
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- name: collector
+  namespace: gmp-system
+  kind: ServiceAccount
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: infpool
+  labels:
+    app.kubernetes.io/name: infpool-epp
+    app.kubernetes.io/version: "0.0.0"
+spec:
+  endpoints:
+  - port: metrics
+    scheme: http
+    interval: 10s
+    path: /metrics
+    authorization:
+      type: Bearer
+      credentials:
+        secret:
+          name: infpool-metrics-reader-secret
+          key: token
+  selector:
+    matchLabels:
+        inferencepool: infpool-epp

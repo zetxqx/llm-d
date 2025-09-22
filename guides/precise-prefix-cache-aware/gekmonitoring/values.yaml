@@ -1,0 +1,18 @@
+provider:
+  name: none
+
+  # GKE-specific configuration.
+  # This block is only used if name is "gke".
+  gke:
+    # Set to true if the cluster is an Autopilot cluster.
+    autopilot: false
+
+inferenceExtension:
+  # Monitoring configuration for EPP
+  monitoring:
+    interval: "10s"
+    
+    gke:
+      enabled: false
+
+gaieHelmName: gaie-kv-events

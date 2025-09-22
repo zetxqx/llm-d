@@ -1,0 +1,9 @@
+apiVersion: v2
+name: gkemonitoring
+description: A Helm chart for gke monitoring
+
+type: application
+
+version: 0.1.0
+
+appVersion: "0.1.0"
