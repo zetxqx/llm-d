@@ -10,10 +10,9 @@ spec:
     name: infra-pd-inference-gateway
   rules:
     - backendRefs:
-      - group: inference.networking.x-k8s.io
+      - group: inference.networking.k8s.io
         kind: InferencePool
         name: gaie-pd
-        port: 8000
         weight: 1
       matches:
       - path:

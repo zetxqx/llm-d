@@ -7,7 +7,6 @@ modelArtifacts:
   name: "Qwen/Qwen3-0.6B"
 
 routing:
-  modelName: Qwen/Qwen3-0.6B
   servicePort: 8000
   parentRefs:
     - group: gateway.networking.k8s.io
@@ -15,7 +14,7 @@ routing:
       # name: infra-kv-events-inference-gateway # set in helmfile
 
   proxy:
-    image: ghcr.io/llm-d/llm-d-routing-sidecar:v0.2.0
+    image: ghcr.io/llm-d/llm-d-routing-sidecar:v0.3.0-rc.2
     connector: nixlv2
     secure: false
 
@@ -34,13 +33,13 @@ decode:
   replicas: 2
   monitoring:
     podmonitor:
-      enabled: false
+      enabled: true
       portName: "metrics"  # decode vLLM service port (from routing.proxy.targetPort)
       path: "/metrics"
       interval: "30s"
   containers:
   - name: "vllm"
-    image: "ghcr.io/llm-d/llm-d:v0.2.0"
+    image: "ghcr.io/llm-d/llm-d-dev:pr-188"
     modelCommand: custom
     command:
       - /bin/sh
@@ -54,8 +53,9 @@ decode:
         --prefix-caching-hash-algo sha256_cbor_64bit \
         --enforce-eager \
         --kv-transfer-config '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}' \
-        --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://gaie-kv-events-epp.${NAMESPACE}.svc.cluster.local:5557\",\"topic\":\"kv@${POD_IP}@Qwen/Qwen3-0.6B\"}" \
+        --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://gaie-${GAIE_RELEASE_NAME_POSTFIX}-epp.${NAMESPACE}.svc.cluster.local:5557\",\"topic\":\"kv@${POD_IP}@Qwen/Qwen3-0.6B\"}" \
     env:
+      - name: GAIE_RELEASE_NAME_POSTFIX # index 0 matters because of set in helmfile
       - name: NAMESPACE
         valueFrom:
           fieldRef:

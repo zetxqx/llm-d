@@ -14,6 +14,13 @@ patches:
   patch: |-
     - op: remove
       path: /spec/rules/0/timeouts
+- target:
+    kind: HTTPRoute
+  # Adjust the backend ref on the httpRoute to the correct v1 apiVersion
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/backendRefs/0/group
+      value: inference.networking.k8s.io
 labels:
 - pairs:
     app.kubernetes.io/instance: wide-ep
