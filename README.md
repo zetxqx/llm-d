@@ -1,13 +1,13 @@
-<p>
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)">
-    <img alt="llm-d Logo" src="./docs/assets/images/llm-d-logo.png" width=38%>
+    <img alt="llm-d Logo" src="./docs/assets/images/llm-d-logo.png" width=37%>
   </picture>
 </p>
 
-<h1>
+<h2 align="center">
 High Performance Distributed Inference on Kubernetes
-</h1>
+</h2>
 
  [![Documentation](https://img.shields.io/badge/Documentation-8A2BE2?logo=readthedocs&logoColor=white&color=1BC070)](https://www.llm-d.ai)
  [![Release Status](https://img.shields.io/badge/Version-0.2-yellow)](https://github.com/llm-d/llm-d/releases)
