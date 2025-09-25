@@ -76,8 +76,6 @@ decode:
           fieldRef:
             apiVersion: v1
             fieldPath: status.podIP
-      - name: CUDA_VISIBLE_DEVICES
-        value: "0,1,2,3"
       - name: UCX_TLS
         value: "cuda_ipc,cuda_copy,tcp"
       - name: VLLM_NIXL_SIDE_CHANNEL_HOST
@@ -116,7 +114,7 @@ decode:
   - name: cache-volume
     emptyDir:
       medium: Memory
-      sizeLimit: 256Mi
+      sizeLimit: "64Gi"
         
 
 # PD disabled in this example
