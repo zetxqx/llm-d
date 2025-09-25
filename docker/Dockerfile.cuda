@@ -1,5 +1,5 @@
 ARG CUDA_MAJOR=12
-ARG CUDA_MINOR=8
+ARG CUDA_MINOR=9
 ARG CUDA_PATCH=1
 
 # ============================================================================
@@ -8,7 +8,7 @@ ARG CUDA_PATCH=1
 FROM nvcr.io/nvidia/cuda:${CUDA_MAJOR}.${CUDA_MINOR}.${CUDA_PATCH}-devel-ubi9 AS builder
 
 ARG CUDA_MAJOR=12
-ARG CUDA_MINOR=8
+ARG CUDA_MINOR=9
 ARG CUDA_PATCH=1
 ARG PYTHON_VERSION
 
