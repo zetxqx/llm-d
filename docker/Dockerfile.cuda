@@ -376,14 +376,13 @@ RUN umask 002 && \
     chown vllm:root /home/vllm && \
     chmod g+rwx /home/vllm
 
-# default openionated env vars for HF_HOME and TRANSFORMERS_CACHE, over-writeable
+# default openionated env var for HF_HOME, over-writeable
 ENV LLM_D_MODELS_DIR=/var/lib/llm-d/models \
-    HF_HOME=/var/lib/llm-d/.hf \
-    TRANSFORMERS_CACHE=/var/lib/llm-d/.cache/huggingface
+    HF_HOME=/var/lib/llm-d/.hf
 
 # creates default models directory and makes path writeable for both root and default user, with symlink for convenience
 # find command keeps group=0 on all new subdirs created later
-RUN mkdir -p "$LLM_D_MODELS_DIR" "$HF_HOME" "$TRANSFORMERS_CACHE" && \
+RUN mkdir -p "$LLM_D_MODELS_DIR" "$HF_HOME" && \
     chown -R root:0 /var/lib/llm-d && \
     chmod -R g+rwX /var/lib/llm-d && \
     find /var/lib/llm-d -type d -exec chmod g+s {} \; && \
