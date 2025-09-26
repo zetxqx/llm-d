@@ -29,7 +29,7 @@ releases:
     version: v1.0.1-rc.1
     installed: true
     values:
-      - gaie-kv-events/values.yaml
+      - gaie-kv-events/values-estimate.yaml
     {{- if eq .Environment.Name "gke" }}
     set:
       - name: "provider.name"
