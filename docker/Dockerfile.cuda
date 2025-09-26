@@ -14,14 +14,48 @@ ARG PYTHON_VERSION
 
 ARG USE_SCCACHE=true
 
-COPY sccache.config.toml /tmp
+RUN cat > /usr/local/bin/setup-sccache << 'EOF'
+#!/bin/bash
+if [ "${USE_SCCACHE}" = "true" ]; then
+    # Set up AWS credentials if secrets are available
+    if [ -f "/run/secrets/aws_access_key_id" ] && [ -f "/run/secrets/aws_secret_access_key" ]; then
+        export AWS_ACCESS_KEY_ID="$(cat /run/secrets/aws_access_key_id)"
+        export AWS_SECRET_ACCESS_KEY="$(cat /run/secrets/aws_secret_access_key)"
+        export AWS_DEFAULT_REGION="us-west-2"
+    fi
+
+    export CMAKE_C_COMPILER_LAUNCHER=sccache
+    export CMAKE_CXX_COMPILER_LAUNCHER=sccache
+    export CMAKE_CUDA_COMPILER_LAUNCHER=sccache
+
+    # Configure sccache via environment variables
+    export SCCACHE_BUCKET="vllm-nightly-sccache"
+    export SCCACHE_REGION="us-west-2"
+    export SCCACHE_S3_KEY_PREFIX="llm-d-cache/"
+    export SCCACHE_IDLE_TIMEOUT=0
+
+    if ! /usr/local/bin/sccache --start-server; then
+        echo "Warning: sccache failed to start, continuing without cache" >&2
+        unset CMAKE_C_COMPILER_LAUNCHER CMAKE_CXX_COMPILER_LAUNCHER CMAKE_CUDA_COMPILER_LAUNCHER
+        return 1
+    fi
+
+    if ! /usr/local/bin/sccache --show-stats >/dev/null 2>&1; then
+        echo "Warning: sccache not responding properly, disabling cache" >&2
+        /usr/local/bin/sccache --stop-server 2>/dev/null || true
+        unset CMAKE_C_COMPILER_LAUNCHER CMAKE_CXX_COMPILER_LAUNCHER CMAKE_CUDA_COMPILER_LAUNCHER
+        return 1
+    fi
+
+    echo "sccache successfully configured with cache prefix: ${SCCACHE_S3_KEY_PREFIX}"
+fi
+EOF
+RUN chmod +x /usr/local/bin/setup-sccache
 
 RUN --mount=type=secret,id=aws_access_key_id \
     --mount=type=secret,id=aws_secret_access_key \
-    --mount=type=tmpfs,target=/root/.aws \
     if [ "${USE_SCCACHE}" = "true" ]; then \
         set -Eeuo pipefail && \
-        # install sccache
         dnf install -y openssl-devel && \
         mkdir -p /tmp/sccache && \
         cd /tmp/sccache && \
@@ -30,32 +64,9 @@ RUN --mount=type=secret,id=aws_access_key_id \
         mv sccache-v0.10.0-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache && \
         cd /tmp && \
         rm -rf /tmp/sccache && \
-        # sccache configurations
-        mkdir -p $HOME/.config/sccache && \
-        mv /tmp/sccache.config.toml $HOME/.config/sccache/config.toml && \
-        export SCCACHE_CONF=$HOME/.config/sccache/config.toml && \
-        # build out AWS creds and configs
-        umask 077 && \
-        AKI="$(cat /run/secrets/aws_access_key_id)" && \
-        SAK="$(cat /run/secrets/aws_secret_access_key)" && \
-        { \
-        echo "[default]"; \
-        echo "region=us-west-2"; \
-        echo "aws_access_key_id=${AKI}"; \
-        echo "aws_secret_access_key=${SAK}"; \
-        } > /root/.aws/credentials && \
-        { \
-        echo "[default]"; \
-        echo "region=us-west-2"; \
-        echo "output=json"; \
-        } > /root/.aws/config && \
-        export AWS_SHARED_CREDENTIALS_FILE=/root/.aws/credentials AWS_CONFIG_FILE=/root/.aws/config AWS_DEFAULT_REGION="us-west-2" AWS_PROFILE=default && \
-        export SCCACHE_IDLE_TIMEOUT=0 && \
-        export SCCACHE_LOG=debug && \
-        export RUSTC_WRAPPER="sccache" && \
-        /usr/local/bin/sccache --start-server && \
-        # verify sccache is working with the s3 backend
-        /usr/local/bin/sccache --show-stats; \
+        source /usr/local/bin/setup-sccache && \
+        echo "int main() { return 0; }" | sccache gcc -x c - -o /dev/null && \
+        echo "sccache installation and S3 connectivity verified"; \
     fi
 
 WORKDIR /workspace
@@ -138,12 +149,19 @@ ENV NVSHMEM_DIR="/opt/nvshmem-${NVSHMEM_VERSION}" \
 # Build and install gdrcopy
 # TODO: CUSTOM LOGGING
 RUN --mount=type=cache,target=/var/cache/git \
+    --mount=type=secret,id=aws_access_key_id \
+    --mount=type=secret,id=aws_secret_access_key \
+    source /usr/local/bin/setup-sccache && \
     git clone https://github.com/NVIDIA/gdrcopy.git && \
     cd gdrcopy && \
-    PREFIX=/usr/local DESTLIB=/usr/local/lib make lib_install && \
+    CC="sccache gcc" CXX="sccache g++" PREFIX=/usr/local DESTLIB=/usr/local/lib make lib_install && \
     cp src/libgdrapi.so.2.* /usr/lib64/ && \
     ldconfig && \
-    cd .. && rm -rf gdrcopy
+    cd .. && rm -rf gdrcopy && \
+    if [ "${USE_SCCACHE}" = "true" ]; then \
+        echo "=== gdrcopy build complete - sccache stats ===" && \
+        sccache --show-stats; \
+    fi
 
 ENV CPPFLAGS="-I$NVSHMEM_DIR/include ${CPPFLAGS}" \
     LDFLAGS="-L$NVSHMEM_DIR/lib ${LDFLAGS}"
@@ -152,7 +170,10 @@ ENV CPPFLAGS="-I$NVSHMEM_DIR/include ${CPPFLAGS}" \
 COPY patches/ /tmp/patches/
 
 # Build and install NVSHMEM from source with coreweave patch
-RUN cd /tmp && \
+RUN --mount=type=secret,id=aws_access_key_id \
+    --mount=type=secret,id=aws_secret_access_key \
+    cd /tmp && \
+    source /usr/local/bin/setup-sccache && \
     wget https://developer.download.nvidia.com/compute/redist/nvshmem/${NVSHMEM_VERSION}/source/nvshmem_src_cuda12-all-all-${NVSHMEM_VERSION}.tar.gz -O nvshmem_src_cuda${CUDA_MAJOR}.tar.gz && \
     tar -xf nvshmem_src_cuda${CUDA_MAJOR}.tar.gz && \
     cd nvshmem_src && \
@@ -179,7 +200,11 @@ RUN cd /tmp && \
         .. && \
         ninja -j$(nproc) && \
         ninja install && \
-        cd /tmp && rm -rf nvshmem_src*
+        cd /tmp && rm -rf nvshmem_src* && \
+        if [ "${USE_SCCACHE}" = "true" ]; then \
+            echo "=== NVSHMEM build complete - sccache stats ===" && \
+            sccache --show-stats; \
+        fi
 
 # Pin torch, so all deps are built against the same version 
 # as vllm itself
@@ -229,7 +254,10 @@ RUN mkdir -p /wheels
 
 # Build compiled packages as wheels (only ones that need build tools)
 RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=secret,id=aws_access_key_id \
+    --mount=type=secret,id=aws_secret_access_key \
     source ${VIRTUAL_ENV}/bin/activate && \
+    source /usr/local/bin/setup-sccache && \
     \
     # Install build tools
     uv pip install build cuda-python numpy setuptools-scm ninja "nvshmem4py-cu${CUDA_MAJOR}" && \
@@ -263,7 +291,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     cd pplx-kernels && \
     # git checkout build-fixes && \
     NVSHMEM_PREFIX=${NVSHMEM_DIR} uv build --wheel --out-dir /wheels && \
-    cd .. && rm -rf pplx-kernels
+    cd .. && rm -rf pplx-kernels && \
+    if [ "${USE_SCCACHE}" = "true" ]; then \
+        echo "=== Compiled wheels build complete - sccache stats ===" && \
+        sccache --show-stats; \
+    fi
 
 # verify builds are hitting the cache
 RUN sccache --show-stats
