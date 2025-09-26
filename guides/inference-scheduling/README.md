@@ -60,19 +60,19 @@ Follow provider specific instructions for installing HTTPRoute.
 #### Install for "kgateway" or "istio"
 
 ```bash
-kubectl apply -f httproute.yaml
+kubectl apply -f httproute.yaml -n ${NAMESPACE}
 ```
 
 #### Install for "gke"
 
 ```bash
-kubectl apply -f httproute.gke.yaml
+kubectl apply -f httproute.gke.yaml -n ${NAMESPACE}
 ```
 
 #### Install for "digitalocean"
 
 ```bash
-kubectl apply -f httproute.yaml
+kubectl apply -f httproute.yaml -n ${NAMESPACE}
 ```
 ## Verify the Installation
 
@@ -143,19 +143,19 @@ Follow provider specific instructions for deleting HTTPRoute.
 #### Cleanup for "kgateway" or "istio"
 
 ```bash
-kubectl delete -f httproute.yaml
+kubectl delete -f httproute.yaml -n ${NAMESPACE}
 ```
 
 #### Cleanup for "gke"
 
 ```bash
-kubectl delete -f httproute.gke.yaml
+kubectl delete -f httproute.gke.yaml -n ${NAMESPACE}
 ```
 
 #### Cleanup for "digitalocean"
 
 ```bash
-kubectl delete -f httproute.yaml
+kubectl delete -f httproute.yaml -n ${NAMESPACE}
 ```
 
 ## Customization

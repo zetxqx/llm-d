@@ -136,7 +136,7 @@ jobs:
         run: |
           cd guides/inference-scheduling
           echo "Deploying HTTPRoute..."
-          kubectl apply -f httproute.gke.yaml | tee ~/inference-scheduling-deployment.log
+          kubectl apply -f httproute.gke.yaml -n ${NAMESPACE} | tee ~/inference-scheduling-deployment.log
           echo "---------------------------------------" >> ~/inference-scheduling-deployment.log
 
       - name: Upload helm get all
@@ -235,4 +235,4 @@ jobs:
         run: |
           cd guides/inference-scheduling
           helmfile destroy -e ${{ matrix.accelerator.helmfile_env }}
-          kubectl delete -f httproute.gke.yaml
+          kubectl delete -f httproute.gke.yaml -n ${NAMESPACE}
