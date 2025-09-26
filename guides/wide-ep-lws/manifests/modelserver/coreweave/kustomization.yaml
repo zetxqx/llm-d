@@ -52,3 +52,6 @@ patches:
                     operator: In
                     values:
                       - H200
+      - op: add
+        path: /spec/leaderWorkerTemplate/workerTemplate/spec/schedulerName
+        value: custom-binpack-scheduler

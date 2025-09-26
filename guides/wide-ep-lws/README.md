@@ -94,6 +94,10 @@ To see what gateway options are supported refer to our [gateway provider prereq 
 
 You can also customize your gateway, for more information on how to do that see our [gateway customization docs](../../docs/customizing-your-gateway.md).
 
+## Tuning Selective PD
+
+As with PD, the `wide-ep-lws` guide supports selective PD. For information on this refer to [this section of the PD docs](../pd-disaggregation/README.md#tuning-selective-pd).
+
 ## Verifying the installation
 
 - Firstly, you should be able to list all helm releases installed into your chosen namespace:

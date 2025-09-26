@@ -21,6 +21,12 @@ patches:
     - op: replace
       path: /spec/rules/0/backendRefs/0/group
       value: inference.networking.k8s.io
+- target:
+    kind: HTTPRoute
+  # Remove port value for the inference pool in the v1 apis
+  patch: |-
+    - op: remove
+      path: /spec/rules/0/backendRefs/0/port
 labels:
 - pairs:
     app.kubernetes.io/instance: wide-ep

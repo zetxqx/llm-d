@@ -40,6 +40,22 @@ To see what gateway options are supported refer to our [gateway provider prereq 
 
 You can also customize your gateway, for more information on how to do that see our [gateway customization docs](../../docs/customizing-your-gateway.md).
 
+### Install HTTPRoute
+
+Follow provider specific instructions for installing HTTPRoute.
+
+#### Install for "kgateway" or "istio"
+
+```bash
+kubectl apply -f httproute.yaml
+```
+
+#### Install for "gke"
+
+```bash
+kubectl apply -f httproute.gke.yaml
+```
+
 ## Verify the Installation
 
 - Firstly, you should be able to list all helm releases to view the 3 charts got installed into your chosen namespace:
