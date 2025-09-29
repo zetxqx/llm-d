@@ -81,7 +81,7 @@ kubectl apply -f httproute.yaml -n ${NAMESPACE}
 ```bash
 helm list -n ${NAMESPACE}
 NAME                        NAMESPACE                 REVISION  UPDATED                               STATUS    CHART                     APP VERSION
-gaie-inference-scheduling   llm-d-inference-scheduler 1         2025-08-24 11:24:53.231918 -0700 PDT  deployed  inferencepool-v1.0.1-rc.1      v1.0.1-rc.1
+gaie-inference-scheduling   llm-d-inference-scheduler 1         2025-08-24 11:24:53.231918 -0700 PDT  deployed  inferencepool-v1.0.1      v1.0.1
 infra-inference-scheduling  llm-d-inference-scheduler 1         2025-08-24 11:24:49.551591 -0700 PDT  deployed  llm-d-infra-v1.3.3        v0.3.0
 ms-inference-scheduling     llm-d-inference-scheduler 1         2025-08-24 11:24:58.360173 -0700 PDT  deployed  llm-d-modelservice-v0.2.9 v0.2.0
 ```
