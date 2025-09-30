@@ -39,6 +39,17 @@ inferenceExtension:
         - pluginRef: queue-scorer
           weight: 1.0
         - pluginRef: max-score-picker
+
+  # Monitoring configuration for EPP
+  monitoring:
+    interval: "10s"
+    # Service account token secret for authentication
+    secret:
+      name: pd-gateway-sa-metrics-reader-secret
+    # Prometheus ServiceMonitor will be created when enabled for EPP metrics collection
+    prometheus:
+      enabled: true
+
 inferencePool:
   apiVersion: inference.networking.x-k8s.io/v1alpha2 # use old API version for inference
   targetPortNumber: 8000

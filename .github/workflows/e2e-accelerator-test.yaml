@@ -317,7 +317,7 @@ jobs:
             set -euo pipefail
             set -x
             cd llm-d/docs/monitoring
-            ./install-prometheus-grafana.sh
+            ./scripts/install-prometheus-grafana.sh
           EOF
 
   deploy-and-validate:

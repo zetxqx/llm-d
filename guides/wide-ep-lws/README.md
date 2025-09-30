@@ -56,6 +56,7 @@ helm install deepseek-r1 \
   -f inferencepool.values.yaml \
   --set "provider.name=gke" \
   --set "inferencePool.apiVersion=inference.networking.k8s.io/v1" \
+  --set "inferenceExtension.monitoring.gke.enable=true" \
   oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool --version v1.0.1
 
 # For Istio
@@ -63,6 +64,7 @@ helm install deepseek-r1 \
   -n ${NAMESPACE} \
   -f inferencepool.values.yaml \
   --set "provider.name=istio" \
+  --set "inferenceExtension.monitoring.prometheus.enable=true" \
   oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool --version v1.0.1
 
 # For Kgateway

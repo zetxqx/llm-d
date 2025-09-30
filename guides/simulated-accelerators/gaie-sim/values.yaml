@@ -14,6 +14,16 @@ inferenceExtension:
     pullPolicy: Always
   extProcPort: 9002
   pluginsConfigFile: "default-plugins.yaml" # using upstream GIE default-plugins, see: https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/main/config/charts/inferencepool/templates/epp-config.yaml#L7C3-L56C33
+
+  # Monitoring configuration for EPP
+  monitoring:
+    interval: "10s"
+    # Service account token secret for authentication
+    secret:
+      name: sim-gateway-sa-metrics-reader-secret
+    # Prometheus ServiceMonitor will be created when enabled for EPP metrics collection
+    prometheus:
+      enabled: true
 inferencePool:
   targetPortNumber: 8000
   apiVersion: inference.networking.x-k8s.io/v1alpha2 # use old API version for inference

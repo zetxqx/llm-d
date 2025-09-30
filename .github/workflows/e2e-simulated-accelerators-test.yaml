@@ -122,7 +122,7 @@ jobs:
       - name: Install monitoring stack
         run: |
           cd docs/monitoring
-          ./install-prometheus-grafana.sh
+          ./scripts/install-prometheus-grafana.sh
 
       - name: Deploy simulation services with helmfile
         env:
