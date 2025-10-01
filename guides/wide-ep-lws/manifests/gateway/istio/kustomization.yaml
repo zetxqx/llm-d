@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - ../base
-- telemetry.yaml
+# - telemetry.yaml # DEBUG ONLY
 
 patches:
 - path: gateway.yaml

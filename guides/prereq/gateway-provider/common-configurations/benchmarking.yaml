@@ -1,6 +1,7 @@
 # Infra values
 gateway:
   gatewayParameters:
+    accessLogging: false
     logLevel: error
     resources:
       limits:
