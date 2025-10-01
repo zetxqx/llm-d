@@ -9,7 +9,7 @@ metadata:
 spec:
   replicas: 1
   leaderWorkerTemplate:
-    size: 1
+    size: 2
     workerTemplate:
       metadata:
         labels:
@@ -48,16 +48,38 @@ spec:
               exec vllm serve \
                 deepseek-ai/DeepSeek-R1-0528 \
                 --port 8000 \
+                --trust-remote-code \
                 --disable-uvicorn-access-log \
-                --enable-expert-parallel \
+                # Use exernal load balancing across nodes, \
+                # and internal load balancing within a node \
                 --data-parallel-hybrid-lb \
+                # Use TPxDP in attention, EP in MoE layers \
+                --enable-expert-parallel \
+                --tensor-parallel-size $TP_SIZE \
                 --data-parallel-size $((LWS_GROUP_SIZE * DP_SIZE_LOCAL)) \
                 --data-parallel-size-local $DP_SIZE_LOCAL \
                 --data-parallel-address ${LWS_LEADER_ADDRESS} \
                 --data-parallel-rpc-port 5555 \
                 --data-parallel-start-rank $START_RANK \
-                --trust-remote-code \
-                --kv_transfer_config '{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
+                # configure P/D disaggregation \
+                --kv_transfer_config '{"kv_connector":"NixlConnector",
+                                        "kv_role":"kv_both"}' \
+                # Reduce white space between engine steps \
+                --async-scheduling \
+                # Dual batch overlap (DBO) overlaps compute with collective communication. \
+                --enable-dbo \
+                --dbo-prefill-token-threshold 32 \
+                # Expert-parallel load balancing reduces EP load imbalance by replicating heavily-used experts \
+                # Performance-memory tradeoff: on DeepSeekV3 eplb uses an extra 2GB per redundant expert per GPU \
+                # Divisibility constraint: num_routed_experts (256 for DSv3) + num_redundant_experts must be \
+                # divisible by the number of GPUs. \
+                --enable-eplb \
+                --eplb-config '{"window_size":"1000",
+                                "step_interval":"3000",
+                                "num_redundant_experts":"32",
+                                "log_balancedness":"False"}' \
+                --gpu-memory-utilization 0.75
+
           env:
           - name: DP_SIZE_LOCAL
             value: "8"
@@ -73,8 +95,6 @@ spec:
             value: deepep_high_throughput
           - name: NVIDIA_GDRCOPY
             value: enabled
-          - name: NVSHMEM_DEBUG
-            value: INFO
           - name: NVSHMEM_REMOTE_TRANSPORT
             value: ibgda
           - name: NVSHMEM_IB_ENABLE_IBGDA
@@ -112,6 +132,5 @@ spec:
               memory: 512Gi
               nvidia.com/gpu: "8"
           volumeMounts:
-            - mountPath: /dev/shm
-              name: dshm
-          workingDir: /code
+            - name: dshm
+              mountPath: /dev/shm
