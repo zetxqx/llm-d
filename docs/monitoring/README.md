@@ -6,8 +6,11 @@ Please join [SIG-Observability](https://github.com/llm-d/llm-d/blob/dev/SIGS.md#
 
 ### Platform-Specific
 
-- If running on Google Kubernetes Engine (GKE), refer to [Google Cloud Managed Prometheus documentation](https://cloud.google.com/stackdriver/docs/managed-prometheus)
-  for guidance on how to collect metrics.
+- If running on Google Kubernetes Engine (GKE), 
+  - Refer to [Google Cloud Managed Prometheus documentation](https://cloud.google.com/stackdriver/docs/managed-prometheus)
+  for general guidance on how to collect metrics.
+  - Enable [automatic application monitoring](https://cloud.google.com/kubernetes-engine/docs/how-to/configure-automatic-application-monitoring) which will automatically collect metrics for vLLM.
+  - GKE provides an out of box [inference gateway dashboard](https://cloud.google.com/kubernetes-engine/docs/how-to/customize-gke-inference-gateway-configurations#inference-gateway-dashboard).
 - If running on OpenShift, User Workload Monitoring provides an accessible Prometheus Stack for scraping metrics. See the
   [OpenShift documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/monitoring/configuring-user-workload-monitoring#enabling-monitoring-for-user-defined-projects_preparing-to-configure-the-monitoring-stack-uwm)
   to enable this feature.
@@ -19,10 +22,6 @@ Please join [SIG-Observability](https://github.com/llm-d/llm-d/blob/dev/SIGS.md#
 All [llm-d guides](../../guides/README.md) have monitoring enabled by default, supporting multiple monitoring stacks depending on the environment. We provide out of box monitoring configurations for scraping the [Endpoint Picker (EPP)](https://github.com/kubernetes-sigs/gateway-api-inference-extension/tree/main/docs/proposals/004-endpoint-picker-protocol) metrics, and vLLM metrics.
 
 See the vLLM Metrics and EPP Metrics sections below for how to further config or disable monitoring.
-
-If running on GKE, monitoring is also enabled by default
-and is set with `provider.name=gke`. When _not_ on GKE, Prometheus custom resources must exist in the cluster. Ensure this matches your environment and if not,
-set `enabled=false` in `[prefill,decode].monitoring.podmonitor` and `prometheus=false` in `inferenceExtension.monitoring` values sections as listed below.
 
 ### vLLM Metrics
 
@@ -53,21 +52,31 @@ The vLLM metrics from prefill and decode pods will be visible from the Prometheu
 
 EPP provides additional metrics for request routing, scheduling latency, and plugin performance. EPP metrics collection is enabled by default with:
 
-```yaml
-# In your gaie-*/values.yaml files
-inferenceExtension:
-  monitoring:
-    gke:
-      enabled: true
-provider:
-  name: gke
-```
+* For self-installed Prometheus,
 
-Upon installation, view EPP servicemonitors with:
+  ```yaml
+  # In your gaie-*/values.yaml files
+  inferenceExtension:
+    monitoring:
+      prometheus:
+        enabled: true
+  ```
 
-```bash
-kubectl get servicemonitors -n my-llm-d-namespace
-```
+  Upon installation, view EPP servicemonitors with:
+
+  ```bash
+  kubectl get servicemonitors -n my-llm-d-namespace
+  ```
+
+* For GKE managed Prometheus,
+
+  ```yaml
+  # In your gaie-*/values.yaml files
+  inferenceExtension:
+    monitoring:
+      gke:
+        enabled: true
+  ```
 
 EPP metrics include request rates, error rates, scheduling latency, and plugin processing times, providing insights into the inference routing and scheduling performance.
 
@@ -79,6 +88,7 @@ Grafana dashboard raw JSON files can be imported manually into a Grafana UI. Her
   - vLLM metrics
 - [inference-gateway dashboard](https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/main/tools/dashboards/inference_gateway.json)
   - EPP pod metrics, requires additional setup to collect metrics. See [GAIE doc](https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/main/tools/dashboards/README.md)
+- [GKE managed inference gateway dashboard](https://cloud.google.com/kubernetes-engine/docs/how-to/customize-gke-inference-gateway-configurations#inference-gateway-dashboard)
 
 ## PromQL Query Examples
 
