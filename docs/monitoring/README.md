@@ -86,8 +86,8 @@ Grafana dashboard raw JSON files can be imported manually into a Grafana UI. Her
 
 - [llm-d dashboard](./grafana/dashboards/llm-d-dashboard.json)
   - vLLM metrics
-- [inference-gateway dashboard](https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/main/tools/dashboards/inference_gateway.json)
-  - EPP pod metrics, requires additional setup to collect metrics. See [GAIE doc](https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/main/tools/dashboards/README.md)
+- [inference-gateway dashboard v1.0.1](https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/v1.0.1/tools/dashboards/inference_gateway.json)
+  - EPP metrics
 - [GKE managed inference gateway dashboard](https://cloud.google.com/kubernetes-engine/docs/how-to/customize-gke-inference-gateway-configurations#inference-gateway-dashboard)
 
 ## PromQL Query Examples
