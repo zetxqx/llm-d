@@ -245,10 +245,13 @@ RUN --mount=type=cache,target=/var/cache/git \
 # Use existing virtual environment at /opt/vllm
 WORKDIR /workspace/vllm
 
-# Install DeepEP and DeepGEMM dependencies
+# set kernel library dependencies
+# note: these libraries don't yet push sdist releases to pypi
+# so down below we do a git clone
 ARG DEEPEP_REPO="https://github.com/deepseek-ai/DeepEP"
 ARG DEEPEP_VERSION="v1.2.1"
 ARG DEEPGEMM_REPO="https://github.com/deepseek-ai/DeepGEMM"
+ARG DEEPGEMM_VERSION="v2.1.0"
 ARG PPLX_KERNELS_REPO="https://github.com/perplexityai/pplx-kernels"
 
 # Create wheels directory
@@ -284,7 +287,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     # Build DeepGEMM wheel
     git clone "${DEEPGEMM_REPO}" deepgemm && \
     cd deepgemm && \
-    # git checkout multi_arch_support && \
+    git checkout -q "${DEEPGEMM_VERSION}" && \
     git submodule update --init --recursive && \
     uv build --wheel --no-build-isolation --out-dir /wheels && \
     cd .. && rm -rf deepgemm && \
