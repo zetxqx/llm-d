@@ -1,10 +1,10 @@
 multinode: false
 
 modelArtifacts:
-  uri: "hf://meta-llama/Llama-3.1-70B-Instruct"
+  uri: "hf://Qwen/Qwen3-32B"
   size: 160Gi
   authSecretName: "llm-d-hf-token"
-  name: "meta-llama/Llama-3.1-70B"
+  name: "Qwen/Qwen3-32B"
 
 routing:
   servicePort: 8000
@@ -25,8 +25,8 @@ routing:
 decode:
   create: true
   parallelism:
-    tensor: 4 
-  replicas: 4
+    tensor: 2 
+  replicas: 8
   monitoring:
     podmonitor:
       enabled: true
@@ -42,15 +42,15 @@ decode:
       - '-c'
     args:
       - |
-        vllm serve meta-llama/Llama-3.1-70B-Instruct \
+        vllm serve Qwen/Qwen3-32B \
         --host 0.0.0.0 \
-        --tensor-parallel-size 4 \
+        --tensor-parallel-size 2 \
         --port 8200 \
         --block-size 64 \
         --prefix-caching-hash-algo sha256_cbor \
         --enforce-eager \
         --kv-transfer-config '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}' \
-        --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://gaie-${GAIE_RELEASE_NAME_POSTFIX}-epp.${NAMESPACE}.svc.cluster.local:5557\",\"topic\":\"kv@${POD_IP}@meta-llama/Llama-3.1-70B-Instruct\"}"
+        --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://gaie-${GAIE_RELEASE_NAME_POSTFIX}-epp.${NAMESPACE}.svc.cluster.local:5557\",\"topic\":\"kv@${POD_IP}@Qwen/Qwen3-32B\"}"
     env:
       - name: GAIE_RELEASE_NAME_POSTFIX # index 0 matters because of set in helmfile
       - name: NAMESPACE
@@ -82,9 +82,9 @@ decode:
         protocol: TCP
     resources:
       limits:
-        nvidia.com/gpu: "4"
+        nvidia.com/gpu: "2"
       requests:
-        nvidia.com/gpu: "4"
+        nvidia.com/gpu: "2"
     mountModelVolume: true
     volumeMounts:
     - name: metrics-volume
