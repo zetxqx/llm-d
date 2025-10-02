@@ -38,50 +38,54 @@ inferenceExtension:
   pluginsConfigFile: "prefix-cache-tracking-config.yaml"
   pluginsCustomConfig: # THIS CONFIG NEEDS TO BE CHECKED FOR INF SCHEDULER NEW IMAGE, ALMOST CERTAIN THERE IS A NEW API HERE
     prefix-cache-tracking-config.yaml: |
-      apiVersion: inference.networking.x-k8s.io/v1alpha1
-      kind: EndpointPickerConfig
-      plugins:
-        - type: single-profile-handler
-        - type: precise-prefix-cache-scorer
-          parameters:
-            indexerConfig:
-              tokenProcessorConfig:
-                blockSize: 64   
-                hashSeed: "42"
-        - type: kv-cache-utilization-scorer
-        - type: queue-scorer
-        - type: max-score-picker
-      schedulingProfiles:
-        - name: default
-          plugins:
-            - pluginRef: precise-prefix-cache-scorer
-              weight: 3.0
-            - pluginRef: kv-cache-utilization-scorer
-              weight: 2.0
-            - pluginRef: queue-scorer
-              weight: 2.0
-            - pluginRef: max-score-picker
-
       # apiVersion: inference.networking.x-k8s.io/v1alpha1
       # kind: EndpointPickerConfig
       # plugins:
-      # - type: queue-scorer
-      # - type: kv-cache-utilization-scorer
-      # - type: prefix-cache-scorer
-      # - type: max-score-picker
-      #   parameters:
-      #     maxNumOfEndpoints: 1
-      # - type: single-profile-handler
+      #   - type: single-profile-handler
+      #   - type: precise-prefix-cache-scorer
+      #     parameters:
+      #       indexerConfig:
+      #         tokenProcessorConfig:
+      #           blockSize: 64   
+      #           hashSeed: "42"
+      #   - type: kv-cache-utilization-scorer
+      #   - type: queue-scorer
+      #   - type: max-score-picker
       # schedulingProfiles:
-      # - name: default
-      #   plugins:
-      #   - pluginRef: queue-scorer
-      #     weight: 1
-      #   - pluginRef: kv-cache-utilization-scorer
-      #     weight: 1
-      #   - pluginRef: prefix-cache-scorer
-      #     weight: 2
-      #   - pluginRef: max-score-picker
+      #   - name: default
+      #     plugins:
+      #       - pluginRef: precise-prefix-cache-scorer
+      #         weight: 3.0
+      #       - pluginRef: kv-cache-utilization-scorer
+      #         weight: 2.0
+      #       - pluginRef: queue-scorer
+      #         weight: 2.0
+      #       - pluginRef: max-score-picker
+
+      apiVersion: inference.networking.x-k8s.io/v1alpha1
+      kind: EndpointPickerConfig
+      plugins:
+      - type: queue-scorer
+      - type: kv-cache-utilization-scorer
+      - type: prefix-cache-scorer
+        parameters:
+          hashBlockSize: 64
+          maxPrefixBlocksToMatch: 256
+          lruCapacityPerServer: 5000
+      - type: max-score-picker
+        parameters:
+          maxNumOfEndpoints: 1
+      - type: single-profile-handler
+      schedulingProfiles:
+      - name: default
+        plugins:
+        - pluginRef: queue-scorer
+          weight: 2
+        - pluginRef: kv-cache-utilization-scorer
+          weight: 2
+        - pluginRef: prefix-cache-scorer
+          weight: 3
+        - pluginRef: max-score-picker
       
       # apiVersion: inference.networking.x-k8s.io/v1alpha1
       # kind: EndpointPickerConfig
