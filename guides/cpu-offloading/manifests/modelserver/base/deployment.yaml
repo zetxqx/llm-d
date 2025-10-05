@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama-3-70b-instruct
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vllm-llama-3-70b-instruct
+  template:
+    metadata:
+      labels:
+        app: vllm-llama-3-70b-instruct
+    spec:
+      containers:
+        - name: vllm
+          image: "lmcache/vllm-openai:v0.3.5"
+          imagePullPolicy: IfNotPresent
+          command: ["/opt/venv/bin/vllm"]
+          args:
+          - "serve"
+          - "meta-llama/Llama-3.3-70B-Instruct"
+          - "--tensor-parallel-size"
+          - "4"
+          - "--port"
+          - "8000"
+          - "--max-num-seq"
+          - "1024"
+          - "--compilation-config"
+          - '{"cudagraph_mode": "PIECEWISE"}'
+          - "--kv-transfer-config"
+          - '{"kv_connector":"LMCacheConnectorV1","kv_role":"kv_both"}'
+          - "--enable_prefix_caching"
+          env:
+            - name: VLLM_USE_V1
+              value: "1"
+            - name: PORT
+              value: "8000"
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: llm-d-hf-token
+                  key: HF_TOKEN
+            - name: VLLM_ALLOW_RUNTIME_LORA_UPDATING
+              value: "true"
+            - name: LMCACHE_MAX_LOCAL_CPU_SIZE
+              value: "200.0"
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            periodSeconds: 1
+            successThreshold: 1
+            failureThreshold: 5
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            periodSeconds: 1
+            successThreshold: 1
+            failureThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 600
+            initialDelaySeconds: 2
+            periodSeconds: 1
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+          resources:
+            limits:
+              nvidia.com/gpu: 4
+            requests:
+              nvidia.com/gpu: 4
+              memory: 800G
+          volumeMounts:
+            - mountPath: /data
+              name: data
+            - mountPath: /dev/shm
+              name: shm
+      restartPolicy: Always
+
+      enableServiceLinks: false
+
+      terminationGracePeriodSeconds: 130
+
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: shm
+          emptyDir:
+            medium: Memory
