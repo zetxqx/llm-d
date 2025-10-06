@@ -115,7 +115,6 @@ replicaset.apps/vllm-llama-3-70b-instruct-epp-dff66b5f5   1         1         1 
 
 For instructions on getting started making inference requests see [our docs](../../docs/getting-started-inferencing.md)
 
-**_NOTE:_** This example particularly benefits from utilizing stern as described in the [getting-started-inferencing docs](../../docs/getting-started-inferencing.md#following-logs-for-requests), because while we only have 3 inferencing pods, it has 16 vllm servers or ranks.
 
 **_NOTE:_** Compared to the other examples, this one takes anywhere between 7-10 minutes for the vllm API servers to startup so this might take longer before you can interact with this example.
 
