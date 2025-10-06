@@ -22,7 +22,7 @@ This guide requires 12 Nvidia H100 GPUs. It requires 2400 Gi of memory across al
 
 ## Installation
 
-Use the helmfile to compose and install the stack. The Namespace in which the stack will be deployed will be derived from the `${NAMESPACE}` environment variable. If you have not set this, it will default to `llm-d-cpu-offloading` in this example.
+The Namespace in which the stack will be deployed will be derived from the `${NAMESPACE}` environment variable. If you have not set this, it will default to `llm-d-cpu-offloading` in this example.
 
 ```bash
 export NAMESPACE=llm-d-cpu-offloading # or any other namespace
