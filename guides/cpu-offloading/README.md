@@ -16,7 +16,6 @@ This guide requires 12 Nvidia H100 GPUs. It requires 2400 Gi of memory across al
   - You must have high speed inter-accelerator networking
   - The pods leveraging inter-node EP must be deployed within the same networking domain
 - Configure and deploy your [Gateway control plane](../prereq/gateway-provider/README.md).
-- [Create the `llm-d-hf-token` secret in your target namespace with the key `HF_TOKEN` matching a valid HuggingFace token](../prereq/client-setup/README.md#huggingface-token) to pull models.
 - Have the [Monitoring stack](../../docs/monitoring/README.md) installed on your system.
 
 
@@ -31,22 +30,8 @@ kubectl create namespace ${NAMESPACE}
 ```
 
 ### Create HuggingFace token
-This example request access to the [meta-llama/Llama-3.3-70B-Instruct](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) model and generate an access token. Access to this model requires an approved request on HuggingFace, and the deployment will fail if access has not been granted.
 
-- Sign the license consent agreement: You must sign the consent agreement to use the Llama-3.3-70B-Instruct model. Go to the model's page on HuggingFace, verify your account, and accept the terms.
-- Generate an access token: To access the model, you need a HuggingFace token. In your HuggingFace account, go to Your Profile > Settings > Access Tokens, create a new token with at least Read permissions, and copy it to your clipboard.
-
-The following script will create the token in the current namespace using the name llm-d-hf-token, which is used in the deployment.yaml:
-
-```bash
-export HF_TOKEN=<from Huggingface>
-export HF_TOKEN_NAME=${HF_TOKEN_NAME:-llm-d-hf-token}
-kubectl create secret generic ${HF_TOKEN_NAME} \
-    --from-literal="HF_TOKEN=${HF_TOKEN}" \
-    --namespace "${NAMESPACE}" \
-    --dry-run=client -o yaml | kubectl apply -f -
-```
-
+[Create the `llm-d-hf-token` secret in your ${NAMESPACE} with the key `HF_TOKEN` matching a valid HuggingFace token](../prereq/client-setup/README.md#huggingface-token) to pull models.
 
 ### Deploy Model Servers
 
