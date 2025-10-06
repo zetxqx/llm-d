@@ -86,7 +86,7 @@ NAME                     	NAMESPACE           	REVISION	UPDATED                 
 vllm-llama-3-70b-instruct	llm-d-cpu-offloading	1       	2025-10-05 21:00:01.334298353 +0000 UTC	deployed	inferencepool-v1.0.1	v1.0.1    
 ```
 
-- Out of the box with this example you should have the following resources (if using GKE):
+- Out of the box with this example you should have the following resources:
 
 ```bash
 kubectl get all -n ${NAMESPACE}
