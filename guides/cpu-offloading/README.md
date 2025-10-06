@@ -116,7 +116,6 @@ replicaset.apps/vllm-llama-3-70b-instruct-epp-dff66b5f5   1         1         1 
 For instructions on getting started making inference requests see [our docs](../../docs/getting-started-inferencing.md)
 
 
-**_NOTE:_** Compared to the other examples, this one takes anywhere between 7-10 minutes for the vllm API servers to startup so this might take longer before you can interact with this example.
 
 ## Cleanup
 
