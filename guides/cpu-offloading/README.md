@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide demonstrates how to deploy meta-llama/Llama-3.3-70B-Instruct using vLLM with CPU Offloading for KVCache. This guide has been validated on a cluster with 12xH100 GPUs split across three nodes.
+This guide demonstrates how to deploy `meta-llama/Llama-3.3-70B-Instruct` using vLLM with CPU Offloading for KVCache.
 
 In this example, we will demonstrate a deployment of `Llama-3.3-70B-Instruct` with three vLLM instances
 
