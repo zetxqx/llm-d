@@ -1,4 +1,4 @@
-# Well-lit Path: CPU Offloading
+# Well-lit Path: K-V Cache Offloading to CPU RAM
 
 ## Overview
 
