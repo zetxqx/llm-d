@@ -166,6 +166,9 @@ RUN --mount=type=cache,target=/var/cache/git \
 ENV CPPFLAGS="-I$NVSHMEM_DIR/include ${CPPFLAGS}" \
     LDFLAGS="-L$NVSHMEM_DIR/lib ${LDFLAGS}"
 
+# Create wheels directory
+RUN mkdir -p /wheels
+
 # Copy patches before build
 COPY patches/ /tmp/patches/
 
@@ -199,7 +202,8 @@ RUN --mount=type=secret,id=aws_access_key_id \
         -DNVSHMEM_DISABLE_CUDA_VMM=1 \
         .. && \
         ninja -j$(nproc) && \
-        ninja install && \
+        ninja install &&  \
+        cp ${NVSHMEM_DIR}/lib/python/dist/nvshmem4py_cu${CUDA_MAJOR}-*-cp${PYTHON_VERSION/./}-cp${PYTHON_VERSION/./}-manylinux_*.whl /wheels/ && \
         cd /tmp && rm -rf nvshmem_src* && \
         if [ "${USE_SCCACHE}" = "true" ]; then \
             echo "=== NVSHMEM build complete - sccache stats ===" && \
@@ -254,9 +258,6 @@ ARG DEEPGEMM_REPO="https://github.com/deepseek-ai/DeepGEMM"
 ARG DEEPGEMM_VERSION="v2.1.0"
 ARG PPLX_KERNELS_REPO="https://github.com/perplexityai/pplx-kernels"
 
-# Create wheels directory
-RUN mkdir -p /wheels
-
 # Build compiled packages as wheels (only ones that need build tools)
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=secret,id=aws_access_key_id \
@@ -265,7 +266,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     source /usr/local/bin/setup-sccache && \
     \
     # Install build tools
-    uv pip install build cuda-python numpy setuptools-scm ninja "nvshmem4py-cu${CUDA_MAJOR}" && \
+    uv pip install build cuda-python numpy setuptools-scm ninja && \
+    uv pip install /wheels/nvshmem4py_cu${CUDA_MAJOR}-*.whl && \
     \
     # Build FlashInfer wheel
     cd /tmp && \
@@ -397,7 +399,7 @@ ADD scripts/warn-vllm-precompiled.sh /opt/
     # 2) install vllm from a wheel on the vllm wheels index - prod option, no flexbility
 RUN --mount=type=cache,target=/var/cache/git \
     source /opt/vllm/bin/activate && \
-    uv pip install nixl "nvshmem4py-cu${CUDA_MAJOR}" cuda-python 'huggingface_hub[hf_xet]' && \
+    uv pip install nixl cuda-python 'huggingface_hub[hf_xet]' && \
     uv pip install /tmp/wheels/*.whl && \
     git clone "${VLLM_REPO}" /opt/vllm-source && \
     git -C /opt/vllm-source config --system --add safe.directory /opt/vllm-source && \
