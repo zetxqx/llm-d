@@ -131,7 +131,7 @@ jobs:
           cd guides/simulated-accelerators
           helmfile apply -e ${GATEWAY_TYPE}
 
-      - name: Deploy simulation services with helmfile
+      - name: Deploy the httpRoute
         run: |
           cd guides/simulated-accelerators
           echo "Deploying HTTPRoute..."
@@ -144,7 +144,7 @@ jobs:
             --for=condition=Ready \
             --all \
             -n "${{ env.NAMESPACE }}" \
-            --timeout=2m
+            --timeout=5m
 
           echo "✅ All pods are ready."
           kubectl get pods -n "${{ env.NAMESPACE }}"

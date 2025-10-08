@@ -249,8 +249,8 @@ RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
 WORKDIR /workspace
 
 # Define commit SHAs as build args to avoid layer invalidation
-ARG LMCACHE_COMMIT_SHA=0db8ae4746a207a72483d716b5f82545a2ead24b
-ARG VLLM_COMMIT_SHA=e017120ed146cc3069d18428322d67881cb95e67
+ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
+ARG VLLM_COMMIT_SHA="f71952c1c49fb86686b0b300b727b26282362bf4"
 
 # Define if lmcache should be built 
 # Clone repositories with cache mounts
@@ -405,8 +405,8 @@ RUN python${PYTHON_VERSION} -m venv /opt/vllm && \
 COPY --from=builder /wheels/*.whl /tmp/wheels/
 
 # Define commit SHAs as build args to avoid layer invalidation
-ARG LMCACHE_COMMIT_SHA=0db8ae4746a207a72483d716b5f82545a2ead24b
-ARG VLLM_COMMIT_SHA=e017120ed146cc3069d18428322d67881cb95e67
+ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
+ARG VLLM_COMMIT_SHA="f71952c1c49fb86686b0b300b727b26282362bf4"
 
 ARG VLLM_PREBUILT=0
 

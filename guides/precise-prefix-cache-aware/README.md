@@ -121,7 +121,8 @@ kubectl logs -l inferencepool=gaie-kv-events-epp -n ${NAMESPACE} --tail 100 | gr
 You should see output similar to:
 
 ```json
-{"level":"Level(-4)","ts":"2025-09-25T22:03:22Z","caller":"framework/scheduler_profile.go:165","msg":"Calculated score","x-request-id":"8fafaa13-07b4-4711-81c9-4dda2bc07c25","objectiveKey":"","incomingModelName":"Qwen/Qwen3-0.6B","targetModelName":"Qwen/Qwen3-0.6B","priority":0,"plugin":"precise-prefix-cache-scorer/precise-prefix-cache-scorer","endpoint":{"name":"ms-kv-events-llm-d-modelservice-decode-699f868b95-gn8g8","namespace":"llm-d-precise"},"score":0}
+{"level":"Level(-4)","ts":"2025-10-07T16:07:36Z","caller":"framework/scheduler_profile.go:165","msg":"Calculated score","x-request-id":"77790804-deb4-441a-9a03-d771d8e20778","objectiveKey":"","incomingModelName":"Qwen/Qwen3-0.6B","targetModelName":"Qwen/Qwen3-0.6B","priority":0,"plugin":"precise-prefix-cache-scorer/precise-prefix-cache-scorer","endpoint":{"name":"ms-kv-events-llm-d-modelservice-decode-75499f8dc5-pbp84","namespace":"llm-d-precise"},"score":0}
+{"level":"Level(-4)","ts":"2025-10-07T16:07:36Z","caller":"framework/scheduler_profile.go:165","msg":"Calculated score","x-request-id":"77790804-deb4-441a-9a03-d771d8e20778","objectiveKey":"","incomingModelName":"Qwen/Qwen3-0.6B","targetModelName":"Qwen/Qwen3-0.6B","priority":0,"plugin":"precise-prefix-cache-scorer/precise-prefix-cache-scorer","endpoint":{"name":"ms-kv-events-llm-d-modelservice-decode-75499f8dc5-kgnqh","namespace":"llm-d-precise"},"score":0}
 ```
 
 1. Repeat the steps above to see the prefix-cache-scorer in action
@@ -129,8 +130,8 @@ You should see output similar to:
 You should see output similar to:
 
 ```json
-{"level":"Level(-4)","ts":"2025-09-25T22:10:21Z","caller":"framework/scheduler_profile.go:165","msg":"Calculated score","x-request-id":"47eb86fd-484a-4851-a9ab-5fa821571f7b","objectiveKey":"","incomingModelName":"Qwen/Qwen3-0.6B","targetModelName":"Qwen/Qwen3-0.6B","priority":0,"plugin":"precise-prefix-cache-scorer/precise-prefix-cache-scorer","endpoint":{"name":"ms-kv-events-llm-d-modelservice-decode-699f868b95-gn8g8","namespace":"llm-d-precise"},"score":0}
-{"level":"Level(-4)","ts":"2025-09-25T22:10:21Z","caller":"framework/scheduler_profile.go:165","msg":"Calculated score","x-request-id":"47eb86fd-484a-4851-a9ab-5fa821571f7b","objectiveKey":"","incomingModelName":"Qwen/Qwen3-0.6B","targetModelName":"Qwen/Qwen3-0.6B","priority":0,"plugin":"precise-prefix-cache-scorer/precise-prefix-cache-scorer","endpoint":{"name":"ms-kv-events-llm-d-modelservice-decode-699f868b95-mgn2g","namespace":"llm-d-precise"},"score":0}
+{"level":"Level(-4)","ts":"2025-10-07T16:09:21Z","caller":"framework/scheduler_profile.go:165","msg":"Calculated score","x-request-id":"f4c967aa-ad15-4be2-8640-55164da18dfa","objectiveKey":"","incomingModelName":"Qwen/Qwen3-0.6B","targetModelName":"Qwen/Qwen3-0.6B","priority":0,"plugin":"precise-prefix-cache-scorer/precise-prefix-cache-scorer","endpoint":{"name":"ms-kv-events-llm-d-modelservice-decode-75499f8dc5-pbp84","namespace":"llm-d-precise"},"score":0}
+{"level":"Level(-4)","ts":"2025-10-07T16:09:21Z","caller":"framework/scheduler_profile.go:165","msg":"Calculated score","x-request-id":"f4c967aa-ad15-4be2-8640-55164da18dfa","objectiveKey":"","incomingModelName":"Qwen/Qwen3-0.6B","targetModelName":"Qwen/Qwen3-0.6B","priority":0,"plugin":"precise-prefix-cache-scorer/precise-prefix-cache-scorer","endpoint":{"name":"ms-kv-events-llm-d-modelservice-decode-75499f8dc5-kgnqh","namespace":"llm-d-precise"},"score":1}
 ```
 
 **_NOTE:_** These logs will only appear for unique requests, so if you don't see repeated instances of these logs make sure to redo them in a unique way.

@@ -230,8 +230,8 @@ WORKDIR /workspace
 
 # Define commit SHAs as build args to avoid layer invalidation
 ARG LMCACHE_REPO=https://github.com/neuralmagic/LMCache.git
-ARG LMCACHE_COMMIT_SHA=0db8ae4746a207a72483d716b5f82545a2ead24b
-ARG VLLM_COMMIT_SHA="8ce5d3198d00631a76e1aa02a57947b46bc7218c"
+ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
+ARG VLLM_COMMIT_SHA="f71952c1c49fb86686b0b300b727b26282362bf4"
 
 # Define if lmcache should be built 
 # Clone repositories with cache mounts
@@ -258,6 +258,8 @@ ARG DEEPGEMM_REPO="https://github.com/deepseek-ai/DeepGEMM"
 ARG DEEPGEMM_VERSION="v2.1.0"
 ARG PPLX_KERNELS_REPO="https://github.com/perplexityai/pplx-kernels"
 
+ARG FLASHINFER_VERSION="v0.3.1"
+
 # Build compiled packages as wheels (only ones that need build tools)
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=secret,id=aws_access_key_id \
@@ -275,7 +277,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip uninstall flashinfer-python || true && \
     git clone https://github.com/flashinfer-ai/flashinfer.git && \
     cd flashinfer && \
-    uv pip install -e . --no-build-isolation && \
+    git checkout -q "${FLASHINFER_VERSION}" && \
     uv build --wheel --no-build-isolation --out-dir /wheels && \
     cd .. && rm -rf flashinfer && \
     \
@@ -311,7 +313,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM nvcr.io/nvidia/cuda:${CUDA_MAJOR}.${CUDA_MINOR}.${CUDA_PATCH}-devel-ubi9 AS runtime
 
 ARG CUDA_MAJOR=12
-ARG CUDA_MINOR=8
+ARG CUDA_MINOR=9
 ARG CUDA_PATCH=1
 ARG PYTHON_VERSION
 ARG NVSHMEM_VERSION=3.3.20
@@ -382,7 +384,7 @@ RUN mkdir -p /opt/vllm-source && \
 # Define commit SHAs as build args to avoid layer invalidation
 ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
 ARG VLLM_REPO="https://github.com/vllm-project/vllm.git"
-ARG VLLM_COMMIT_SHA="8ce5d3198d00631a76e1aa02a57947b46bc7218c"
+ARG VLLM_COMMIT_SHA="f71952c1c49fb86686b0b300b727b26282362bf4"
 
 # Dictates if we should pull a production wheel for the vllm commit sha
 ARG VLLM_PREBUILT=0
