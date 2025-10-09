@@ -257,6 +257,7 @@ ARG DEEPEP_VERSION="v1.2.1"
 ARG DEEPGEMM_REPO="https://github.com/deepseek-ai/DeepGEMM"
 ARG DEEPGEMM_VERSION="v2.1.0"
 ARG PPLX_KERNELS_REPO="https://github.com/perplexityai/pplx-kernels"
+ARG PPLX_KERNELS_SHA="12cecfda252e4e646417ac263d96e994d476ee5d"
 
 ARG FLASHINFER_VERSION="v0.3.1"
 
@@ -299,7 +300,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     # Build pplx-kernels wheel
     git clone ${PPLX_KERNELS_REPO} pplx-kernels && \
     cd pplx-kernels && \
-    # git checkout build-fixes && \
+    git checkout ${PPLX_KERNELS_SHA} && \
     NVSHMEM_PREFIX=${NVSHMEM_DIR} uv build --wheel --out-dir /wheels && \
     cd .. && rm -rf pplx-kernels && \
     if [ "${USE_SCCACHE}" = "true" ]; then \
