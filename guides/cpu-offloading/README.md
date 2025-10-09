@@ -7,7 +7,8 @@ This guide demonstrates how to deploy `meta-llama/Llama-3.3-70B-Instruct` using 
 
 ## Hardware Requirements
 
-This guide requires 12 Nvidia H100 GPUs. It requires 2400 Gi of memory across all 3 pods (800 Gi memory for each pod).
+This guide requires 12 Nvidia H100 GPUs. It requires 2400 Gi of memory across all 3 pods (800 Gi memory for each pod). In GKE
+this translates to three [a3-highgpu-4g machines](https://cloud.google.com/compute/docs/accelerator-optimized-machines#a3-high-vms)
 
 ## Prerequisites
 
@@ -17,7 +18,7 @@ This guide requires 12 Nvidia H100 GPUs. It requires 2400 Gi of memory across al
   - The pods leveraging inter-node EP must be deployed within the same networking domain
 - Configure and deploy your [Gateway control plane](../prereq/gateway-provider/README.md).
 - Have the [Monitoring stack](../../docs/monitoring/README.md) installed on your system.
-
+- The example is configured to use the lmcache/vllm-openai:v0.3.5 Docker image, corresponding to vLLM version v0.10.1.1. For a list of other available versions, please check the LMCache [Docker repository](https://hub.docker.com/r/lmcache/vllm-openai/tags).
 
 ## Installation
 
@@ -39,7 +40,7 @@ GKE is tested Kubernetes providers for this well-lit path. You can customize the
 
 ```bash
 # Deploy on GKE
-kubectl apply -k ./manifests/modelserver/gke -n ${NAMESPACE}
+kubectl apply -k ./manifests/modelserver/base -n ${NAMESPACE}
 ```
 
 ### Deploy InferencePool
@@ -109,7 +110,7 @@ To remove the deployment:
 ```bash
 # From examples/cpu-offloading-lws
 helm uninstall vllm-llama-3-70b-instruct -n ${NAMESPACE}
-kubectl delete -k ./manifests/modelserver/gke -n ${NAMESPACE}
+kubectl delete -k ./manifests/modelserver/base -n ${NAMESPACE}
 kubectl delete -k ./manifests/gateway/gke-l7-regional-external-managed -n ${NAMESPACE}
 ```
 
