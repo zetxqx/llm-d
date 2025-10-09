@@ -3,16 +3,11 @@ kind: Kustomization
 resources:
   - ../base
 patches:
-  # Common configurations for prefill and decode.
   - target:
       kind: LeaderWorkerSet
+      name: wide-ep-llm-d-prefill
     patch: |-
-      # Enable privileged container  on GKE to perform GPU initiated RDMA.
-      # See https://github.com/llm-d/llm-d/tree/main/docs/infra-providers/gke#configuring-support-for-rdma-on-gke-workload-pods.
-      - op: add
-        path: /spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/securityContext/privileged
-        value: true
-      # Add GKE specific topology affinity.
+      # Prefer the same block and subblock.
       # https://github.com/llm-d/llm-d/tree/main/docs/infra-providers/gke#configuring-support-for-rdma-on-gke-workload-pods
       - op: add
         path: /spec/leaderWorkerTemplate/workerTemplate/spec/affinity
@@ -25,7 +20,7 @@ patches:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: vllm-deepseek-ep
+                    llm-d.ai/role: prefill
                 matchLabelKeys:
                 - component
                 topologyKey: cloud.google.com/gce-topology-block
@@ -33,10 +28,48 @@ patches:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: vllm-deepseek-ep
+                    llm-d.ai/role: prefill
                 matchLabelKeys:
                 - component
                 topologyKey: cloud.google.com/gce-topology-subblock
+  - target:
+      kind: LeaderWorkerSet
+      name: wide-ep-llm-d-decode
+    patch: |-
+      # Prefer the same block and subblock.
+      # https://github.com/llm-d/llm-d/tree/main/docs/infra-providers/gke#configuring-support-for-rdma-on-gke-workload-pods
+      - op: add
+        path: /spec/leaderWorkerTemplate/workerTemplate/spec/affinity
+        value:
+          podAffinity:
+            # Subblock affinity cannot guarantee all pods in the replica
+            # are in the same subblock, but is better than random spreading
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 2
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    llm-d.ai/role: decode
+                matchLabelKeys:
+                - component
+                topologyKey: cloud.google.com/gce-topology-block
+            - weight: 1
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    llm-d.ai/role: decode
+                matchLabelKeys:
+                - component
+                topologyKey: cloud.google.com/gce-topology-subblock
+  # Common configurations for prefill and decode.
+  - target:
+      kind: LeaderWorkerSet
+    patch: |-
+      # Enable privileged container  on GKE to perform GPU initiated RDMA.
+      # See https://github.com/llm-d/llm-d/tree/main/docs/infra-providers/gke#configuring-support-for-rdma-on-gke-workload-pods.
+      - op: add
+        path: /spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/securityContext/privileged
+        value: true
       # Add GKE specific RDMA configuration.
       - op: add
         path: /spec/leaderWorkerTemplate/workerTemplate/metadata/annotations
@@ -114,11 +147,8 @@ patches:
         value:
           name: VENV_PATH
           value: "/app/venv"
-  # Override the image to be the GKE workaround image.
-  # TODO: Remove this once we have the llm-d image working on GKE.
-  - target:
-      kind: LeaderWorkerSet
-    patch: |-
+      # Override the image to be the GKE workaround image.
+      # TODO: Remove this once we have the llm-d image working on GKE.
       # Replace container image
       - op: replace
         path: /spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/image
