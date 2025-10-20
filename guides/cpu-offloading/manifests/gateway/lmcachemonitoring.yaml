@@ -1,0 +1,16 @@
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: lmcachemonitroing
+  labels:
+    app.kubernetes.io/name: lmcachemonitroing
+    app.kubernetes.io/part-of: google-cloud-managed-prometheus
+spec:
+  endpoints:
+  - port: 7000
+    scheme: http
+    interval: 15s
+    path: /metrics
+  selector:
+    matchLabels:
+      app: qwen-model-32b

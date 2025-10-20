@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vllm-llama-3-70b-instruct
+  name: qwen-model-32b
 spec:
-  replicas: 3
+  replicas: 8
   selector:
     matchLabels:
-      app: vllm-llama-3-70b-instruct
+      app: qwen-model-32b
   template:
     metadata:
       labels:
-        app: vllm-llama-3-70b-instruct
+        app: qwen-model-32b
     spec:
       containers:
         - name: vllm
@@ -19,9 +19,9 @@ spec:
           command: ["/opt/venv/bin/vllm"]
           args:
           - "serve"
-          - "meta-llama/Llama-3.3-70B-Instruct"
+          - "Qwen/Qwen3-32B"
           - "--tensor-parallel-size"
-          - "4"
+          - "2"
           - "--port"
           - "8000"
           - "--max-num-seq"
@@ -45,10 +45,13 @@ spec:
               value: "true"
             - name: LMCACHE_MAX_LOCAL_CPU_SIZE
               value: "200.0"
+            - name: LMCACHE_INTERNAL_API_SERVER_ENABLED
+              value: "true"
           ports:
             - containerPort: 8000
               name: http
               protocol: TCP
+            - containerPort: 7000
           lifecycle:
             preStop:
               sleep:
@@ -81,10 +84,10 @@ spec:
               scheme: HTTP
           resources:
             limits:
-              nvidia.com/gpu: 4
+              nvidia.com/gpu: 2
             requests:
-              nvidia.com/gpu: 4
-              memory: 800G
+              nvidia.com/gpu: 2
+              memory: 400G
           volumeMounts:
             - mountPath: /data
               name: data

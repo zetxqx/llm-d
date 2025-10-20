@@ -47,9 +47,9 @@ kubectl apply -k ./manifests/modelserver/base -n ${NAMESPACE}
 
 ```bash
 # For GKE
-helm install vllm-llama-3-70b-instruct \
+helm install qwen-model-32b \
   -n ${NAMESPACE} \
-  --set inferencePool.modelServers.matchLabels.app=vllm-llama-3-70b-instruct \
+  --set inferencePool.modelServers.matchLabels.app=qwen-model-32b \
   --set provider.name=gke \
   --set inferenceExtension.monitoring.gke.enabled=true \
   --version v1.0.1 \
