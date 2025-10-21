@@ -62,17 +62,17 @@ ENV LIBRARY_PATH="/usr/local/cuda/lib64:/usr/local/lib:/usr/local/lib64" \
 CPATH="/usr/include:/usr/local/include" \
 PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig"
 
-# Pin torch, so all deps are built against the same version 
+# Pin torch, so all deps are built against the same version
 # as vllm itself
 RUN --mount=type=cache,target=/root/.cache/uv \
   source ${VIRTUAL_ENV}/bin/activate && \
   uv pip install \
     # global
-    numpy \ 
-    # nixl 
+    numpy \
+    # nixl
     pyyaml \
     types-PyYAML \
-    pytest \ 
+    pytest \
     patchelf>=0.11.0
 
 
