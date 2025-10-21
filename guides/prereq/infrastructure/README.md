@@ -8,6 +8,7 @@ llm-d tests on the following configurations, supporting leading-edge AI accelera
 
 * Kubernetes: 1.29 or newer
   * Your cluster scheduler must support placing multiple pods within the same networking domain for running multi-host inference
+  * Kubernetes v1.33.0+ is recommended for complete sidecar init container support (restartPolicy: Always). If using Kubernetes v1.28.x or below, pods may get stuck in Init:0/1 state due to incomplete sidecar support.
 * Recent generation datacenter-class accelerators
   * AMD MI250X or newer
   * Google TPU v5e, v6e, and newer

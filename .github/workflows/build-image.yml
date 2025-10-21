@@ -455,17 +455,19 @@ jobs:
       - name: Build and push the image
         id: build-and-push
         run: |
-          TAG=$(git rev-parse --short HEAD)
-          PR_TAG=${{ github.event.pull_request.number }}
+          TAG="sha-$(git rev-parse --short HEAD)"
+          PR_TAG="${{ github.event.pull_request.number }}"
           export DEVICE=xpu
           export DOCKERFILE=Dockerfile.xpu
           export VERSION="${TAG}"
           make image-build
+          make image-push
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           if [ -n ${PR_TAG} ]; then
-            export NEW_TAG="${PR_TAG}"
+            export NEW_TAG="pr-${PR_TAG}"
             make image-retag
-            echo "pr_tag=${PR_TAG}"  >> $GITHUB_OUTPUT
+            make image-push VERSION="pr-${PR_TAG}"
+            echo "pr_tag=pr-${PR_TAG}"  >> $GITHUB_OUTPUT
           fi;
 
       - name: Run Trivy vulnerability scanner
