@@ -1,10 +1,10 @@
 multinode: false
 
 modelArtifacts:
-  uri: "hf://Qwen/Qwen3-32B"
+  uri: "hf://google/gemma-3-27b-it"
   size: 160Gi
   authSecretName: "llm-d-hf-token"
-  name: "Qwen/Qwen3-32B"
+  name: "google/gemma-3-27b-it"
 
 routing:
   servicePort: 8000
@@ -42,7 +42,7 @@ decode:
       - '-c'
     args:
       - |
-        vllm serve Qwen/Qwen3-32B \
+        vllm serve google/gemma-3-27b-it \
         --host 0.0.0.0 \
         --tensor-parallel-size 2 \
         --port 8200 \

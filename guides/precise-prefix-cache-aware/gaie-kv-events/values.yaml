@@ -71,7 +71,7 @@ inferenceExtension:
         parameters:
           hashBlockSize: 64
           maxPrefixBlocksToMatch: 256
-          lruCapacityPerServer: 5000
+          lruCapacityPerServer: 30000
       - type: max-score-picker
         parameters:
           maxNumOfEndpoints: 1
