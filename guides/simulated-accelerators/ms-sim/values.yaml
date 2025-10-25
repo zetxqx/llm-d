@@ -46,7 +46,7 @@ decode:
       mountPath: /.config
     startupProbe:
       httpGet:
-        path: /health
+        path: /v1/models
         port: 8200
       initialDelaySeconds: 15
       periodSeconds: 30
@@ -61,7 +61,7 @@ decode:
       failureThreshold: 3
     readinessProbe:
       httpGet:
-        path: /health
+        path: /v1/models
         port: 8200
       periodSeconds: 5
       timeoutSeconds: 2
@@ -95,7 +95,7 @@ prefill:
       mountPath: /.config
     startupProbe:
       httpGet:
-        path: /health
+        path: /v1/models
         port: 8000
       initialDelaySeconds: 15
       periodSeconds: 30
@@ -110,7 +110,7 @@ prefill:
       failureThreshold: 3
     readinessProbe:
       httpGet:
-        path: /health
+        path: /v1/models
         port: 8000
       periodSeconds: 5
       timeoutSeconds: 2

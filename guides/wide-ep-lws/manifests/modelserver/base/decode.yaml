@@ -144,10 +144,28 @@ spec:
           - containerPort: 8200
             name: metrics
             protocol: TCP
-          readinessProbe:
+          startupProbe:
+            httpGet:
+              path: /v1/models
+              port: 8200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
             httpGet:
               path: /health
               port: 8200
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v1/models
+              port: 8200
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             limits:
               ephemeral-storage: 1Ti
