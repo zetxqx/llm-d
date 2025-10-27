@@ -33,7 +33,7 @@ decode:
       interval: "30s"
   containers:
   - name: "vllm"
-    image: ghcr.io/llm-d/llm-d-cuda:v0.3.0
+    image: ghcr.io/llm-d/llm-d-cuda-dev:sha-6225536
     modelCommand: custom
     command:
       - /bin/sh
@@ -45,7 +45,6 @@ decode:
         --port 8200 \
         --block-size 64 \
         --prefix-caching-hash-algo sha256_cbor \
-        --enforce-eager \
         --kv-transfer-config '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}' \
         --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://gaie-${GAIE_RELEASE_NAME_POSTFIX}-epp.${NAMESPACE}.svc.cluster.local:5557\",\"topic\":\"kv@${POD_IP}@Qwen/Qwen3-0.6B\"}"
     env:

@@ -5,10 +5,11 @@ set -Eeu
 #
 # Required environment variables:
 # - USE_SCCACHE: whether to install and configure sccache (true/false)
+# - TARGETOS: Target OS - either 'ubuntu' or 'rhel' (default: rhel)
+
+TARGETOS="${TARGETOS:-rhel}"
 
 if [ "${USE_SCCACHE}" = "true" ]; then
-    dnf install -y openssl-devel
-
     # detect architecture
     ARCH=$(uname -m)
     if [ "$ARCH" = "x86_64" ]; then

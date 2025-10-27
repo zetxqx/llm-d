@@ -44,6 +44,9 @@ def find_locally_defined_vars(script_content: str) -> Set[str]:
     # match array declarations: VAR=( ... )
     array_pattern = r'^\s*([A-Z_][A-Z0-9_]*)=\('
 
+    # match mapfile declarations: mapfile -t VAR
+    mapfile_pattern = r'^\s*mapfile\s+(?:-[a-z]\s+)*([A-Z_][A-Z0-9_]*)'
+
     for line in script_content.split('\n'):
         # skip comments
         if line.strip().startswith('#'):
@@ -57,6 +60,12 @@ def find_locally_defined_vars(script_content: str) -> Set[str]:
 
         # check for array declarations
         match = re.match(array_pattern, line)
+        if match:
+            defined.add(match.group(1))
+            continue
+
+        # check for mapfile declarations
+        match = re.match(mapfile_pattern, line)
         if match:
             defined.add(match.group(1))
 
@@ -97,6 +106,8 @@ def lint_script(script_path: Path) -> Tuple[bool, list[str]]:
         'CI', 'GITHUB_ACTIONS', 'GITHUB_WORKSPACE', 'RUNNER_TEMP',
         # AWS credentials often set dynamically
         'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION',
+        # bash built-in arrays
+        'BASH_SOURCE', 'BASH_LINENO', 'FUNCNAME', 'BASH_ARGV', 'BASH_ARGC',
     }
 
     # only require declaration for vars that are:
@@ -139,7 +150,7 @@ def main():
 
     if all_errors:
         for error in all_errors:
-            print(f"WARNING: {error}", file=sys.stderr)
+            print(error, file=sys.stderr)
         print(f"\n⚠ {len(all_errors)} warning(s) found", file=sys.stderr)
         sys.exit(0)
 

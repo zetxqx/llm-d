@@ -48,7 +48,6 @@ decode:
     image: ghcr.io/llm-d/llm-d-xpu-dev:pr-357
     modelCommand: "vllmServe"
     args:
-      - "--enforce-eager"
       - "--dtype"
       - "float16"
       - "--disable-sliding-window"

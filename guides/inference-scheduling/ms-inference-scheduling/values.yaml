@@ -33,10 +33,9 @@ decode:
       interval: "30s"
   containers:
   - name: "vllm"
-    image: ghcr.io/llm-d/llm-d-cuda:v0.3.0
+    image: ghcr.io/llm-d/llm-d-cuda-dev:sha-6225536
     modelCommand: vllmServe
     args:
-      - "--enforce-eager"
       - "--kv-transfer-config"
       - '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}'
     env:

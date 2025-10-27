@@ -38,6 +38,11 @@ patches:
         value:
           name: NCCL_IB_HCA
           value: "ibp"
+      - op: add
+        path: /spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/env/-
+        value:
+          name: NVSHMEM_HCA_PREFIX
+          value: "ibp"
       # TODO: Remove this once we have the llm-d image working on GKE.
       - op: add
         path: /spec/leaderWorkerTemplate/workerTemplate/spec/containers/0/env/-
