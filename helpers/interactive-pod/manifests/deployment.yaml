@@ -29,10 +29,10 @@ spec:
           resources:
             requests:
               cpu: "8"
-              memory: "4Gi"
+              memory: "16Gi"
             limits:
               cpu: "8"
-              memory: "4Gi"
+              memory: "16Gi"
           env:
             - name: NAMESPACE
               valueFrom:

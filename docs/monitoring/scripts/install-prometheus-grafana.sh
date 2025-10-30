@@ -108,16 +108,13 @@ setup_env() {
     HCMD="helm"
   fi
 
-  # Set up monitoring namespace and labels based on mode
   if [[ "$CENTRAL_MODE" == "true" ]]; then
-    # Central mode: use specified namespace or default to llm-d-monitoring
     if [[ -z "$MONITORING_NAMESPACE" ]]; then
       MONITORING_NAMESPACE="llm-d-monitoring"
     fi
     MONITORING_LABEL_KEY=""
     MONITORING_LABEL_VALUE=""
   else
-    # Individual mode: require explicit namespace
     if [[ -z "$MONITORING_NAMESPACE" ]]; then
       fail "Individual monitoring mode (-i) requires a namespace to be specified via -n flag or MONITORING_NAMESPACE environment variable"
     fi
@@ -127,7 +124,6 @@ setup_env() {
 }
 
 is_openshift() {
-  # Check for OpenShift-specific resources
   if $KCMD get clusterversion &>/dev/null; then
     return 0
   fi
@@ -161,26 +157,61 @@ check_existing_node_exporter() {
   log_info "🔍 Checking for existing node-exporter installations..."
   # Shared clusters with existing monitoring commonly have pre-existing node-exporters,
   # and it's not necessary to have multiple of these running (they would conflict on port 9100)
-  # Check for existing node-exporter pods in other namespaces
   local existing_exporters=$($KCMD get pods --all-namespaces -l app=node-exporter -o name 2>/dev/null | wc -l)
 
   if [[ $existing_exporters -eq 0 ]]; then
-    # Also check for common node-exporter naming patterns
     existing_exporters=$($KCMD get pods --all-namespaces | grep -E "node-exporter|nodeexporter" | grep -v "prometheus-${MONITORING_NAMESPACE}" | wc -l)
   fi
 
   if [[ $existing_exporters -gt 0 ]]; then
     log_info "⚠️ Found $existing_exporters existing node-exporter pod(s) in other namespaces"
     log_info "ℹ️ Node-exporter will be disabled to avoid port conflicts (port 9100)"
-    # Show which namespaces have node-exporters
     log_info "📋 Existing node-exporter pods:"
     $KCMD get pods --all-namespaces | grep -E "node-exporter|nodeexporter" | grep -v "prometheus-${MONITORING_NAMESPACE}" | head -3
-    return 0  # Existing node-exporters found, should disable
+    return 0
   else
     log_info "✅ No existing node-exporter installations detected"
-    return 1  # No existing node-exporters, can enable
+    return 1
+  fi
+}
+
+check_prometheus_operator() {
+  log_info "🔍 Checking for existing Prometheus operator installations..."
+  local existing_operators=$($KCMD get pods --all-namespaces -l app.kubernetes.io/name=prometheus-operator -o name 2>/dev/null | wc -l)
+
+  if [[ $existing_operators -eq 0 ]]; then
+    existing_operators=$($KCMD get pods --all-namespaces | grep -E "prometheus-operator" | grep -v "${MONITORING_NAMESPACE}" | wc -l)
   fi
 
+  if [[ $existing_operators -gt 0 ]]; then
+    log_info "⚠️ Found $existing_operators existing Prometheus operator pod(s) in other namespaces"
+    log_info "ℹ️ Prometheus operator will be disabled to avoid resource conflicts"
+    log_info "📋 Existing Prometheus operator pods:"
+    $KCMD get pods --all-namespaces | grep -E "prometheus-operator" | grep -v "${MONITORING_NAMESPACE}" | head -3
+
+    log_info "🔍 Detecting Prometheus operator version..."
+    local operator_image=$($KCMD get pods --all-namespaces -l app.kubernetes.io/name=prometheus-operator -o jsonpath='{.items[0].spec.containers[0].image}' 2>/dev/null)
+    if [[ -z "$operator_image" ]]; then
+      operator_image=$($KCMD get pods --all-namespaces -o yaml | grep -E "prometheus-operator" | grep "image:" | head -1 | awk '{print $2}')
+    fi
+
+    if [[ -n "$operator_image" ]]; then
+      log_info "📦 Found operator image: ${operator_image}"
+      local operator_version=$(echo "$operator_image" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's/v//')
+
+      if [[ -n "$operator_version" ]]; then
+        log_info "📌 Operator version: v${operator_version}"
+        export DETECTED_OPERATOR_VERSION="$operator_version"
+      else
+        log_info "⚠️ Could not parse operator version from image tag"
+      fi
+    fi
+
+    return 0
+  else
+    log_info "✅ No existing Prometheus operator installations detected"
+    return 1
+  fi
 }
 
 check_openshift_monitoring() {
@@ -251,8 +282,8 @@ install_prometheus_grafana() {
     $HCMD repo update
   fi
 
-  # Check if release already exists using the same naming scheme
-  RELEASE_NAME="prometheus-${MONITORING_NAMESPACE}"
+  # Must use 'llmd' not 'llm-d' to avoid Kubernetes 63-char service name limit
+  RELEASE_NAME="llmd"
 
   if $HCMD list -n "${MONITORING_NAMESPACE}" | grep -q "${RELEASE_NAME}"; then
     log_info "⚠️ Prometheus stack already installed as '${RELEASE_NAME}' in ${MONITORING_NAMESPACE} namespace"
@@ -264,16 +295,45 @@ install_prometheus_grafana() {
     return 0
   fi
 
-  # Check if CRDs already exist (installed by another user)
-  if check_servicemonitor_crd; then
-    log_info "🔄 ServiceMonitor CRDs already exist - installing without CRDs to avoid conflicts"
+  local DISABLE_PROMETHEUS_OPERATOR=""
+  local PROMETHEUS_IMAGE_CONFIG=""
+  local CHART_VERSION_FLAG=""
+  local OPERATOR_EXISTS=false
+  if check_prometheus_operator; then
+    DISABLE_PROMETHEUS_OPERATOR="prometheusOperator:\n  enabled: false"
+    OPERATOR_EXISTS=true
+
+    if [[ -n "$DETECTED_OPERATOR_VERSION" ]]; then
+      local major_minor=$(echo "$DETECTED_OPERATOR_VERSION" | cut -d. -f1,2)
+      local major=$(echo "$major_minor" | cut -d. -f1)
+      local minor=$(echo "$major_minor" | cut -d. -f2)
+
+      if [[ "$major" -eq 0 ]] && [[ "$minor" -lt 77 ]]; then
+        log_info "🔧 Operator v${DETECTED_OPERATOR_VERSION} detected - using compatible Prometheus v2.54.1 and chart v62.x"
+        PROMETHEUS_IMAGE_CONFIG="    image:\n      registry: quay.io\n      repository: prometheus/prometheus\n      tag: v2.54.1"
+        CHART_VERSION_FLAG="--version 62.7.0"
+      else
+        log_info "✅ Operator v${DETECTED_OPERATOR_VERSION} supports Prometheus v3.x - using default chart version"
+      fi
+    else
+      log_info "⚠️ Could not detect operator version - using conservative Prometheus v2.54.1 and chart v62.x"
+      PROMETHEUS_IMAGE_CONFIG="    image:\n      registry: quay.io\n      repository: prometheus/prometheus\n      tag: v2.54.1"
+      CHART_VERSION_FLAG="--version 62.7.0"
+    fi
+  fi
+
+  if check_servicemonitor_crd || [[ "$OPERATOR_EXISTS" == "true" ]]; then
+    if [[ "$OPERATOR_EXISTS" == "true" ]]; then
+      log_info "🔄 Existing Prometheus operator manages CRDs - installing without CRDs to avoid conflicts"
+    else
+      log_info "🔄 ServiceMonitor CRDs already exist - installing without CRDs to avoid conflicts"
+    fi
     CRD_INSTALL_FLAG="--skip-crds"
   else
     log_info "🆕 Installing Prometheus stack with CRDs"
     CRD_INSTALL_FLAG=""
   fi
 
-  # Check for existing node-exporters and determine if we should disable them
   local DISABLE_NODE_EXPORTER=""
   if check_existing_node_exporter; then
     DISABLE_NODE_EXPORTER="nodeExporter:\n  enabled: false"
@@ -282,19 +342,27 @@ install_prometheus_grafana() {
   log_info "🚀 Installing Prometheus stack in namespace ${MONITORING_NAMESPACE}..."
 
   if [[ "$CENTRAL_MODE" == "true" ]]; then
-    # Central mode: Monitor all namespaces without label restrictions
     cat <<EOF > /tmp/prometheus-values.yaml
 grafana:
   adminPassword: admin
   service:
     type: ClusterIP
     sessionAffinity: ""
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://${RELEASE_NAME}-kube-prometheus-stack-prometheus.${MONITORING_NAMESPACE}.svc.cluster.local:9090
+        access: proxy
+        isDefault: true
 prometheus:
   service:
     type: ClusterIP
     sessionAffinity: ""
   prometheusSpec:
-    # Central monitoring: watch all ServiceMonitors and PodMonitors in all namespaces
+$(if [[ -n "$PROMETHEUS_IMAGE_CONFIG" ]]; then echo -e "$PROMETHEUS_IMAGE_CONFIG"; fi)
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorSelector: {}
     serviceMonitorNamespaceSelector: {}
@@ -302,7 +370,6 @@ prometheus:
     podMonitorSelector: {}
     podMonitorNamespaceSelector: {}
     maximumStartupDurationSeconds: 300
-    # Higher resource limits for central monitoring
     resources:
       limits:
         memory: 8Gi
@@ -310,22 +377,31 @@ prometheus:
       requests:
         memory: 4Gi
         cpu: 1000m
+$(if [[ -n "$DISABLE_PROMETHEUS_OPERATOR" ]]; then echo -e "$DISABLE_PROMETHEUS_OPERATOR"; fi)
 $(if [[ -n "$DISABLE_NODE_EXPORTER" ]]; then echo -e "$DISABLE_NODE_EXPORTER"; fi)
 EOF
   else
-    # Individual mode: Monitor only user's labeled namespaces
     cat <<EOF > /tmp/prometheus-values.yaml
 grafana:
   adminPassword: admin
   service:
     type: ClusterIP
     sessionAffinity: ""
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://${RELEASE_NAME}-kube-prometheus-stack-prometheus.${MONITORING_NAMESPACE}.svc.cluster.local:9090
+        access: proxy
+        isDefault: true
 prometheus:
   service:
     type: ClusterIP
     sessionAffinity: ""
   prometheusSpec:
-    # Limit monitoring to user's namespaces for multi-tenancy
+$(if [[ -n "$PROMETHEUS_IMAGE_CONFIG" ]]; then echo -e "$PROMETHEUS_IMAGE_CONFIG"; fi)
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorSelector:
       matchLabels:
@@ -341,7 +417,6 @@ prometheus:
       matchLabels:
         ${MONITORING_LABEL_KEY}: "${MONITORING_LABEL_VALUE}"
     maximumStartupDurationSeconds: 300
-    # Resource limits for individual monitoring
     resources:
       limits:
         memory: 4Gi
@@ -349,23 +424,20 @@ prometheus:
       requests:
         memory: 2Gi
         cpu: 500m
+$(if [[ -n "$DISABLE_PROMETHEUS_OPERATOR" ]]; then echo -e "$DISABLE_PROMETHEUS_OPERATOR"; fi)
 $(if [[ -n "$DISABLE_NODE_EXPORTER" ]]; then echo -e "$DISABLE_NODE_EXPORTER"; fi)
 EOF
   fi
 
-  # Use unique release name based on namespace to avoid conflicts
-  RELEASE_NAME="prometheus-${MONITORING_NAMESPACE}"
-
-  # Apply CRDs first without validation for int32 v int64 unrecognized format
   if [ "${CRD_INSTALL_FLAG:-}" != "--skip-crds" ]; then
-    "$HCMD" show crds prometheus-community/kube-prometheus-stack \
+    "$HCMD" show crds prometheus-community/kube-prometheus-stack ${CHART_VERSION_FLAG} \
     | "$KCMD" apply --server-side --validate=false -f -
   fi
 
-  # Always apply without CRDs because they were conditionally installed before
   $HCMD install "${RELEASE_NAME}" prometheus-community/kube-prometheus-stack \
     --namespace "${MONITORING_NAMESPACE}" \
     ${DEBUG} \
+    ${CHART_VERSION_FLAG} \
     --skip-crds \
     -f /tmp/prometheus-values.yaml
 
@@ -375,12 +447,14 @@ EOF
   $KCMD wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n "${MONITORING_NAMESPACE}" --timeout=300s || true
   $KCMD wait --for=condition=ready pod -l app.kubernetes.io/name=grafana -n "${MONITORING_NAMESPACE}" --timeout=300s || true
 
+  # Use the known service name from the Helm chart
+  PROMETHEUS_SVC="${RELEASE_NAME}-kube-prometheus-stack-prometheus"
+
   log_success "🚀 Prometheus and Grafana installed."
 
-  # Display access information
   log_info "📊 Access Information:"
-  log_info "   Prometheus: kubectl port-forward -n ${MONITORING_NAMESPACE} svc/prometheus-kube-prometheus-prometheus 9090:9090"
-  log_info "   Grafana: kubectl port-forward -n ${MONITORING_NAMESPACE} svc/prometheus-grafana 3000:80"
+  log_info "   Prometheus: kubectl port-forward -n ${MONITORING_NAMESPACE} svc/${PROMETHEUS_SVC} 9090:9090"
+  log_info "   Grafana: kubectl port-forward -n ${MONITORING_NAMESPACE} svc/${RELEASE_NAME}-grafana 3000:80"
   log_info "   Grafana admin password: admin"
   log_info ""
   log_info "📋 Monitoring Configuration:"
@@ -397,30 +471,28 @@ EOF
 
 install() {
   if is_openshift; then
-    log_info "🔍 OpenShift detected - checking user workload monitoring..."
-    if ! check_openshift_monitoring; then
-      log_info "⚠️ Metrics collection may not work properly in OpenShift without user workload monitoring enabled."
-    fi
-    # No Prometheus installation needed if OpenShift monitoring is properly configured
-    log_info "ℹ️ Using OpenShift's built-in monitoring stack. No additional Prometheus installation needed."
-    log_success "🎉 OpenShift monitoring configuration complete."
-  else
-    log_info "🔍 Checking for existing ServiceMonitor CRD..."
-    if check_servicemonitor_crd; then
-      log_info "✅ ServiceMonitor CRD found. Installing namespace-scoped Prometheus stack..."
-    else
-      log_info "⚠️ ServiceMonitor CRD not found. Installing Prometheus stack with CRDs..."
-    fi
-    install_prometheus_grafana
-    log_success "🎉 Prometheus and Grafana installation complete."
+    log_info "🔍 OpenShift detected - this script does not support OpenShift."
+    check_openshift_monitoring
+    log_info "ℹ️ Use OpenShift's built-in user workload monitoring instead of this script."
+    log_info "ℹ️ See: https://docs.openshift.com/container-platform/latest/monitoring/enabling-monitoring-for-user-defined-projects.html"
+    exit 0
   fi
+
+  log_info "🔍 Checking for existing ServiceMonitor CRD..."
+  if check_servicemonitor_crd; then
+    log_info "✅ ServiceMonitor CRD found. Installing namespace-scoped Prometheus stack..."
+  else
+    log_info "⚠️ ServiceMonitor CRD not found. Installing Prometheus stack with CRDs..."
+  fi
+  install_prometheus_grafana
+  log_success "🎉 Prometheus and Grafana installation complete."
 }
 
 uninstall() {
   log_info "🗑️ Uninstalling Prometheus and Grafana stack..."
 
-  # Use the same release naming scheme as install
-  RELEASE_NAME="prometheus-${MONITORING_NAMESPACE}"
+  # Must use 'llmd' not 'llm-d' to avoid Kubernetes 63-char service name limit
+  RELEASE_NAME="llmd"
 
   if $HCMD list -n "${MONITORING_NAMESPACE}" | grep -q "${RELEASE_NAME}" 2>/dev/null; then
     log_info "🗑️ Uninstalling Prometheus helm release '${RELEASE_NAME}'..."
@@ -430,7 +502,6 @@ uninstall() {
   log_info "🗑️ Deleting monitoring namespace..."
   $KCMD delete namespace "${MONITORING_NAMESPACE}" --ignore-not-found || true
 
-  # Check if we should delete the ServiceMonitor CRD (only if no other Prometheus installations exist)
   if ! $KCMD get crd servicemonitors.monitoring.coreos.com &>/dev/null; then
     log_info "ℹ️ ServiceMonitor CRD not found (already deleted or never installed)"
   else

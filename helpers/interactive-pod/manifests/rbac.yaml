@@ -6,6 +6,7 @@ rules:
   # Core API group resources
   - apiGroups: [""]
     resources:
+      - logs
       - pods
       - pods/log
       - secrets
