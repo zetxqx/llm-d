@@ -5,6 +5,11 @@
 # Use a CUDA base image.
 FROM docker.io/nvidia/cuda:12.9.1-devel-ubuntu22.04 AS base
 
+ARG CACHE_BUSTER
+RUN if [ -n "${CACHE_BUSTER}" ]; then \
+        echo "$CACHE_BUSTER" > /tmp/builder-buster; \
+    fi;
+
 WORKDIR /app
 
 ENV CUDA_MAJOR=12

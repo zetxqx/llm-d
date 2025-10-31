@@ -17,6 +17,11 @@ ARG FINAL_BASE_IMAGE_SUFFIX=${BASE_IMAGE_SUFFIX}
 # ============================================================================
 FROM nvcr.io/nvidia/cuda:${CUDA_MAJOR}.${CUDA_MINOR}.${CUDA_PATCH}-devel-${BUILD_BASE_IMAGE_SUFFIX} AS builder
 
+ARG CACHE_BUSTER
+RUN if [ -n "${CACHE_BUSTER}" ]; then \
+        echo "$CACHE_BUSTER" > /tmp/builder-buster; \
+    fi;
+
 ARG TARGETPLATFORM
 ARG TARGETOS=rhel
 ARG BUILD_BASE_IMAGE_SUFFIX=ubi9

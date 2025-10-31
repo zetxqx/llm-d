@@ -87,6 +87,7 @@ jobs:
             VLLM_REPO=${{ inputs.vllm_repo || 'https://github.com/vllm-project/vllm.git' }}
             VLLM_COMMIT_SHA=${{ inputs.vllm_commit_sha || 'b8b302cde434df8c9289a2b465406b47ebab1c2d' }}
             VLLM_PRECOMPILED_WHEEL_COMMIT=${{ inputs.vllm_precompiled_wheel_commit || inputs.vllm_commit_sha || '' }}
+            CACHE_BUSTER=${{ github.ref_name }}-${{ github.run_id }}
           cache-from: >-
             type=gha,scope=cuda-${{ matrix.os }}-${{
             matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
@@ -271,6 +272,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           github-token: ${{ secrets.GHCR_TOKEN }}
+          build-args: |
+            CACHE_BUSTER=${{ github.ref_name }}-${{ github.run_id }}
           secrets: |
             aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID_S3_BUCKET_ONLY }}
             aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY_S3_BUCKET_ONLY }}
@@ -414,6 +417,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           github-token: ${{ secrets.GHCR_TOKEN }}
+          build-args: |
+            CACHE_BUSTER=${{ github.ref_name }}-${{ github.run_id }}
           secrets: |
             aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID_S3_BUCKET_ONLY }}
             aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY_S3_BUCKET_ONLY }}

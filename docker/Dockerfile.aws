@@ -7,6 +7,11 @@ ARG CUDA_PATCH=1
 # ============================================================================
 FROM nvcr.io/nvidia/cuda-dl-base:25.01-cuda12.8-devel-ubuntu24.04 AS builder
 
+ARG CACHE_BUSTER
+RUN if [ -n "${CACHE_BUSTER}" ]; then \
+        echo "$CACHE_BUSTER" > /tmp/builder-buster; \
+    fi;
+
 ARG CUDA_MAJOR=12
 ARG CUDA_MINOR=8
 ARG CUDA_PATCH=1
