@@ -84,7 +84,7 @@ EPP metrics include request rates, error rates, scheduling latency, and plugin p
 
 Grafana dashboard raw JSON files can be imported manually into a Grafana UI. Here is a current list of community dashboards:
 
-- [llm-d dashboard](./grafana/dashboards/llm-d-dashboard.json)
+- [llm-d vLLM Overview dashboard](./grafana/dashboards/llm-d-vllm-overview.json)
   - vLLM metrics
 - [inference-gateway dashboard v1.0.1](https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/v1.0.1/tools/dashboards/inference_gateway.json)
   - EPP metrics
