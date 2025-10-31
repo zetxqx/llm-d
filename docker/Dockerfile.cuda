@@ -189,6 +189,7 @@ ARG CUDA_MAJOR=12
 ARG CUDA_MINOR=9
 ARG CUDA_PATCH=1
 ARG PYTHON_VERSION
+ARG NVSHMEM_VERSION=3.3.20
 
 COPY docker/constraints.txt /tmp/constraints.txt
 
@@ -198,9 +199,9 @@ ENV LANG=C.UTF-8 \
     UV_TORCH_BACKEND=${UV_TORCH_BACKEND:-cu${CUDA_MAJOR}${CUDA_MINOR}} \
     UV_CONSTRAINT=/tmp/constraints.txt \
     VIRTUAL_ENV=/opt/vllm \
-    NVSHMEM_DIR="/usr/bin/nvshmem_${CUDA_MAJOR}" \
+    NVSHMEM_DIR="/opt/nvshmem-${NVSHMEM_VERSION}" \
     # LD_LIBRARY_PATH needs the torch path to apply proper linkers so as not to produce torch ABI missmatch
-    LD_LIBRARY_PATH="/opt/vllm/lib64/python${PYTHON_VERSION}/site-packages/torch/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:/usr/local/lib:/usr/local/lib64:/usr/lib64/nvshmem/${CUDA_MAJOR}:/usr/lib/x86_64-linux-gnu/nvshmem/${CUDA_MAJOR}:/usr/lib/aarch64-linux-gnu/nvshmem/${CUDA_MAJOR}:${LD_LIBRARY_PATH}" \
+    LD_LIBRARY_PATH="/opt/vllm/lib64/python${PYTHON_VERSION}/site-packages/torch/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:/usr/local/lib:/usr/local/lib64:${NVSHMEM_DIR}/lib:${LD_LIBRARY_PATH}" \
     TORCH_CUDA_ARCH_LIST="9.0a;10.0+PTX"
 
 # Install runtime dependencies
@@ -241,9 +242,7 @@ RUN if [ -d /tmp/gdrcopy_libs ]; then \
     fi
 
 # Copy NVSHMEM dir from builder
-ARG NVSHMEM_VERSION=3.3.20
 COPY --from=builder /opt/nvshmem-${NVSHMEM_VERSION}/ /opt/nvshmem-${NVSHMEM_VERSION}/
-ENV NVSHMEM_DIR=/opt/nvshmem-${NVSHMEM_VERSION}
 
 # Setup ldconfig and library paths
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
