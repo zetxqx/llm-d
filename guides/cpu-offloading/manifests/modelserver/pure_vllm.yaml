@@ -14,11 +14,11 @@ spec:
     spec:
       containers:
         - name: vllm
-          image: "lmcache/vllm-openai:v0.3.5"
+          image: "vllm/vllm-openai:v0.11.0"
           imagePullPolicy: IfNotPresent
-          command: ["/opt/venv/bin/vllm"]
+          command: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
           args:
-          - "serve"
+          - "--model"
           - "Qwen/Qwen3-32B"
           - "--tensor-parallel-size"
           - "2"
@@ -30,9 +30,8 @@ spec:
           - "1024"
           - "--compilation-config"
           - '{"cudagraph_mode": "PIECEWISE"}'
-          - "--kv-transfer-config"
-          - '{"kv_connector":"LMCacheConnectorV1","kv_role":"kv_both"}'
-          - "--enable_prefix_caching"
+          - "--swap_space"
+          - "100"
           env:
             - name: VLLM_USE_V1
               value: "1"
@@ -43,17 +42,12 @@ spec:
                 secretKeyRef:
                   name: llm-d-hf-token
                   key: HF_TOKEN
-            - name: LMCACHE_LOCAL_CPU
-              value: "true"
-            - name: LMCACHE_MAX_LOCAL_CPU_SIZE
-              value: "100.0"
-            - name: LMCACHE_INTERNAL_API_SERVER_ENABLED
-              value: "true"
+            - name: LD_LIBRARY_PATH
+              value: "/usr/local/nvidia/lib64"
           ports:
             - containerPort: 8000
               name: http
               protocol: TCP
-            - containerPort: 7000
           lifecycle:
             preStop:
               sleep:

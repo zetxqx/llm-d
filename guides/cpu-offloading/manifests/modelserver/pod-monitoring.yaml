@@ -1,0 +1,12 @@
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: qwen-model-32b-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: qwen-model-32b
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s

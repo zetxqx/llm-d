@@ -47,7 +47,7 @@ kubectl apply -k ./manifests/modelserver/base -n ${NAMESPACE}
 
 ```bash
 # For GKE
-helm install qwen-model-32b \
+helm upgrade -i qwen-model-32b \
   -n ${NAMESPACE} \
   --set inferencePool.modelServers.matchLabels.app=qwen-model-32b \
   --set provider.name=gke \
