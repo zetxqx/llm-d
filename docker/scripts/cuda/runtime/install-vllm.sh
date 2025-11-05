@@ -9,6 +9,7 @@ set -Eeu
 # - VLLM_PREBUILT: whether to use prebuilt wheel (1/0)
 # - VLLM_USE_PRECOMPILED: whether to use precompiled binaries (1/0)
 # - VLLM_PRECOMPILED_WHEEL_COMMIT: commit SHA for precompiled wheel lookup (defaults to VLLM_COMMIT_SHA)
+# - CUDA_MAJOR: The major CUDA version
 
 # shellcheck source=/dev/null
 source /opt/vllm/bin/activate
@@ -92,6 +93,11 @@ echo "DEBUG: Installing packages: ${INSTALL_PACKAGES[*]}"
 
 # install all packages in one command with verbose output to prevent GHA timeouts
 uv pip install -v "${INSTALL_PACKAGES[@]}"
+
+# uninstall the NVSHMEM dependency brought in by vllm if using a compiled NVSHMEM
+if [[ "${NVSHMEM_DIR-}" != "" ]]; then
+  uv pip uninstall nvidia-nvshmem-cu${CUDA_MAJOR}
+fi
 
 # cleanup
 rm -rf /tmp/wheels

@@ -205,9 +205,10 @@ ENV LANG=C.UTF-8 \
     UV_CONSTRAINT=/tmp/constraints.txt \
     VIRTUAL_ENV=/opt/vllm \
     NVSHMEM_DIR="/opt/nvshmem-${NVSHMEM_VERSION}" \
-    # LD_LIBRARY_PATH needs the torch path to apply proper linkers so as not to produce torch ABI missmatch
-    LD_LIBRARY_PATH="/opt/vllm/lib64/python${PYTHON_VERSION}/site-packages/torch/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:/usr/local/lib:/usr/local/lib64:${NVSHMEM_DIR}/lib:${LD_LIBRARY_PATH}" \
     TORCH_CUDA_ARCH_LIST="9.0a;10.0+PTX"
+
+# LD_LIBRARY_PATH needs the torch path to apply proper linkers so as not to produce torch ABI missmatch
+ENV LD_LIBRARY_PATH="/opt/vllm/lib64/python${PYTHON_VERSION}/site-packages/torch/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:/usr/local/lib:/usr/local/lib64:${NVSHMEM_DIR}/lib:${LD_LIBRARY_PATH}"
 
 # Install runtime dependencies
 COPY docker/scripts/cuda/common/package-utils.sh /tmp/package-utils.sh
@@ -322,7 +323,7 @@ RUN umask 002 && \
     chown vllm:root /home/vllm && \
     chmod g+rwx /home/vllm
 
-# default openionated env var for HF_HOME, over-writeable
+# default opinionated env var for HF_HOME, over-writeable
 ENV LLM_D_MODELS_DIR=/var/lib/llm-d/models \
     HF_HOME=/var/lib/llm-d/.hf
 
