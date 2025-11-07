@@ -26,7 +26,7 @@ decode:
   create: true
   parallelism:
     tensor: 2 
-  replicas: 8
+  replicas: 4
   monitoring:
     podmonitor:
       enabled: true
@@ -48,6 +48,7 @@ decode:
         --port 8200 \
         --block-size 64 \
         --prefix-caching-hash-algo sha256_cbor \
+        --enable-prompt-tokens-details \
         --enforce-eager \
         --kv-transfer-config '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}' \
         --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://gaie-${GAIE_RELEASE_NAME_POSTFIX}-epp.${NAMESPACE}.svc.cluster.local:5557\",\"topic\":\"kv@${POD_IP}@Qwen/Qwen3-32B\"}"
