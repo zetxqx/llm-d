@@ -6,6 +6,6 @@ inferencePool:
 inferenceExtension:
   monitoring:
     gke:
-      enable: true
+      enable: false
     prometheus:
-      enable: true
+      enable: false

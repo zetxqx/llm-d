@@ -4,15 +4,21 @@ This directory contains a standard `values.yaml` for deploying an `InferencePool
 
 ## Installation
 
-To deploy the `InferencePool`, use the following Helm command, referencing the `values.yaml` in this directory.
+To deploy the `InferencePool`, select your provider below.
 
-```bash
-helm install llm-d-infpool \
-  -n ${NAMESPACE} \
-  -f ./values.yaml \
-  oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.0.1
-```
+=== "GKE"
+
+    This command deploys the `InferencePool` on GKE with GKE-specific monitoring enabled.
+
+    ```bash
+    helm install llm-d-infpool \
+      -n ${NAMESPACE} \
+      -f ./values.yaml \
+      --set "provider.name=gke" \
+      --set "inferenceExtension.monitoring.gke.enable=true" \
+      oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
+      --version v1.0.1
+    ```
 
 ## Verification
 
@@ -40,5 +46,13 @@ You should see the InferencePool's endpoint pod in a `Running` state.
 ```
 NAME                                  READY   STATUS    RESTARTS   AGE
 llm-d-infpool-epp-xxxxxxxx-xxxxx     1/1     Running   0          1m
+```
+
+## Cleanup
+
+To remove the `InferencePool`, use the following command:
+
+```bash
+helm uninstall llm-d-infpool -n ${NAMESPACE}
 ```
 

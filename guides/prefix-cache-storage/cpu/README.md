@@ -19,14 +19,13 @@ export NAMESPACE=llm-d-pfc-cpu # or any other namespace
 kubectl create namespace ${NAMESPACE}
 
 # NOTE: You must have your HuggingFace token stored in the HF_TOKEN environment variable.
-# See the prerequisites for more details.
 export HF_TOKEN="<your-hugging-face-token>"
 kubectl create secret generic llm-d-hf-token --from-literal=HF_TOKEN=${HF_TOKEN} -n ${NAMESPACE}
 ```
 
 ### 1. Deploy Gateway and HTTPRoute
 
-Deploy the Gateway and HTTPRoute using the [GKE gateway recipe](../../recipes/gateway/README.md).
+Deploy the Gateway and HTTPRoute using the [gateway recipe](../../recipes/gateway/README.md).
 
 ### 2. Deploy InferencePool
 
@@ -34,11 +33,16 @@ Deploy the InferencePool using the [InferencePool recipe](../../../recipes/infer
 
 ### 3. Deploy vLLM Model Server
 
-Deploy the vLLM model server with the `OffloadingConnector` enabled. This overlay uses the [standard vLLM recipe](../../../recipes/vllm/README.md) as a base.
-
-```bash
-kubectl apply -k ./manifests/vllm/offloading-connector -n ${NAMESPACE}
-```
+=== "LMCache"
+    Deploy the vLLM model server with the `LMCache` connector enabled.
+    ```bash
+    kubectl apply -k ./manifests/vllm/lm-cache-connector -n ${NAMESPACE}
+    ```
+=== "Offloading"
+    Deploy the vLLM model server with the `OffloadingConnector` enabled.
+    ```bash
+    kubectl apply -k ./manifests/vllm/offloading-connector -n ${NAMESPACE}
+    ```
 
 ## Verifying the installation
 

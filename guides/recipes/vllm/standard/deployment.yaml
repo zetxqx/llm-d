@@ -14,17 +14,19 @@ spec:
     spec:
       containers:
         - name: vllm
-          image: "vllm/vllm-openai:v0.11.0"
+          image: "ghcr.io/llm-d/llm-d-cuda:v0.3.1"
           imagePullPolicy: IfNotPresent
-          command: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - exec vllm serve --port 8000
           env:
             - name: HUGGING_FACE_HUB_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: llm-d-hf-token
                   key: HF_TOKEN
-            - name: LD_LIBRARY_PATH
-              value: "/usr/local/nvidia/lib64"
           ports:
             - containerPort: 8000
               name: http
