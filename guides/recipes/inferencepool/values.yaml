@@ -1,0 +1,11 @@
+inferencePool:
+  apiVersion: "inference.networking.k8s.io/v1"
+  modelServers:
+    matchLabels:
+      "llm-d.ai/inferenceServing": "true"
+inferenceExtension:
+  monitoring:
+    gke:
+      enable: false
+    prometheus:
+      enable: false
