@@ -11,7 +11,7 @@ patches:
       path: /spec/template/spec/containers/0/args/0
       value: |-
         exec vllm serve \
-          --model Qwen/Qwen3-32B \
+          Qwen/Qwen3-32B \
           --tensor-parallel-size 2 \
           --kv-transfer-config '{"kv_connector":"OffloadingConnector","kv_role":"kv_both","kv_connector_extra_config":{"num_cpu_blocks":41000}}' \
           --port 8000 \
