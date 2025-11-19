@@ -121,7 +121,7 @@ kubectl delete namespace ${NAMESPACE}
 
 ### Benchmark
 
-The following benchmark results demonstrate the performance improvements of using vLLM's native CPU offloading.
+The following benchmark results demonstrate the performance improvements of using vLLM's native CPU offloading and LMCache CPU offloading.
 
 #### Benchmark Setup
 
@@ -132,6 +132,8 @@ The following benchmark results demonstrate the performance improvements of usin
 *   **vLLM Configuration:**
     *   `gpu_memory_utilization` was set to `0.65`.
     *   CPU offloading was enabled with `num_cpu_blocks` set to `41000`, which provides approximately 100GB of CPU cache.
+*  ** LMCache configuration: **
+    *   For LMCache setup, `LMCACHE_MAX_LOCAL_CPU_SIZE` is set to 100 GB.
 
 The benchmark was conducted using the [inference-perf](https://github.com/kubernetes-sigs/inference-perf) tool with the following hardware, memory, and workload configurations:
 
@@ -159,10 +161,15 @@ The benchmark was conducted using the [inference-perf](https://github.com/kubern
 
 #### Key Findings
 
-*   In **memory-bound scenarios**, where the KVCache size exceeds the available HBM, the vLLM native CPU offloading connector significantly enhances performance:
-    *   Mean Time to First Token (TTFT) decreased by 25%.
-    *   Mean End-to-End (E2E) latency decreased by 18%.
-    *   Overall throughput increased by 21.1%.
+*   In **memory-bound scenarios**, where the KVCache size exceeds the available HBM, both the vLLM native CPU offloading connector and LMCache connector significantly enhance performance. The LMCache connector shows even greater improvements:
+    * With the **vLLM native CPU offloading connector**:
+        *   Mean Time to First Token (TTFT) decreased by 25%.
+        *   Mean End-to-End (E2E) latency decreased by 18%.
+        *   Overall throughput increased by 21.1%.
+    * With the **LMCache connector**:
+        *   Mean Time to First Token (TTFT) decreased by 48.9%.
+        *   Mean End-to-End (E2E) latency decreased by 25.1%.
+        *   Overall throughput increased by 33.3%.
 *   In **compute-bound scenarios**, where the KVCache fits entirely within the GPU's HBM, all offloading configurations perform similarly to the baseline. This indicates that enabling CPU offloading does not negatively impact performance when it is not actively utilized.
 
 #### Memory-Bound Performance
@@ -173,6 +180,7 @@ The following table compares the performance of the baseline vLLM with the vLLM 
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline vllm** | 9.0 | 20.9 | 37.8 | 49.7 | 38534.8 |
 | **vllm + CPU offloading 100GB** | 6.7 (-25%) | 15.9 (-24%) | 31.0 (-18%) | 40.0 (-24%) | 46662.5 (+21.1%) |
+| **vllm + LMCache CPU offloaidng 100GB** | 4.6 (-48.9%) | 16.8 (-19.6%) | 28.3 (-25.1%) |40.6 (-18.3%) |51373.5 (+33.3%) |
 
 #### Compute-Bound Performance
 
@@ -182,4 +190,4 @@ The following table shows that when the KVCache fits within the HBM, the perform
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline vllm** | 0.12 | 0.09 | 18.4 | 19.6 | 23389.6 |
 | **vllm + CPU offloading 100GB** | 0.13 | 0.11 | 18.6 | 20.6 | 23032.6 |
-
+| **vllm + LMCache CPU offloaidng 100GB** | 0.15 | 0.10 |18.9 | 19.6 | 22772.5 |
