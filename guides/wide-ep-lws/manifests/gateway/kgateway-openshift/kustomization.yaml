@@ -1,23 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 resources:
-  - ../kgateway
-  - gateway-parameters.yaml
-
-patches:
-  - target:
-      kind: Gateway
-    patch: |
-      - op: add
-        path: /spec/infrastructure
-        value:
-          parametersRef:
-            name: kgateway-params
-            group: gateway.kgateway.dev
-            kind: GatewayParameters
+- ../../../../recipes/gateway/kgateway-openshift
 labels:
-  - pairs:
-      app.kubernetes.io/instance: wide-ep
-      app.kubernetes.io/gateway: wide-ep-inference-gateway
-      app.kubernetes.io/component: inference-gateway
+- pairs:
+    app.kubernetes.io/instance: wide-ep
+    app.kubernetes.io/gateway: llm-d-inference-gateway
+    app.kubernetes.io/component: inference-gateway
