@@ -32,80 +32,104 @@ This guide requires 32 Nvidia H200 or B200 GPUs and InfiniBand or RoCE RDMA netw
 
 ## Installation
 
-Use the helmfile to compose and install the stack. The Namespace in which the stack will be deployed will be derived from the `${NAMESPACE}` environment variable. If you have not set this, it will default to `llm-d-wide-ep` in this example.
+First, set up a namespace for the deployment.
 
 ```bash
 export NAMESPACE=llm-d-wide-ep # or any other namespace
-cd guides/wide-ep-lws/
 kubectl create namespace ${NAMESPACE}
 ```
 
-### Deploy Model Servers
+> NOTE: Ensure you have created the `llm-d-hf-token` secret in your target namespace as described in the [prerequisites](#prerequisites).
 
-GKE and CoreWeave are tested Kubernetes providers for this well-lit path. You can customize the manifests if you run on other Kubernetes providers.
+### 1. Deploy Gateway and HTTPRoute
 
-```bash
-# Deploy on GKE for H200
-kubectl apply -k ./manifests/modelserver/gke -n ${NAMESPACE}
+Deploy the Gateway and HTTPRoute. GKE, Istio, and Kgateway are supported for this well-lit path. The manifests for these are provided in the `manifests/gateway` directory, which customize the common recipes from `guides/recipes/gateway`.
 
-# Deploy on GKE for B200 on the a4 instance type to work around a known vLLM memory issue
-kubectl apply -k ./manifests/modelserver/gke-a4 -n ${NAMESPACE}
+=== "GKE"
 
-# OR, deploy on CoreWeave
-kubectl apply -k ./manifests/modelserver/coreweave  -n ${NAMESPACE}
-```
+    ```bash
+    # Deploy a gke-l7-regional-external-managed gateway.
+    kubectl apply -k ./manifests/gateway/gke-l7-regional-external-managed -n ${NAMESPACE}
+    ```
 
-### Deploy InferencePool
+=== "Istio"
 
-```bash
-# For GKE
-helm install deepseek-r1 \
-  -n ${NAMESPACE} \
-  -f inferencepool.values.yaml \
-  --set "provider.name=gke" \
-  --set "inferencePool.apiVersion=inference.networking.k8s.io/v1" \
-  --set "inferenceExtension.monitoring.gke.enable=true" \
-  oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.0.1
+    ```bash
+    # Deploy an Istio gateway.
+    kubectl apply -k ./manifests/gateway/istio -n ${NAMESPACE}
+    ```
 
-# For Istio
-helm install deepseek-r1 \
-  -n ${NAMESPACE} \
-  -f inferencepool.values.yaml \
-  --set "provider.name=istio" \
-  --set "inferenceExtension.monitoring.prometheus.enable=true" \
-  oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.0.1
+=== "Kgateway"
 
-# For Kgateway
-helm install deepseek-r1 \
-  -n ${NAMESPACE} \
-  -f inferencepool.values.yaml \
-  oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.0.1
-```
+    ```bash
+    # Deploy a kgateway gateway.
+    kubectl apply -k ./manifests/gateway/kgateway -n ${NAMESPACE}
+    ```
+    
+    For Openshift Container Platform (OCP), use the `kgateway-openshift` manifests:
+    ```bash
+    kubectl apply -k ./manifests/gateway/kgateway-openshift -n ${NAMESPACE}
+    ```
 
-### Deploy Gateway and HTTPRoute
+### 2. Deploy InferencePool
 
-```bash
-# Deploy a gke-l7-regional-external-managed gateway.
-kubectl apply -k ./manifests/gateway/gke-l7-regional-external-managed -n ${NAMESPACE}
+Deploy the InferencePool using the [InferencePool recipe](../../recipes/inferencepool/README.md). A values file is provided in this guide's `manifests/inferencepool` directory.
 
-# Deploy an Istio gateway.
-kubectl apply -k ./manifests/gateway/istio -n ${NAMESPACE}
+=== "GKE"
 
-# Deploy a kgateway gateway.
-kubectl apply -k ./manifests/gateway/kgateway -n ${NAMESPACE}
+    ```bash
+    helm install deepseek-r1 \
+      -n ${NAMESPACE} \
+      -f ./manifests/inferencepool/values.yaml \
+      --set "provider.name=gke" \
+      --set "inferencePool.apiVersion=inference.networking.k8s.io/v1" \
+      --set "inferenceExtension.monitoring.gke.enable=true" \
+      oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
+      --version v1.0.1
+    ```
 
-# Deploy a kgateway gateway on Openshift Container Platform (OCP).
-kubectl apply -k ./manifests/gateway/kgateway-openshift -n ${NAMESPACE}
-```
+=== "Istio"
 
-### Gateway options
+    ```bash
+    helm install deepseek-r1 \
+      -n ${NAMESPACE} \
+      -f ./manifests/inferencepool/values.yaml \
+      --set "provider.name=istio" \
+      --set "inferenceExtension.monitoring.prometheus.enable=true" \
+      oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
+      --version v1.0.1
+    ```
 
-To see what gateway options are supported refer to our [gateway provider prereq doc](../prereq/gateway-provider/README.md#supported-providers). Gateway configurations per provider are tracked in the [gateway-configurations directory](../prereq/gateway-provider/common-configurations/).
+=== "Kgateway"
 
-You can also customize your gateway, for more information on how to do that see our [gateway customization docs](../../docs/customizing-your-gateway.md).
+    ```bash
+    helm install deepseek-r1 \
+      -n ${NAMESPACE} \
+      -f ./manifests/inferencepool/values.yaml \
+      oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
+      --version v1.0.1
+    ```
+
+### 3. Deploy Model Servers
+
+Deploy the vLLM model servers. GKE and CoreWeave are tested Kubernetes providers for this well-lit path. You can customize the manifests if you run on other Kubernetes providers.
+
+=== "GKE"
+
+    For H200 GPUs:
+    ```bash
+    kubectl apply -k ./manifests/modelserver/gke -n ${NAMESPACE}
+    ```
+    For B200 GPUs on the a4 instance type (to work around a known vLLM memory issue):
+    ```bash
+    kubectl apply -k ./manifests/modelserver/gke-a4 -n ${NAMESPACE}
+    ```
+
+=== "CoreWeave"
+
+    ```bash
+    kubectl apply -k ./manifests/modelserver/coreweave  -n ${NAMESPACE}
+    ```
 
 ## Tuning Selective PD
 
@@ -171,10 +195,10 @@ For instructions on getting started making inference requests see [our docs](../
 To remove the deployment:
 
 ```bash
-# From examples/wide-ep-lws
 helm uninstall deepseek-r1 -n ${NAMESPACE}
-kubectl delete -k ./manifests/modelserver/<gke|coreweave> -n ${NAMESPACE}
+kubectl delete -k ./manifests/modelserver/<gke|gke-a4|coreweave> -n ${NAMESPACE}
 kubectl delete -k ./manifests/gateway/<gke-l7-regional-external-managed|istio|kgateway|kgateway-openshift> -n ${NAMESPACE}
+kubectl delete namespace ${NAMESPACE}
 ```
 
 ## Customization
