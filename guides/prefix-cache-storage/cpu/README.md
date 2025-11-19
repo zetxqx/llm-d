@@ -38,7 +38,7 @@ Deploy the InferencePool using the [InferencePool recipe](../../recipes/inferenc
         Deploy the vLLM model server with the `LMCache` connector enabled.
 
         ```bash
-        kubectl apply -k ./manifests/vllm/lm-cache-connector -n ${NAMESPACE}
+        kubectl apply -k ./manifests/vllm/lmcache-connector -n ${NAMESPACE}
         ```
 
 === "CPU Offloading"
