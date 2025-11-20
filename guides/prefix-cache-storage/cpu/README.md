@@ -1,3 +1,6 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Offloading Prefix Cache to CPU Memory
 
 ## Overview
@@ -33,21 +36,20 @@ Deploy the InferencePool using the [InferencePool recipe](../../recipes/inferenc
 
 ### 3. Deploy vLLM Model Server
 
-=== "LMCache"
-
-        Deploy the vLLM model server with the `LMCache` connector enabled.
-
-        ```bash
-        kubectl apply -k ./manifests/vllm/lmcache-connector -n ${NAMESPACE}
-        ```
-
-=== "CPU Offloading"
-
+<Tabs>
+    <TabItem value="offloading" label="Offloading Connector">
         Deploy the vLLM model server with the `OffloadingConnector` enabled.
-
         ```bash
         kubectl apply -k ./manifests/vllm/offloading-connector -n ${NAMESPACE}
         ```
+    </TabItem>
+    <TabItem value="lmcache" label="LMCache Connector" default>
+        Deploy the vLLM model server with the `LMCache` connector enabled.
+        ```bash
+        kubectl apply -k ./manifests/vllm/lmcache-connector -n ${NAMESPACE}
+        ```
+    </TabItem>
+</Tabs>
 
 ## Verifying the installation
 

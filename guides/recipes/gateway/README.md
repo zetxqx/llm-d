@@ -1,3 +1,6 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Gateway Recipes
 
 This directory contains recipes for deploying the `llm-d-inference-gateway` and `llm-d-route`.
@@ -6,37 +9,36 @@ This directory contains recipes for deploying the `llm-d-inference-gateway` and 
 
 The following recipes are available for deploying the gateway and httproute.
 
-=== "GKE L7 Regional External Managed Gateway"
+<Tabs>
+    <TabItem value="gke" label="GKE L7 Regional External Managed" default>
+        This deploys a gateway suitable for GKE, using the `gke-l7-regional-external-managed` gateway class.
 
-    This deploys a gateway suitable for GKE, using the `gke-l7-regional-external-managed` gateway class.
+        ```bash
+        kubectl apply -k ./gke-l7-regional-external-managed -n ${NAMESPACE}
+        ```
+    </TabItem>
+    <TabItem value="istio" label="Istio">
+        This deploys a gateway suitable for Istio, using the `istio` gateway class.
 
-    ```bash
-    kubectl apply -k ./gke-l7-regional-external-managed -n ${NAMESPACE}
-    ```
+        ```bash
+        kubectl apply -k ./istio -n ${NAMESPACE}
+        ```
+    </TabItem>
+    <TabItem value="kgateway" label="KGateway">
+        This deploys a gateway suitable for KGateway, using the `kgateway` gateway class.
 
-=== "Istio"
+        ```bash
+        kubectl apply -k ./kgateway -n ${NAMESPACE}
+        ```
+    </TabItem>
+    <TabItem value="kgateway-ocp" label="KGateway (OpenShift)">
+        This deploys a gateway suitable for OpenShift, using the `openshift` gateway class.
 
-    This deploys a gateway suitable for Istio, using the `istio` gateway class.
-
-    ```bash
-    kubectl apply -k ./istio -n ${NAMESPACE}
-    ```
-
-=== "KGateway"
-
-    This deploys a gateway suitable for KGateway, using the `kgateway` gateway class.
-
-    ```bash
-    kubectl apply -k ./kgateway -n ${NAMESPACE}
-    ```
-
-=== "KGateway (OpenShift)"
-
-    This deploys a gateway suitable for OpenShift, using the `openshift` gateway class.
-
-    ```bash
-    kubectl apply -k ./kgateway-openshift -n ${NAMESPACE}
-    ```
+        ```bash
+        kubectl apply -k ./kgateway-openshift -n ${NAMESPACE}
+        ```
+    </TabItem>
+</Tabs>
 
 ## Verification
 
@@ -50,7 +52,7 @@ kubectl get gateway -n ${NAMESPACE}
 
 You should see output similar to the following, with the `PROGRAMMED` status as `True`. The `CLASS` will vary depending on the recipe you deployed.
 
-```
+```text
 NAME                      CLASS                              ADDRESS     PROGRAMMED   AGE
 llm-d-inference-gateway   gke-l7-regional-external-managed   <redacted>  True         1m
 ```
@@ -61,7 +63,7 @@ llm-d-inference-gateway   gke-l7-regional-external-managed   <redacted>  True   
 kubectl get httproute -n ${NAMESPACE}
 ```
 
-```
+```text
 NAME          HOSTNAMES   AGE
 llm-d-route               1m
 ```
