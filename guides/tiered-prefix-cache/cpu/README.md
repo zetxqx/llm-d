@@ -180,7 +180,7 @@ The following table compares the performance of the baseline vLLM with the vLLM 
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline vllm** | 9.0 | 20.9 | 37.8 | 49.7 | 38534.8 |
 | **vllm + CPU offloading 100GB** | 6.7 (-25%) | 15.9 (-24%) | 31.0 (-18%) | 40.0 (-24%) | 46662.5 (+21.1%) |
-| **vllm + LMCache CPU offloaidng 100GB** | 4.6 (-48.9%) | 16.8 (-19.6%) | 28.3 (-25.1%) |40.6 (-18.3%) |51373.5 (+33.3%) |
+| **vllm + LMCache CPU offloading 100GB** | 4.6 (-48.9%) | 16.8 (-19.6%) | 28.3 (-25.1%) |40.6 (-18.3%) |51373.5 (+33.3%) |
 
 #### Compute-Bound Performance
 
@@ -190,4 +190,4 @@ The following table shows that when the KVCache fits within the HBM, the perform
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Baseline vllm** | 0.12 | 0.09 | 18.4 | 19.6 | 23389.6 |
 | **vllm + CPU offloading 100GB** | 0.13 | 0.11 | 18.6 | 20.6 | 23032.6 |
-| **vllm + LMCache CPU offloaidng 100GB** | 0.15 | 0.10 |18.9 | 19.6 | 22772.5 |
+| **vllm + LMCache CPU offloading 100GB** | 0.15 | 0.10 |18.9 | 19.6 | 22772.5 |
