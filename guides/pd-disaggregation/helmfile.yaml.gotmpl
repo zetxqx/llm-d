@@ -12,6 +12,8 @@ environments:
   gke: &GKE
     values:
       - ../prereq/gateway-provider/common-configurations/gke.yaml
+  gke_tpu: &GKETPU
+    <<: *GKE
   xpu: &XPU
     values:
       - ../prereq/gateway-provider/common-configurations/istio.yaml
@@ -96,6 +98,8 @@ releases:
     values:
     {{- if eq .Environment.Name "xpu" }}
       - ms-pd/values_xpu.yaml
+    {{- else if eq .Environment.Name "gke_tpu" }}
+      - ms-pd/values_tpu.yaml
     {{- else }}
       - ms-pd/values.yaml
     {{- end }}
@@ -124,7 +128,7 @@ releases:
         value: {{ printf "gaie-%s" $rn | quote }}
       - name: "routing.parentRefs[0].name"
         value: {{ printf "infra-%s-inference-gateway" $rn | quote }}
-    {{- if eq .Environment.Name "gke" }}
+    {{- if or (eq .Environment.Name "gke") (eq .Environment.Name "gke_tpu") }}
       - name: 'decode.containers[0].resources.limits.rdma/ib'
         value: "null"
       - name: 'decode.containers[0].resources.requests.rdma/ib'
