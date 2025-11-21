@@ -16,7 +16,9 @@ In this example, we will demonstrate a deployment of `Llama-3.3-70B-Instruct-FP8
 
 ## P/D Best Practices
 
-P/D disaggregation can benefit overall throughput by:
+P/D disaggregation provides more flexibility in navigating the trade-off between throughput and interactivity([ref](https://arxiv.org/html/2506.05508v1)).
+In particular, due to the elimination of prefill interference to the decode phase, P/D disaggregation can achieve lower inter token latency (ITL), thus
+improving interactivity. For a given ITL goal, P/D disaggregation can benefit overall throughput by:
 
 - Specializing P and D workers for compute-bound vs latency-bound workloads
 - Reducing the number of copies of the model (increasing KV cache RAM) with wide parallelism
