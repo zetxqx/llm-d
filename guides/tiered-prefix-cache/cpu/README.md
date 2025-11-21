@@ -1,3 +1,6 @@
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Offloading Prefix Cache to CPU Memory
 
 ## Overview
@@ -106,7 +109,9 @@ To enable tiered prefix caching, we customize the `InferencePool` configuration 
 
 For the CPU cache, we must manually configure the `lruCapacityPerServer` because vLLM currently does not emit CPU block metrics.
 
-The current weight configuration is `2:2:1:1` (Queue Scorer : KV Cache Utilization Scorer : GPU Prefix Cache Scorer : CPU Prefix Cache Scorer). This ensures that the combined weight of the GPU and CPU prefix cache scorers equals 2. You can tune these values, particularly the ratio between the GPU and CPU scorers, to suit your specific requirements. The current configuration has demonstrated improved performance in our [Benchmark](#benchmark) tests.
+The current weight configuration is `2:2:1:1` (Queue Scorer : KV Cache Utilization Scorer : GPU Prefix Cache Scorer : CPU Prefix Cache Scorer). The current CPU offloading copies GPU cache entries to CPU, essentially making CPU cache a super set of GPU. This weight configuration ensures that the combined weight of the GPU and CPU prefix cache scorers equals 2. 
+
+You can tune these values, particularly the ratio between the GPU and CPU scorers, to suit your specific requirements. The current configuration has demonstrated improved performance in our [Benchmark](#benchmark) tests.
 
 ## Verifying the installation
 
@@ -195,14 +200,14 @@ The benchmark was conducted using the [inference-perf](https://github.com/kubern
 
 
 *   **Workload:**
-    *   The two different workloads (Memory-Bound and Compute-Bound) were tested with a constant concurrency of 45 requests.
-    *   **Memory-Bound (High Cache):**
+    *   The two different workloads were tested with a constant concurrency of 45 requests.
+    *   **High Cache:**
         *   `num_groups`: 45
         *   `system_prompt_len`: 30,000
         *   `question_len`: 256
         *   `output_len`: 1024
         *   `num_prompts_per_group`: 10
-    *   **Compute-Bound (Low Cache):**
+    *   **Low Cache:**
         *   `num_groups`: 45
         *   `system_prompt_len`: 8000
         *   `question_len`: 256
@@ -217,10 +222,10 @@ The benchmark was conducted using the [inference-perf](https://github.com/kubern
 
 #### Key Findings
 
-*   In **memory-bound scenarios**, where the KVCache size exceeds the available HBM, both the vLLM native CPU offloading connector and LMCache connector significantly enhance performance.
-*   In **compute-bound scenarios**, where the KVCache fits entirely within the GPU's HBM, all offloading configurations perform similarly to the baseline. However, consistent slight decreases in performance across metrics indicate a small overhead associated with enabling CPU offloading, even when it is not actively utilized.
+*   In **High cache scenarios**, where the KVCache size exceeds the available HBM, both the vLLM native CPU offloading connector and LMCache connector significantly enhance performance.
+*   In **Low cache scenarios**, where the KVCache fits entirely within the GPU's HBM, all offloading configurations perform similarly to the baseline. However, consistent slight decreases in performance across metrics indicate a small overhead associated with enabling CPU offloading, even when it is not actively utilized.
 
-#### Memory-Bound Performance
+#### High Cache Performance
 
 The following table compares the performance of the baseline vLLM with the vLLM using the CPU offloading connector when the KVCache size is larger than the available HBM.
 
@@ -230,7 +235,7 @@ The following table compares the performance of the baseline vLLM with the vLLM 
 | **vLLM + CPU offloading 100GB** | 6.7 (-25.6%) | 20.2 (-3.3%) | 30.9 (-18.3%) | 44.2 (-11.1%) | 46751.0 (+21.3%) |
 | **vLLM + LMCache CPU offloading 100GB** | 6.5 (-27.8%) | 18.8 (-10.0%) | 30.8 (-18.5%) | 43.0 (-13.5%) | 46910.6 (+21.7%) |
 
-#### Compute-Bound Performance
+#### Low Cache Performance
 
 The following table shows that when the KVCache fits within the HBM, the performance of all configurations is similar, indicating minimal but measurable overhead from the CPU offloading mechanism.
 

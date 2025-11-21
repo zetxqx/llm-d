@@ -19,13 +19,11 @@ inferenceExtension:
       - type: kv-cache-utilization-scorer
       - type: prefix-cache-scorer
         name: gpu-prefix-cache-scorer
-        parameters:
-          autoTune: true
       - type: prefix-cache-scorer
         name: cpu-prefix-cache-scorer
         parameters:
-          autoTune: false
-          lruCapacityPerServer: 41000
+          autoTune: false  # vLLM doesn't have the CPU capacity metric to enable autoTune yet
+          lruCapacityPerServer: 41000  # Allocating ~100GB for Qwen-32B: 41,000 blocks * 2.5MB/block (based on 160KB/token * 16 block size).
       schedulingProfiles:
       - name: default
         plugins:
