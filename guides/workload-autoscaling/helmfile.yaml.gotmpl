@@ -1,0 +1,157 @@
+environments:
+  istio: &I
+    values:
+      - ../prereq/gateway-provider/common-configurations/istio.yaml
+  istioBench: &IB
+    values:
+      - ../prereq/gateway-provider/common-configurations/istio.yaml
+      - ../prereq/gateway-provider/common-configurations/benchmarking.yaml
+  kgateway: &KG
+    values:
+      - ../prereq/gateway-provider/common-configurations/kgateway.yaml
+  default: &DEFAULT
+    <<: *I
+
+---
+
+{{- $ns := .Namespace | default "llm-d-autoscaler" -}}
+{{- $rn := (env "RELEASE_NAME_POSTFIX") | default "workload-autoscaler" -}}
+
+repositories:
+  - name: llm-d-modelservice
+    url: https://llm-d-incubation.github.io/llm-d-modelservice/
+  - name: llm-d-infra
+    url: https://llm-d-incubation.github.io/llm-d-infra/
+
+releases:
+  - name: {{ printf "infra-%s" $rn | quote }}
+    namespace: {{ $ns }}
+    chart: llm-d-infra/llm-d-infra
+    version: v1.3.3
+    installed: true
+    labels:
+      type: infrastructure
+      kind: inference-stack
+    values:
+      - gateway: 
+          {{ .Environment.Values.gateway | toYaml | nindent 10 }}
+
+  - name: {{ printf "gaie-%s" $rn | quote }}
+    namespace: {{ $ns }}
+    chart: oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool
+    version: v1.0.1
+    installed: true
+    needs:
+      - {{ printf "infra-%s" $rn | quote }}
+    values:
+      - gaie-workload-autoscaling/values.yaml
+    # Apply provider name if on GKE
+    {{- if or (eq .Environment.Name "gke") (eq .Environment.Name "gke_tpu") }}
+      - provider:
+          name: {{ .Environment.Values.provider.name }}
+        inferencePool:
+          apiVersion: {{ .Environment.Values.inferencePool.apiVersion }}
+        inferenceExtension:
+          monitoring:
+            gke:
+              enabled: true
+            prometheus:
+              enabled: false
+    {{- end }}
+    # Apply destination rule for anything istio
+    {{- if or (eq .Environment.Name "istio") (eq .Environment.Name "default") (eq .Environment.Name "istioBench") (eq .Environment.Name "xpu") (eq .Environment.Name "cpu") }}
+      - provider:
+          name: {{ .Environment.Values.provider.name }}
+      - istio:
+        {{ .Environment.Values.istio | toYaml | nindent 10 }}
+      - istio:
+          destinationRule:
+            host: {{ printf "gaie-%s-epp.%s.svc.cluster.local" $rn $ns | quote }}
+    {{- end }}
+    # Apply log level only in bench setting
+    {{- if (eq .Environment.Name "istioBench") }}
+      - inferenceExtension:
+          flags: 
+            {{ .Environment.Values.inferenceExtension.flags | toYaml | nindent 12 }}
+    {{- end }}
+    labels:
+      kind: inference-stack
+
+  - name: {{ printf "ms-%s" $rn | quote }}
+    namespace: {{ $ns }}
+    chart: llm-d-modelservice/llm-d-modelservice
+    version: v0.2.10
+    installed: true
+    needs:
+      - {{ printf "infra-%s" $rn | quote }}
+      - {{ printf "gaie-%s" $rn | quote }}
+    values:
+    {{- if eq .Environment.Name "gke_tpu" }}
+      - ms-workload-autoscaling/values_tpu.yaml
+    {{- else if eq .Environment.Name "xpu" }}
+      - ms-workload-autoscaling/values_xpu.yaml
+    {{- else if eq .Environment.Name "cpu" }}
+      - ms-workload-autoscaling/values_cpu.yaml
+    {{- else if eq .Environment.Name "digitalocean" }}
+      - ms-workload-autoscaling/digitalocean-values.yaml
+    {{- else if eq .Environment.Name "xpu" }}
+      - ms-workload-autoscaling/values_xpu.yaml
+    {{- else }}
+      - ms-workload-autoscaling/values.yaml
+    {{- end }}
+    {{- if (eq .Environment.Name "istioBench") }}
+      - routing: 
+          {{ .Environment.Values.routing | toYaml | nindent 10 }}
+    {{- end }}
+    set:
+    # apply release name derived values
+      - name: "routing.inferencePool.name"
+        value: {{ printf "gaie-%s" $rn | quote }}
+      - name: "routing.parentRefs[0].name"
+        value: {{ printf "infra-%s-inference-gateway" $rn | quote }}
+    {{- if or (eq .Environment.Name "gke") (eq .Environment.Name "gke_tpu") }}  
+      - name: "decode.monitoring.podmonitor.enabled"
+        value: false
+    {{- end }}
+    labels:
+      kind: inference-stack
+  # Workload Variant Autoscaler - Dynamic autoscaling for llm-d
+  # Note: WVA chart can be installed from a local path or OCI registry
+  # Set WVA_CHART_PATH to use a local chart (e.g., after cloning the repo)
+  # Otherwise, it will attempt to use the OCI registry path
+  - name: workload-variant-autoscaler
+    namespace: llm-d-autoscaler
+    chart: oci://ghcr.io/llm-d-incubation/workload-variant-autoscaler/workload-variant-autoscaler
+    version: "0.0.8"
+    installed: true
+    needs:
+      - {{ printf "ms-%s" $rn | quote }}
+    labels:
+      kind: autoscaling
+    values:
+      - wva:
+          prometheus:
+            tls:
+              insecureSkipVerify: true
+              caCertPath: ""
+            caCert: |
+{{ readFile "/tmp/prometheus-ca.crt" | indent 14 }}
+    values:
+      - workload-autoscaling/values.yaml
+    set:
+      - name: va.accelerator
+        value: "L40S"
+      - name: llmd.modelID
+        value: "Qwen/Qwen3-0.6B"
+      - name: vllmService.enabled
+        value: true
+      - name: vllmService.nodePort
+        value: 30000
+      - name: llmd.namespace
+        value: {{ $ns | quote }}
+      - name: llmd.modelName
+        value: {{ printf "ms-%s-llm-d-modelservice" $rn | quote }}
+      - name: modelProfile
+        value: "default"
+      - name: sloClassRef.name
+        value: "service-classes-config"
