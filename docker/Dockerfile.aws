@@ -407,6 +407,7 @@ COPY --from=builder /wheels/*.whl /tmp/wheels/
 
 # Define commit SHAs as build args to avoid layer invalidation
 ARG LMCACHE_COMMIT_SHA
+ARG VLLM_PRECOMPILED_WHEEL_COMMIT="75648b16ddce1bff02c39c6f06be62a58385ff52"
 ARG VLLM_COMMIT_SHA="439368496db48d8f992ba8c606a0c0b1eebbfa69"
 
 ARG VLLM_PREBUILT=0
@@ -440,8 +441,7 @@ RUN --mount=type=cache,target=/var/cache/git \
         export VLLM_WHEEL_VERSION="0.0.0+${VLLM_COMMIT_SHA_SHORT}.${CUDA_SHORT}"; \
         VLLM_USE_PRECOMPILED=1 uv pip install --index-url "${VLLM_WHEEL_URL}" "vllm==${VLLM_WHEEL_VERSION}"; \
     else \
-        VLLM_COMMIT="$(git merge-base HEAD origin/main)"; \
-        VLLM_PRECOMPILED_WHEEL_LOCATION="https://wheels.vllm.ai/${VLLM_COMMIT}/vllm-1.0.0.dev-cp38-abi3-manylinux1_${VLLM_WHEEL_ARCH}.whl"; \
+        VLLM_PRECOMPILED_WHEEL_LOCATION="https://wheels.vllm.ai/${VLLM_PRECOMPILED_WHEEL_COMMIT:-${VLLM_COMMIT_SHA}}/vllm-1.0.0.dev-cp38-abi3-manylinux1_${VLLM_WHEEL_ARCH}.whl"; \
         VLLM_USE_PRECOMPILED=1 uv pip install --editable .; \
     fi; \
     uv pip install "nvidia-nccl-cu12>=2.26.2.post1" && \
