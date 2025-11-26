@@ -139,8 +139,8 @@ RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
 WORKDIR /workspace
 
 # Define commit SHAs as build args to avoid layer invalidation
-ARG LMCACHE_REPO=https://github.com/neuralmagic/LMCache.git
-ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
+ARG LMCACHE_REPO=https://github.com/LMCache/LMCache.git
+ARG LMCACHE_COMMIT_SHA="d5be14f600866a10fe829e09d2acaf5cb823f9a0"
 ARG VLLM_COMMIT_SHA="439368496db48d8f992ba8c606a0c0b1eebbfa69"
 
 # Build LMCache wheel (skip on ARM64 - infinistore dependency has no ARM wheels)
@@ -281,7 +281,7 @@ RUN mkdir -p /opt/vllm-source && \
     setfacl -R -m g:0:rwX -m d:g:0:rwX /opt/vllm-source || true
 
 # Define commit SHAs as build args to avoid layer invalidation
-ARG LMCACHE_COMMIT_SHA="0db8ae4746a207a72483d716b5f82545a2ead24b"
+ARG LMCACHE_COMMIT_SHA="d5be14f600866a10fe829e09d2acaf5cb823f9a0"
 ARG VLLM_REPO="https://github.com/vllm-project/vllm.git"
 ARG VLLM_COMMIT_SHA="439368496db48d8f992ba8c606a0c0b1eebbfa69"
 # vllm commit to use for precompiled wheel lookup (defaults to VLLM_COMMIT_SHA)
