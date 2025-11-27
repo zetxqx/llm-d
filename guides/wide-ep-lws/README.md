@@ -82,7 +82,7 @@ Select the provider-specific Helm command using the tabs below.
 ```bash
 helm install llm-d-infpool \
   -n ${NAMESPACE} \
-  -f ./manifests/inferencepool/values.yaml \
+  -f ./manifests/inferencepool.values.yaml \
   --set "provider.name=gke" \
   --set "inferencePool.apiVersion=inference.networking.k8s.io/v1" \
   --set "inferenceExtension.monitoring.gke.enable=true" \
@@ -95,7 +95,7 @@ helm install llm-d-infpool \
 ```bash
 helm install llm-d-infpool \
   -n ${NAMESPACE} \
-  -f ./manifests/inferencepool/values.yaml \
+  -f ./manifests/inferencepool.values.yaml \
   --set "provider.name=istio" \
   --set "inferenceExtension.monitoring.prometheus.enable=true" \
   oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
@@ -107,7 +107,7 @@ helm install llm-d-infpool \
 ```bash
 helm install llm-d-infpool \
   -n ${NAMESPACE} \
-  -f ./manifests/inferencepool/values.yaml \
+  -f ./manifests/inferencepool.values.yaml \
   oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
   --version v1.2.0-rc.1
 ```
@@ -116,35 +116,7 @@ helm install llm-d-infpool \
 
 ### Deploy Gateway and HTTPRoute
 
-Choose the gateway manifest that matches your environment.
-
-<!-- TABS:START -->
-
-<!-- TAB:GKE (Regional External):default -->
-#### GKE (Regional External)
-```bash
-kubectl apply -k ./manifests/gateway/gke-l7-regional-external-managed -n ${NAMESPACE}
-```
-
-<!-- TAB:Istio -->
-#### Istio
-```bash
-kubectl apply -k ./manifests/gateway/istio -n ${NAMESPACE}
-```
-
-<!-- TAB:Kgateway -->
-#### Kgateway
-```bash
-kubectl apply -k ./manifests/gateway/kgateway -n ${NAMESPACE}
-```
-
-<!-- TAB:Kgateway on OCP -->
-#### Kgateway on OCP
-```bash
-kubectl apply -k ./manifests/gateway/kgateway-openshift -n ${NAMESPACE}
-```
-
-<!-- TABS:END -->
+Deploy the Gateway and HTTPRoute using the [gateway recipe](../../recipes/gateway/README.md).
 
 ### Gateway options
 
