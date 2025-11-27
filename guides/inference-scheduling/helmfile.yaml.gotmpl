@@ -15,6 +15,10 @@ environments:
   gke_tpu: &GKE_TPU
     values:
       - ../prereq/gateway-provider/common-configurations/gke_tpu.yaml
+  standalone: &STANDALONE
+    values:
+      - provider:
+          name: none
   xpu: &XPU
     <<: *I
   gaudi: &GAUDI
@@ -38,17 +42,19 @@ repositories:
     url: https://llm-d-incubation.github.io/llm-d-infra/
 
 releases:
+{{- if ne .Environment.Name "standalone" }}
   - name: {{ printf "infra-%s" $rn | quote }}
     namespace: {{ $ns }}
     chart: llm-d-infra/llm-d-infra
     version: v1.3.4
-    installed: true
+    installed:  true
     labels:
       type: infrastructure
       kind: inference-stack
     values:
-      - gateway: 
+      - gateway:
           {{ .Environment.Values.gateway | toYaml | nindent 10 }}
+  {{- end }}
 
   - name: {{ printf "gaie-%s" $rn | quote }}
     namespace: {{ $ns }}
@@ -56,9 +62,15 @@ releases:
     version: v1.2.0-rc.1
     installed: true
     needs:
+      {{- if ne .Environment.Name "standalone" }}
       - {{ printf "infra-%s" $rn | quote }}
+      {{- end }}
     values:
+      {{- if ne .Environment.Name "standalone" }}
       - gaie-inference-scheduling/values.yaml
+      {{- else }}
+      - standalone-inference-scheduling/values.yaml
+      {{- end }}
     # Apply provider name if on GKE
     {{- if or (eq .Environment.Name "gke") (eq .Environment.Name "gke_tpu") }}
       - provider:
@@ -98,11 +110,13 @@ releases:
     version: v0.3.8
     installed: true
     needs:
+      {{- if ne .Environment.Name "standalone" }}
       - {{ printf "infra-%s" $rn | quote }}
+      {{- end }}
       - {{ printf "gaie-%s" $rn | quote }}
     values:
     {{- if eq .Environment.Name "gke_tpu" }}
-      - ms-inference-scheduling/values_tpu.yaml
+      - ms-inference-scheduling/values_gke_tpu.yaml
     {{- else if eq .Environment.Name "xpu" }}
       - ms-inference-scheduling/values_xpu.yaml
     {{- else if eq .Environment.Name "gaudi" }}
