@@ -49,6 +49,9 @@ inferenceExtension:
               tokenProcessorConfig:
                 blockSize: 64   
                 hashSeed: "42"
+              tokenizersPoolConfig:
+                hf:
+                  tokenizersCacheDir: "/tmp/tokenizers"
         - type: kv-cache-utilization-scorer
         - type: queue-scorer
         - type: max-score-picker
