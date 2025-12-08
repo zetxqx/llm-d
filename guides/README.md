@@ -45,4 +45,4 @@ The following guides have been provided by the community but do not fully integr
 
 ## Known Issues
 
-* In Release v0.4.0, the `wide-ep-lws` well-lit path on B200 may fail due to long startup time. This is fixed in [commit 83dd587](https://github.com/llm-d/llm-d/commit/83dd587dd847498820314e8144aadb4fa90d451f).
+* In Release v0.4.0, the `wide-ep-lws` will crash loop due to a deprecated logging flag on the `routing-proxy` sidecar. This is fixed in [commit 83dd587](https://github.com/llm-d/llm-d/commit/83dd587dd847498820314e8144aadb4fa90d451f).
