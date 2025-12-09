@@ -18,7 +18,7 @@ We focus on the following use cases:
 
 A well-lit path is a documented, tested, and benchmarked solution of choice to reduce adoption risk and maintenance cost. These are the central best practices common to production deployments of large language model serving.
 
-We currently offer three tested and benchmarked paths to help you deploy large models:
+We currently offer the following tested and benchmarked paths to help you deploy large models:
 
 1. [Intelligent Inference Scheduling](./inference-scheduling/README.md) - Deploy [vLLM](https://docs.vllm.ai) behind the [Inference Gateway (IGW)](https://github.com/kubernetes-sigs/gateway-api-inference-extension) to decrease latency and increase throughput via [precise prefix-cache aware routing](./precise-prefix-cache-aware/README.md) and [customizable scheduling policies](https://github.com/llm-d/llm-d-inference-scheduler/blob/main/docs/architecture.md).
 2. [Prefill/Decode Disaggregation](./pd-disaggregation/README.md) - Reduce time to first token (TTFT) and get more predictable time per output token (TPOT) by splitting inference into prefill servers handling prompts and decode servers handling responses, primarily on large models such as Llama-70B and when processing very long prompts.
