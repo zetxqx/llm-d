@@ -10,11 +10,11 @@ inferenceExtension:
     ###################
     name: llm-d-inference-scheduler
     hub: ghcr.io/llm-d
-    tag: v0.4.0-rc.1
+    tag: v0.4.0
     ###################
     # name: epp
     # hub: registry.k8s.io/gateway-api-inference-extension
-    # tag: v1.2.0-rc.1
+    # tag: v1.2.0
     ###################
     pullPolicy: Always
   extProcPort: 9002
@@ -35,7 +35,10 @@ inferenceExtension:
         secretKeyRef:
           name: llm-d-hf-token
           key: HF_TOKEN
-  
+  flags:
+    # Log verbosity
+    v: 4
+
   pluginsConfigFile: "precise-prefix-cache-config.yaml"
   pluginsCustomConfig:
     precise-prefix-cache-config.yaml: |
@@ -76,8 +79,8 @@ inferenceExtension:
         # To allow unauthenticated /metrics access (e.g., for debugging with curl), set to false
         enabled: true
 inferencePool:
-  apiVersion: inference.networking.x-k8s.io/v1alpha2 # use old API version for inference
-  targetPortNumber: 8000
+  targetPorts:
+    - number: 8000
   modelServerType: vllm
   modelServers:
     matchLabels:

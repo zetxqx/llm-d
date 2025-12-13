@@ -8,7 +8,7 @@ inferenceExtension:
   image:
     name: llm-d-inference-scheduler
     hub: ghcr.io/llm-d
-    tag: v0.4.0-rc.1
+    tag: v0.4.0
   extProcPort: 9002
   monitoring:
     interval: "10s"
@@ -50,7 +50,6 @@ inferenceExtension:
         - pluginRef: random-picker
 
 inferencePool:
-  apiVersion: inference.networking.k8s.io/v1
   modelServers:
     matchLabels:
       llm-d.ai/inferenceServing: "true"
