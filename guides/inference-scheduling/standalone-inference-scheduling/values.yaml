@@ -21,6 +21,8 @@ inferenceExtension:
   pluginsConfigFile: "default-plugins.yaml"
   sidecar:
     enabled: true
+    image: docker.io/envoyproxy/envoy:distroless-v1.33.2
+    image.pullPolicy: IfNotPresent
     configMap:
       name: envoy
       # Because the template just dumps this section, the keys become filenames.
@@ -225,7 +227,6 @@ inferenceExtension:
                                 port_value: 9002
                           load_balancing_weight: 1
     name: envoy-sidecar
-    image: docker.io/envoyproxy/envoy:distroless-v1.33.2
     command: "envoy"
     args:
       - "--service-node"
@@ -283,7 +284,7 @@ inferenceExtension:
     interval: "10s"
     # Prometheus ServiceMonitor will be created when enabled for EPP metrics collection
     prometheus:
-      enabled: true
+      enabled: false
       auth:
         # To allow unauthenticated /metrics access (e.g., for debugging with curl), set to false
         enabled: true
