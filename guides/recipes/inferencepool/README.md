@@ -90,4 +90,3 @@ To remove the `InferencePool`, use the following command:
 ```bash
 helm uninstall llm-d-infpool -n ${NAMESPACE}
 ```
-

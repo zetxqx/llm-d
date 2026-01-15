@@ -5,6 +5,7 @@ The [Workload Variant Autoscaler](https://github.com/llm-d-incubation/workload-v
 ## Overview
 
 WVA integrates with llm-d to:
+
 - Dynamically scale inference replicas based on workload saturation
 - Optimize resource utilization by adjusting to traffic patterns
 - Reduce tail latency through saturation-based scaling decisions
@@ -28,18 +29,18 @@ Before installing WVA, ensure you have:
    - **Kind/Minikube**: Install Prometheus with TLS/HTTPS configuration. See [Kind/Minikube configuration](#other-kubernetes-platforms-kind-minikube-etc) below for installation and TLS setup instructions.
    - **Other Kubernetes**: A Prometheus stack must be installed with HTTPS support (see [monitoring documentation](../../docs/monitoring/README.md))
 
-4. **Create Installation Namespace**: 
-  
-  ```
+4. **Create Installation Namespace**:
+
+  ```bash
   export NAMESPACE=llm-d-autoscaler
   kubectl create namespace ${NAMESPACE}
   ```
 
-5. **HuggingFace token secret**: [Create the `llm-d-hf-token` secret in your target namespace with the key `HF_TOKEN` matching a valid HuggingFace token](../prereq/client-setup/README.md#huggingface-token) to pull models.
+1. **HuggingFace token secret**: [Create the `llm-d-hf-token` secret in your target namespace with the key `HF_TOKEN` matching a valid HuggingFace token](../prereq/client-setup/README.md#huggingface-token) to pull models.
 
 ## Installation
 
-The workload-autoscaling helmfile installs the complete llm-d [Intelligent Inference Scheduling](../inference-scheduling/README.md) stack (infra, gaie, modelservice) plus WVA in a single `helmfile apply` command. **Install Prometheus Adapter separately in [Step 6](#step-6-install-prometheus-adapter-required-dependency) after WVA installation.** 
+The workload-autoscaling helmfile installs the complete llm-d [Intelligent Inference Scheduling](../inference-scheduling/README.md) stack (infra, gaie, modelservice) plus WVA in a single `helmfile apply` command. **Install Prometheus Adapter separately in [Step 6](#step-6-install-prometheus-adapter-required-dependency) after WVA installation.**
 
 ### Step 1: Configure WVA Values
 
@@ -65,7 +66,7 @@ wva:
     serviceAccountName: "prometheus-k8s"
     tls:
       insecureSkipVerify: true # or "false" for production
-      caCertPath: "" # or set ca cert path for production - "/etc/ssl/certs/prometheus-ca.crt" 
+      caCertPath: "" # or set ca cert path for production - "/etc/ssl/certs/prometheus-ca.crt"
 ```
 
 Extract CA cert (if required): `kubectl get secret thanos-querier-tls -n openshift-monitoring -o jsonpath='{.data.tls\.crt}' | base64 -d > ${TMPDIR:-/tmp}/prometheus-ca.crt`
@@ -89,7 +90,6 @@ wva:
     tls:
       insecureSkipVerify: true
 ```
-
 
 #### Other Kubernetes Platforms (Kind, Minikube, etc.)
 
@@ -162,6 +162,7 @@ helmfile apply -n ${NAMESPACE}
 ```
 
 This installs the complete [Intelligent Inference Scheduling](../inference-scheduling/README.md) stack:
+
 - **Infra** (gateway infrastructure)
 - **GAIE** (inference pool and endpoint picker)
 - **Model Service** (vLLM inference pods)
@@ -274,10 +275,10 @@ EOF
 helm upgrade -i prometheus-adapter prometheus-community/prometheus-adapter \
   --version 5.2.0 -n ${MON_NS} --create-namespace -f ${TMPDIR:-/tmp}/prometheus-adapter-values.yaml
 ```
+
 > **Note**: WVA creates the `prometheus-ca` ConfigMap in the monitoring namespace using the `caCert` value. This ConfigMap is required for Prometheus Adapter (Step 6.3).
 
 **Verify installation**: `kubectl get pods -n ${MON_NS} -l app.kubernetes.io/name=prometheus-adapter`
-
 
 ### Step 7: Verify End-to-End Installation
 
@@ -300,18 +301,21 @@ kubectl get variantautoscalings -n ${NAMESPACE}
 Edit `workload-autoscaling/values.yaml` for WVA settings. Key configurations:
 
 **Model ID** (must match model configured in modelservice):
+
 ```yaml
 llmd:
   modelID: "Qwen/Qwen3-0.6B"  # Must match model ID in ms-workload-autoscaling/values.yaml
 ```
 
 **Accelerator** (L40S, A100, H100, Intel-Max-1550):
+
 ```yaml
 va:
   accelerator: L40S # your accelerator type
 ```
 
 **Prometheus** (platform-specific):
+
 ```yaml
 wva:
   prometheus:

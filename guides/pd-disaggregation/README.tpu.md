@@ -4,15 +4,17 @@
 
 This document provides complete steps for deploying a PD (Prefill-Decode) disaggregation service on a Google Kubernetes Engine (GKE) cluster using the Llama-3.3-70B-Instruct model. PD disaggregation separates the prefill and decode phases of inference, enabling more efficient resource utilization and improved throughput.
 
-For broader context or GPU setup, refer to this [p/d guide](./README.md) 
+For broader context or GPU setup, refer to this [p/d guide](./README.md)
 
 ## Hardware Requirements
+
 This guide uses Cloud TPU v6e (Trillium) accelerators on Google Cloud Platform (GCP), specifically the `ct6e-standard-8t` machine type. You may also choose other compatible TPU VM types.
 
 ## Prerequisites
+
 - Have the [proper client tools installed on your local system](../prereq/client-setup/README.md) to use this guide.
-- Create a namespace for installation. 
-  
+- Create a namespace for installation.
+
   ```
   export NAMESPACE=llm-d-pd # or any other namespace (shorter names recommended)
   kubectl create namespace ${NAMESPACE}
@@ -22,6 +24,7 @@ This guide uses Cloud TPU v6e (Trillium) accelerators on Google Cloud Platform (
 - [Choose an llm-d version](../prereq/client-setup/README.md#llm-d-version)
 
 ## Installation Steps
+
 The following steps detail a fresh deployment of a PD disaggregation service on GKE using TPU accelerators. If you are using existing infrastructure, skip the relevant steps.
 
 ### Step 1 Prepare GKE Cluster
@@ -53,10 +56,10 @@ kubectl apply -f httproute.gke.yaml -n ${NAMESPACE}
 
 ```bash
 helm list -n ${NAMESPACE}
-NAME    	NAMESPACE 	REVISION	UPDATED                                	STATUS  	CHART                     	APP VERSION
-gaie-pd 	llm-d-pd	1       	2025-11-07 00:31:54.106881562 +0000 UTC	deployed	inferencepool-v1.0.1      	v1.0.1
-infra-pd	llm-d-pd	1       	2025-11-07 00:31:50.355629868 +0000 UTC	deployed	llm-d-infra-v1.3.4        	v0.3.0
-ms-pd   	llm-d-pd	7       	2025-11-07 17:45:30.946563039 +0000 UTC	deployed	llm-d-modelservice-v0.3.8	v0.3.0
+NAME     NAMESPACE  REVISION UPDATED                                 STATUS   CHART                      APP VERSION
+gaie-pd  llm-d-pd 1        2025-11-07 00:31:54.106881562 +0000 UTC deployed inferencepool-v1.0.1       v1.0.1
+infra-pd llm-d-pd 1        2025-11-07 00:31:50.355629868 +0000 UTC deployed llm-d-infra-v1.3.4         v0.3.0
+ms-pd    llm-d-pd 7        2025-11-07 17:45:30.946563039 +0000 UTC deployed llm-d-modelservice-v0.3.8 v0.3.0
 ```
 
 - Out of the box with this example you should have the following resources:
@@ -98,6 +101,7 @@ infra-pd-inference-gateway   gke-l7-regional-external-managed   123.123.123.123 
 ## Using the stack
 
 1. Get the endpoint of GKE Gateway using below command
+
     ```bash
     export ENDPOINT="http://$(kubectl get gateway -n ${NAMESPACE} -o jsonpath='{.items[0].status.addresses[0].value}')"
     echo "Using endpoint: $ENDPOINT"
