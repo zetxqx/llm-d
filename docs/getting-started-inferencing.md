@@ -2,6 +2,9 @@
 
 This document show you how to interact with the model server and inference scheduler.
 
+> [!TIP] 
+> To run a performance test against the llm-d stack checkout our [benchmark doc](../guides/benchmark/README.md).
+
 ## Prerequisites
 
 You are assumed to have deployed the llm-d inference stack from a guide, using the model service Helm charts, or otherwise followed the llm-d conventions for deployment of inference scheduler and model server.
