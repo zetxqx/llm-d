@@ -90,7 +90,7 @@ jobs:
             matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
           cache-to: >-
             type=gha,mode=max,scope=cuda-${{ matrix.os }}-${{
-            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
+            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
           labels: ${{ steps.meta.outputs.labels }}
           outputs: >-
             type=image,name=${{ env.REGISTRY }}/${{ github.repository }}-cuda${{ matrix.image_suffix }},
@@ -262,8 +262,8 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=aws
+          cache-to: type=gha,mode=max,scope=aws,oci-mediatypes=true,compression=zstd
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           github-token: ${{ secrets.GHCR_TOKEN }}
@@ -331,8 +331,8 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=cpu
+          cache-to: type=gha,mode=max,scope=cpu,oci-mediatypes=true,compression=zstd
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-cpu:${{ env.TAG }}
             ${{ env.REGISTRY }}/${{ github.repository }}-cpu:latest
@@ -401,8 +401,8 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=xpu
+          cache-to: type=gha,mode=max,scope=xpu,oci-mediatypes=true,compression=zstd
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-xpu:${{ env.TAG }}
             ${{ env.REGISTRY }}/${{ github.repository }}-xpu:latest
