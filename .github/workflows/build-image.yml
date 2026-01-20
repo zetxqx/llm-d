@@ -90,7 +90,8 @@ jobs:
           filters: |
             cuda:
               - 'docker/Dockerfile.cuda'
-              - 'docker/scripts/**'
+              - 'docker/scripts/common/**'
+              - 'docker/scripts/cuda/**'
               - 'docker/packages/common/**'
               - 'docker/packages/cuda/**'
               - 'docker/packages/rpms/**'
@@ -100,6 +101,7 @@ jobs:
               - 'patches/nvshmem_zero_ibv_ah_attr_v3.4.5-0.patch'
             xpu:
               - 'docker/Dockerfile.xpu'
+              - 'docker/scripts/xpu/**'
             cpu:
               - 'docker/Dockerfile.cpu'
               - 'docker/scripts/cpu/**'
@@ -462,7 +464,7 @@ jobs:
     if: ${{ needs.detect-changes.outputs.xpu == 'true' }}
     strategy:
       fail-fast: false
-    runs-on: vllm-runner
+    runs-on: xpu
     steps:
       - name: Checkout push ref
         if: github.event_name == 'push'
