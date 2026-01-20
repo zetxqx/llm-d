@@ -168,7 +168,7 @@ spec:
             name: vllm
             protocol: TCP
           - containerPort: 5557
-            name: vllm
+            name: nixl
             protocol: TCP
           startupProbe:
             httpGet:
