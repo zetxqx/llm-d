@@ -1,4 +1,8 @@
-FROM intel/deep-learning-essentials:2025.2.2-0-devel-ubuntu24.04 AS vllm-base
+ARG ONEAPI_VERSION=2025.2.2-0
+ARG VLLM_REPO="https://github.com/vllm-project/vllm.git"
+ARG VLLM_COMMIT_SHA="72506c98349d6bcd32b4e33eec7b5513453c1502"
+
+FROM intel/deep-learning-essentials:${ONEAPI_VERSION}-devel-ubuntu24.04 AS vllm-base
 
 ARG CACHE_BUSTER
 RUN if [ -n "${CACHE_BUSTER}" ]; then \
@@ -44,11 +48,13 @@ CMD ["bash", "-c", "source /root/.bashrc && exec bash"]
 
 # Clone vLLM and build for XPU
 WORKDIR /workspace
-ARG VLLM_VERSION=v0.13.0
+
+ARG VLLM_REPO
+ARG VLLM_COMMIT_SHA
 RUN --mount=type=cache,target=/var/cache/git \
-    git clone https://github.com/vllm-project/vllm.git && \
+    git clone ${VLLM_REPO} vllm && \
     cd vllm && \
-    git checkout ${VLLM_VERSION}
+    git checkout ${VLLM_COMMIT_SHA}
 
 
 WORKDIR /workspace/vllm

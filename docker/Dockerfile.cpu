@@ -1,25 +1,27 @@
 FROM ubuntu:22.04 AS base-common
 
 ARG PYTHON_VERSION=3.12
-ARG PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cpu"
+ARG PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cpu/"
 
 RUN apt clean && apt-get update -y && \
     apt-get install -y --no-install-recommends --fix-missing \
     curl \
     git \
     wget \
-    vim 
+    vim
 
-RUN apt-get install -y ca-certificates && update-ca-certificates && \
-    git config --global http.sslVerify false
+RUN apt-get install -y ca-certificates && update-ca-certificates
 
+
+ARG VLLM_REPO="https://github.com/vllm-project/vllm.git"
+ARG VLLM_COMMIT_SHA="72506c98349d6bcd32b4e33eec7b5513453c1502"
 
 # Clone vLLM and build for CPU
 WORKDIR /workspace
 RUN --mount=type=cache,target=/var/cache/git \
-    git clone https://github.com/vllm-project/vllm.git && \
+    git clone ${VLLM_REPO} vllm && \
     cd vllm && \
-    git checkout c5f10cc139ec87e217f2bb56a677dd57394729f5
+    git checkout ${VLLM_COMMIT_SHA}
 
 
 WORKDIR /workspace/vllm
@@ -42,7 +44,8 @@ ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python
 RUN uv venv --python ${PYTHON_VERSION} --seed ${VIRTUAL_ENV}
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-ENV UV_HTTP_TIMEOUT=500
+ENV UV_HTTP_TIMEOUT=900
+ENV UV_HTTP_RETRIES=10
 
 # Install Python dependencies
 ENV PIP_EXTRA_INDEX_URL=${PIP_EXTRA_INDEX_URL}
@@ -51,7 +54,7 @@ ENV UV_INDEX_STRATEGY="unsafe-best-match"
 ENV UV_LINK_MODE="copy"
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --upgrade pip && \
-    uv pip install -r requirements/cpu.txt
+    uv pip install -r requirements/cpu.txt -v
 
 ARG TARGETARCH
 ENV TARGETARCH=${TARGETARCH}
@@ -122,4 +125,3 @@ RUN python3 /workspace/install_nixl.py
 
 WORKDIR /workspace
 ENTRYPOINT ["/bin/bash"]
-
