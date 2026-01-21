@@ -28,6 +28,8 @@ ARG USE_SCCACHE=true
 
 # Note: Components are listed in build order.
 
+ARG EFA_INSTALLER_VERSION="1.46.0"
+
 ARG GDRCOPY_REPO="https://github.com/NVIDIA/gdrcopy.git"
 ARG GDRCOPY_VERSION="v2.5.1"
 
@@ -149,11 +151,14 @@ ENV PATH="${NVSHMEM_DIR}/bin:${VIRTUAL_ENV}/bin:${PATH}" \
     PKG_CONFIG_PATH="${UCX_PREFIX}/lib/pkgconfig:${UCX_PREFIX}/lib64/pkgconfig:${EFA_PREFIX}/lib/pkgconfig:${EFA_PREFIX}/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/aarch64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig:${PKG_CONFIG_PATH}"
 
 # Install EFA
+ARG EFA_INSTALLER_VERSION
 COPY docker/scripts/cuda/common/package-utils.sh /tmp/package-utils.sh
 COPY docker/scripts/cuda/builder/install-efa.sh /tmp/install-efa.sh
 RUN --mount=type=secret,id=subman_org \
     --mount=type=secret,id=subman_activation_key \
-    TARGETOS=${TARGETOS} /tmp/install-efa.sh && \
+    TARGETOS=${TARGETOS} \
+    EFA_INSTALLER_VERSION=${EFA_INSTALLER_VERSION} \
+    /tmp/install-efa.sh && \
     rm -f /tmp/install-efa.sh /tmp/package-utils.sh
 
 # Build and install gdrcopy
@@ -313,6 +318,14 @@ RUN TARGETOS=${TARGETOS} /tmp/install-runtime-packages.sh && \
 
 # Copy in efa
 COPY --from=builder /opt/amazon/efa /opt/amazon/efa/
+
+# Copy efa libs from builder (install-efa.sh)
+# Ubuntu does not build EFA
+COPY --from=builder /tmp/efa_libs /tmp/efa_libs
+RUN if [ "${TARGETOS:-rhel}" = "rhel" ] && [ -d /tmp/efa_libs ]; then \
+        cp -a /tmp/efa_libs/* /usr/lib64/ || true; \
+    fi && \
+    rm -rf /tmp/efa_libs
 
 # Copy gdrcopy libraries from builder
 # Install to /usr/local/lib (always present) and multiarch lib dir
