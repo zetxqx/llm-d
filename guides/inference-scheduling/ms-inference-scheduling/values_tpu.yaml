@@ -2,18 +2,18 @@
 multinode: false
 
 modelArtifacts:
-  uri: "hf://meta-llama/Llama-3.1-70B-Instruct"
-  size: 160Gi
+  uri: "hf://Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8"
+  size: 700Gi
   authSecretName: "llm-d-hf-token"
-  name: meta-llama/Llama-3.1-70B
-
-accelerator:  # controlls specialized hardware Type
-  type: google
+  name: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
 
 routing:
   proxy:
     enabled: false # removes sidecar from deployment - no PD in inference scheduling
     targetPort: 8000 # controlls vLLM port to matchup with sidecar if deployed
+
+accelerator:
+  type: "google"
 
 decode:
   parallelism:
@@ -22,8 +22,8 @@ decode:
   replicas: 2
   extraConfig:
     nodeSelector:
-      cloud.google.com/gke-tpu-topology: "2x4"
-      cloud.google.com/gke-tpu-accelerator: "tpu-v6e-slice"
+      cloud.google.com/gke-tpu-topology: "2x2x1"
+      cloud.google.com/gke-tpu-accelerator: "tpu7x"
   monitoring:
     podmonitor:
       enabled: true
@@ -32,14 +32,29 @@ decode:
       interval: "30s"
   containers:
   - name: "vllm"
-    image: "vllm/vllm-tpu:v0.11.1"
+    image: "vllm/vllm-tpu:nightly-ironwood-20260113-8424c78-df7e127"
     modelCommand: vllmServe
     args:
-      - "--max-model-len=4096"
+        - --data-parallel-size=1
+        - --max-model-len=9216
+        - --max-num-batched-tokens=1028
+        - --max-num-seqs=128
+        - --kv-cache-dtype=fp8
+        - --async-scheduling
+        - --gpu-memory-utilization=0.93
     ports:
       - containerPort: 8000
         name: vllm
         protocol: TCP
+    resources:
+      limits:
+        memory: 64Gi
+        cpu: "16"
+        google.com/tpu: 4
+      requests:
+        memory: 64Gi
+        cpu: "16"
+        google.com/tpu: 4
     mountModelVolume: true
     volumeMounts:
     - name: metrics-volume
