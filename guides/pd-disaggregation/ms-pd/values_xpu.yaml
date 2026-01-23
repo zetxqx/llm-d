@@ -3,8 +3,9 @@
 
 multinode: false
 
-# Configure accelerator type for Intel XPU
-accelerator:
+# Configure accelerator type for Intel XPU via DRA
+dra:
+  enabled: true
   type: intel
 
 modelArtifacts:
@@ -33,7 +34,7 @@ decode:
       interval: "30s"
   containers:
   - name: "vllm"
-    image: ghcr.io/llm-d/llm-d-xpu:v0.4.0
+    image: ghcr.io/llm-d/llm-d-xpu-dev:pr-592
     modelCommand: vllmServe
     args:
       - "--block-size"
@@ -90,7 +91,7 @@ prefill:
       interval: "30s"
   containers:
   - name: "vllm"
-    image: ghcr.io/llm-d/llm-d-xpu:v0.4.0
+    image: ghcr.io/llm-d/llm-d-xpu-dev:pr-592
     modelCommand: vllmServe
     args:
       - "--block-size"
@@ -119,11 +120,11 @@ prefill:
       limits:
         memory: 64Gi
         cpu: "8"
-        # note: XPU resources get controlled by parallelism + accelerators above
+        # note: XPU resources get controlled by parallelism + dra above
       requests:
         memory: 64Gi
         cpu: "8"
-        # note: XPU resources get controlled by parallelism + accelerators above
+        # note: XPU resources get controlled by parallelism + dra above
     mountModelVolume: true
     volumeMounts:
       - name: dshm
