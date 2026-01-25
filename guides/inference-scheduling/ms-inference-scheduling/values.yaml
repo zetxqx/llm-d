@@ -1,9 +1,9 @@
 multinode: false
 
 modelArtifacts:
-  uri: "hf://Qwen/Qwen3-0.6B"
-  name: "Qwen/Qwen3-0.6B"
-  size: 20Gi
+  uri: "hf://Qwen/Qwen3-32B"
+  name: "Qwen/Qwen3-32B"
+  size: 80Gi
   authSecretName: "llm-d-hf-token"
 
 routing:
@@ -16,7 +16,7 @@ accelerator: # controlls specialized hardware Type
 
 decode:
   create: true
-  replicas: 2
+  replicas: 8
   monitoring:
     podmonitor:
       enabled: true
@@ -29,15 +29,16 @@ decode:
     modelCommand: vllmServe
     args:
       - "--disable-uvicorn-access-log"
+      - "--tensor-parallel-size=2"
     ports:
       - containerPort: 8000
         name: vllm
         protocol: TCP
     resources:
       limits:
-        nvidia.com/gpu: "1"
+        nvidia.com/gpu: "2"
       requests:
-        nvidia.com/gpu: "1"
+        nvidia.com/gpu: "2"
     mountModelVolume: true
     volumeMounts:
     - name: metrics-volume
