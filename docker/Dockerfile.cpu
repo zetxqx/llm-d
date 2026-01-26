@@ -104,7 +104,14 @@ FROM vllm-build
 ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/lib:${LD_LIBRARY_PATH}"
 
 RUN --mount=type=bind,from=vllm-build,src=/workspace/vllm/dist,target=dist \
-    pip install dist/*.whl
+    --mount=type=cache,target=/root/.cache/uv \
+    uv pip install dist/*.whl
+
+# install OTEL packages to enable tracing
+COPY docker/packages/common/runtime-otel-package-requirements.txt /workspace/runtime-otel-package-requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install -r /workspace/runtime-otel-package-requirements.txt
+
 
 # Install pkg-config
 RUN apt-get update && apt-get install -y --no-install-recommends pkg-config \

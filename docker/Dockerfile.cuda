@@ -434,6 +434,11 @@ RUN --mount=type=cache,target=/var/cache/git \
     /tmp/install-vllm.sh && \
     rm /tmp/install-vllm.sh
 
+# install OTEL packages to enable tracing
+COPY docker/packages/common/runtime-otel-package-requirements.txt /workspace/runtime-otel-package-requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install -r /workspace/runtime-otel-package-requirements.txt
+
 # Cleanup packages
 COPY docker/scripts/cuda/common/package-utils.sh /tmp/package-utils.sh
 RUN bash -c ". /tmp/package-utils.sh && \
