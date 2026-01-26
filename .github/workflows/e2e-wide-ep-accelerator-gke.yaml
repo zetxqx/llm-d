@@ -130,7 +130,7 @@ jobs:
           --set "inferencePool.apiVersion=inference.networking.k8s.io/v1" \
           --set "inferenceExtension.monitoring.gke.enable=true" \
           -f inferencepool.values.yaml \
-          oci://us-central1-docker.pkg.dev/k8s-staging-images/gateway-api-inference-extension/charts/inferencepool \
+          oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
           --version ${INFERENCEPOOLVERSION}
           echo "---------------------------------------" >> ~/wide-ep-deployment.log
 
