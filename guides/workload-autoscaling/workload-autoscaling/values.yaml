@@ -28,8 +28,15 @@ wva:
   scaleToZero: false  # Enable scaling variants to zero replicas (default: false)
 
 llmd:
+  # Namespace where the llm-d inference-scheduling stack is deployed
+  # For wva-only mode: Set this to your existing inference-scheduling namespace (default auto-detected from LLMD_NAMESPACE env var)
+  # For full installation: This will be set automatically to match the deployment namespace
   namespace: llm-d-autoscaler
+  # Model service name (Service name of the vLLM inference pods)
+  # For wva-only mode: Auto-detected as ms-{LLMD_RELEASE_NAME_POSTFIX}-llm-d-modelservice, but can be explicitly set here
+  # For full installation: Auto-generated from release name postfix, but can be overridden here
   modelName: ms-workload-autoscaler-llm-d-modelservice
+  # Model ID must match the model configured in your inference-scheduling deployment
   modelID: "Qwen/Qwen3-0.6B"
 
 va:
