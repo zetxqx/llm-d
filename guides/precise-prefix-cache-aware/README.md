@@ -46,6 +46,18 @@ To see what gateway options are supported refer to our [gateway provider prereq 
 
 You can also customize your gateway, for more information on how to do that see our [gateway customization docs](../../docs/customizing-your-gateway.md).
 
+#### Intel XPU deployment
+
+```bash
+helmfile apply -e xpu -n ${NAMESPACE} # targets istio as gateway provider with Intel XPU hardware
+```
+
+You can also combine Intel XPU hardware with different gateway providers:
+
+```bash
+helmfile apply -e xpu-kgateway -n ${NAMESPACE} # targets kgateway as gateway provider with Intel XPU hardware
+```
+
 ### Install HTTPRoute
 
 Follow provider specific instructions for installing HTTPRoute.

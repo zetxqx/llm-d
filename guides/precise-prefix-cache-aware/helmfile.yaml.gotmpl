@@ -11,6 +11,10 @@ environments:
   gke: &GKE
     values:
       - ../prereq/gateway-provider/common-configurations/gke.yaml
+  xpu: &XPU
+    <<: *I
+  xpu-kgateway: &XPU_KG
+    <<: *KG
   default:
     <<: *I
 
@@ -59,7 +63,7 @@ releases:
               enabled: true
             prometheus:
               enabled: false
-    {{- else if or (eq .Environment.Name "istio") (eq .Environment.Name "default") }}
+    {{- else if or (eq .Environment.Name "istio") (eq .Environment.Name "xpu") (eq .Environment.Name "default") }}
       - provider:
           name: {{ .Environment.Values.provider.name }}
           istio:
@@ -81,9 +85,14 @@ releases:
       - {{ printf "infra-%s" $rn | quote }}
       - {{ printf "gaie-%s" $rn | quote }}
     values:
+    {{- if or (eq .Environment.Name "xpu") (eq .Environment.Name "xpu-kgateway") }}
+      - ms-kv-events/values_xpu.yaml
+    {{- else }}
       - ms-kv-events/values.yaml
+    {{- end }}
+
     {{- if or (eq .Environment.Name "istio") (eq .Environment.Name "default") }}
-      - routing: 
+      - routing:
           {{ .Environment.Values.routing | toYaml | nindent 10 }}
     {{- end }}
     set:
