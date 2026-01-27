@@ -9,13 +9,16 @@ modelArtifacts:
 routing:
   proxy:
     enabled: false # removes sidecar from deployment - no PD in inference scheduling
-    targetPort: 8000 # controlls vLLM port to matchup with sidecar if deployed
+    targetPort: 8000 # controls vLLM port to matchup with sidecar if deployed
 
-accelerator: # controlls specialized hardware Type
-  type: nvidia 
+accelerator:  # controls specialized hardware Type
+  type: nvidia
 
 decode:
   create: true
+  parallelism:
+    tensor: 2
+    data: 1
   replicas: 8
   monitoring:
     podmonitor:
@@ -29,20 +32,27 @@ decode:
     modelCommand: vllmServe
     args:
       - "--disable-uvicorn-access-log"
-      - "--tensor-parallel-size=2"
+      - "--gpu-memory-utilization=0.95"
+#      - "--tensor-parallel-size=2" # added automatically from 'parallelism'
     ports:
       - containerPort: 8000
         name: vllm
         protocol: TCP
     resources:
       limits:
-        nvidia.com/gpu: "2"
+#        nvidia.com/gpu: '2' # added automatically from 'parallelism'
+        cpu: '32'
+        memory: 100Gi
       requests:
-        nvidia.com/gpu: "2"
+#        nvidia.com/gpu: '2' # added automatically from 'parallelism'
+        cpu: '32'
+        memory: 100Gi
     mountModelVolume: true
     volumeMounts:
     - name: metrics-volume
       mountPath: /.config
+    - name: shm
+      mountPath: /dev/shm
     - name: torch-compile-cache
       mountPath: /.cache
     startupProbe:
@@ -72,7 +82,12 @@ decode:
     emptyDir: {}
   - name: torch-compile-cache
     emptyDir: {}
-
+  - name: shm
+    emptyDir:
+      medium: Memory
+      sizeLimit: 20Gi
+        
 # PD disabled in this example
 prefill:
   create: false
+  
