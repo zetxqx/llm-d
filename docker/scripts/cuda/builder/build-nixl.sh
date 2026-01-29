@@ -55,5 +55,4 @@ cp build/src/bindings/python/nixl-meta/nixl-*-py3-none-any.whl /wheels/
 
 rm -rf build
 
-cd /tmp && rm -rf /tmp/nixl 
-
+cd /tmp && rm -rf /tmp/nixl

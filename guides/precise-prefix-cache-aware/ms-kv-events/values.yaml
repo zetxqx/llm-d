@@ -8,7 +8,7 @@ modelArtifacts:
 
 routing:
   proxy:
-    enabled: false # removes sidecar from deployment - no PD in inference scheduling
+    enabled: false  # removes sidecar from deployment - no PD in inference scheduling
 
 accelerator:  # controls specialized hardware Type
   type: nvidia
@@ -26,92 +26,92 @@ decode:
       path: "/metrics"
       interval: "30s"
   containers:
-  - name: "vllm"
-    image: vllm/vllm-openai:v0.14.1-cu130
-    modelCommand: vllmServe
-    args:
-      - "--block-size=64"
-      - "--kv-events-config"
-      - |- 
-        {
-          "enable_kv_cache_events": true,
-          "publisher": "zmq",
-          "endpoint": "tcp://gaie-$(GAIE_RELEASE_NAME_POSTFIX)-epp.$(NAMESPACE).svc.cluster.local:5557",
-          "topic": "kv@$(POD_IP)@Qwen/Qwen3-32B"
-        }
-      - "--disable-uvicorn-access-log"
-      - "--gpu-memory-utilization=0.95"
-    env:
-      - name: GAIE_RELEASE_NAME_POSTFIX # index 0 matters because of set in helmfile
-      - name: NAMESPACE
-        valueFrom:
-          fieldRef:
-            fieldPath: metadata.namespace # assumed to be the same as the EPP's
-      - name: POD_IP
-        valueFrom:
-          fieldRef:
-            apiVersion: v1
-            fieldPath: status.podIP
-      - name: VLLM_LOGGING_LEVEL
-        value: DEBUG
-      - name: TRITON_CACHE_DIR
-        value: /.triton-cache
-    ports:
-      - containerPort: 8000
-        name: vllm
-        protocol: TCP
-    resources:
-      limits:
-#        nvidia.com/gpu: '2' # added automatically from 'parallelism'
-        cpu: '32'
-        memory: 100Gi
-      requests:
-#        nvidia.com/gpu: '2' # added automatically from 'parallelism'
-        cpu: '32'
-        memory: 100Gi
-    mountModelVolume: true
-    volumeMounts:
-    - name: metrics-volume
-      mountPath: /.config
-    - name: shm
-      mountPath: /dev/shm
-    - name: torch-compile-cache
-      mountPath: /.cache
-    - name: triton-cache
-      mountPath: /.triton-cache
-    startupProbe:
-      httpGet:
-        path: /v1/models
-        port: vllm
-      initialDelaySeconds: 15
-      periodSeconds: 30
-      timeoutSeconds: 5
-      failureThreshold: 60
-    livenessProbe:
-      httpGet:
-        path: /health
-        port: vllm
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
-    readinessProbe:
-      httpGet:
-        path: /v1/models
-        port: vllm
-      periodSeconds: 5
-      timeoutSeconds: 2
-      failureThreshold: 3
+    - name: "vllm"
+      image: vllm/vllm-openai:v0.14.1-cu130
+      modelCommand: vllmServe
+      args:
+        - "--block-size=64"
+        - "--kv-events-config"
+        - |-
+          {
+            "enable_kv_cache_events": true,
+            "publisher": "zmq",
+            "endpoint": "tcp://gaie-$(GAIE_RELEASE_NAME_POSTFIX)-epp.$(NAMESPACE).svc.cluster.local:5557",
+            "topic": "kv@$(POD_IP)@Qwen/Qwen3-32B"
+          }
+        - "--disable-uvicorn-access-log"
+        - "--gpu-memory-utilization=0.95"
+      env:
+        - name: GAIE_RELEASE_NAME_POSTFIX  # index 0 matters because of set in helmfile
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace  # assumed to be the same as the EPP's
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: VLLM_LOGGING_LEVEL
+          value: DEBUG
+        - name: TRITON_CACHE_DIR
+          value: /.triton-cache
+      ports:
+        - containerPort: 8000
+          name: vllm
+          protocol: TCP
+      resources:
+        limits:
+  #        nvidia.com/gpu: '2' # added automatically from 'parallelism'
+          cpu: '32'
+          memory: 100Gi
+        requests:
+  #        nvidia.com/gpu: '2' # added automatically from 'parallelism'
+          cpu: '32'
+          memory: 100Gi
+      mountModelVolume: true
+      volumeMounts:
+        - name: metrics-volume
+          mountPath: /.config
+        - name: shm
+          mountPath: /dev/shm
+        - name: torch-compile-cache
+          mountPath: /.cache
+        - name: triton-cache
+          mountPath: /.triton-cache
+      startupProbe:
+        httpGet:
+          path: /v1/models
+          port: vllm
+        initialDelaySeconds: 15
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 60
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: vllm
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /v1/models
+          port: vllm
+        periodSeconds: 5
+        timeoutSeconds: 2
+        failureThreshold: 3
   volumes:
-  - name: metrics-volume
-    emptyDir: {}
-  - name: torch-compile-cache
-    emptyDir: {}
-  - name: shm
-    emptyDir:
-      medium: Memory
-      sizeLimit: 20Gi
-  - name: triton-cache
-    emptyDir: {}
+    - name: metrics-volume
+      emptyDir: {}
+    - name: torch-compile-cache
+      emptyDir: {}
+    - name: shm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 20Gi
+    - name: triton-cache
+      emptyDir: {}
 
 # PD disabled in this example
 prefill:

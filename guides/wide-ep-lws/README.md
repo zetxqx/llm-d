@@ -31,7 +31,7 @@ This guide requires 32 Nvidia H200 or B200 GPUs and InfiniBand or RoCE RDMA netw
 * Have the [Monitoring stack](../../docs/monitoring/README.md) installed on your system.
 * Create a namespace for installation.
 
-  ```
+  ```bash
   export NAMESPACE=llm-d-wide-ep # or any other namespace (shorter names recommended)
   kubectl create namespace ${NAMESPACE}
   ```

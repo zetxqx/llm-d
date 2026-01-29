@@ -48,7 +48,7 @@ This guide expects 8 Nvidia GPUs of any kind, and RDMA via InfiniBand or RoCE be
 * Have the [Monitoring stack](../../docs/monitoring/README.md) installed on your system.
 * Create a namespace for installation.
 
-  ```
+  ```bash
   export NAMESPACE=llm-d-pd # or any other namespace (shorter names recommended)
   kubectl create namespace ${NAMESPACE}
   ```

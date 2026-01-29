@@ -36,7 +36,7 @@ releases:
       type: infrastructure
       kind: inference-stack
     values:
-      - gateway: 
+      - gateway:
           {{ .Environment.Values.gateway | toYaml | nindent 10 }}
 
   - name: {{ printf "gaie-%s" $rn | quote }}
@@ -59,7 +59,7 @@ releases:
             destinationRule:
               host: {{ printf "gaie-%s-epp.%s.svc.cluster.local" $rn $ns | quote }}
       - inferenceExtension:
-          flags: 
+          flags:
             {{ .Environment.Values.inferenceExtension.flags | toYaml | nindent 12 }}
     {{- end }}
     labels:
@@ -76,7 +76,7 @@ releases:
     values:
       - ms-workload-autoscaling/values.yaml
     {{- if or (eq .Environment.Name "istio") (eq .Environment.Name "default") }}
-      - routing: 
+      - routing:
           {{ .Environment.Values.routing | toYaml | nindent 10 }}
     {{- end }}
     labels:

@@ -30,7 +30,7 @@ cd /tmp
 # install build tools (cmake from pip provides 3.22+ needed by pplx-kernels)
 uv pip install build cuda-python numpy setuptools-scm ninja cmake requests filelock tqdm
 # overwrite the TORCH_CUDA_ARCH_LIST for MoE kernels
-export TORCH_CUDA_ARCH_LIST="9.0a;10.0+PTX" 
+export TORCH_CUDA_ARCH_LIST="9.0a;10.0+PTX"
 
 # build FlashInfer wheel
 uv pip uninstall flashinfer-python || true

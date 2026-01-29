@@ -40,7 +40,7 @@ releases:
       type: infrastructure
       kind: inference-stack
     values:
-      - gateway: 
+      - gateway:
           {{ .Environment.Values.gateway | toYaml | nindent 10 }}
 
   - name: {{ printf "gaie-%s" $rn | quote }}
@@ -103,7 +103,7 @@ releases:
     set:
       - name: "decode.containers[0].env[0].value"
         value: {{ printf "%s" $rn | quote }}
-    {{- if (eq .Environment.Name "gke") }}  
+    {{- if (eq .Environment.Name "gke") }}
       - name: "decode.monitoring.podmonitor.enabled"
         value: false
     {{- end }}

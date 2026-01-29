@@ -59,7 +59,7 @@ inferenceExtension:
         - type: precise-prefix-cache-scorer
           parameters:
             tokenProcessorConfig:
-              blockSize: 64   
+              blockSize: 64
               hashSeed: "42"
             indexerConfig:
               tokenizersPoolConfig:

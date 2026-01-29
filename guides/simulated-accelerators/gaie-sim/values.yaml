@@ -17,7 +17,7 @@ inferenceExtension:
     ###################
     pullPolicy: Always
   extProcPort: 9002
-  pluginsConfigFile: "default-plugins.yaml" # using upstream GIE default-plugins, see: https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/main/config/charts/inferencepool/templates/epp-config.yaml#L7C3-L56C33
+  pluginsConfigFile: "default-plugins.yaml"  # using upstream GIE default-plugins, see: https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/main/config/charts/inferencepool/templates/epp-config.yaml#L7C3-L56C33
 
   # Monitoring configuration for EPP
   monitoring:

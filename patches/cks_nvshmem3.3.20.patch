@@ -26,4 +26,3 @@ index d037ccc..924626c 100644
 +                                name, hca_ifname ? hca_ifname : "mlx5 or ibp");
              continue;
          }
- 

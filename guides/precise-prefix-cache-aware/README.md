@@ -10,8 +10,8 @@ This guide demonstrates how to configure the inference scheduler to use the new 
 - Configure and deploy your [Gateway control plane](../prereq/gateway-provider/README.md).
 - Have the [Monitoring stack](../../docs/monitoring/README.md) installed on your system.
 - Create a namespace for installation.
-  
-  ```
+
+  ```bash
   export NAMESPACE=llm-d-precise # or any other namespace (shorter names recommended)
   kubectl create namespace ${NAMESPACE}
   ```
@@ -93,9 +93,9 @@ kubectl apply -f httproute.gke.yaml -n ${NAMESPACE}
 ```bash
 helm list -n ${NAMESPACE}
 NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
-gaie-kv-events  llm-d-precise  1               2026-01-28 18:16:14.302723 +0200 IST    deployed        inferencepool-v1.3.0            v1.3.0     
-infra-kv-events llm-d-precise  1               2026-01-28 18:16:08.733157 +0200 IST    deployed        llm-d-infra-v1.3.6              v0.3.0     
-ms-kv-events    llm-d-precise  1               2026-01-28 18:16:26.907329 +0200 IST    deployed        llm-d-modelservice-v0.3.17      v0.3.0 
+gaie-kv-events  llm-d-precise  1               2026-01-28 18:16:14.302723 +0200 IST    deployed        inferencepool-v1.3.0            v1.3.0
+infra-kv-events llm-d-precise  1               2026-01-28 18:16:08.733157 +0200 IST    deployed        llm-d-infra-v1.3.6              v0.3.0
+ms-kv-events    llm-d-precise  1               2026-01-28 18:16:26.907329 +0200 IST    deployed        llm-d-modelservice-v0.3.17      v0.3.0
 ```
 
 - Out of the box with this example you should have the following resources:
@@ -186,13 +186,13 @@ indicating that it had cached the KV-blocks from the first call.
 
 ## Benchmarking
 
-To run benchmarks against the installed llm-d stack, you need [run_only.sh](https://github.com/llm-d/llm-d-benchmark/blob/main/existing_stack/run_only.sh), a template file from [guides/benchmark](../benchmark/), and a Persistent Volume Claim (PVC) to store the results. Follow the instructions in the [benchmark doc](../benchmark/README.md). 
+To run benchmarks against the installed llm-d stack, you need [run_only.sh](https://github.com/llm-d/llm-d-benchmark/blob/main/existing_stack/run_only.sh), a template file from [guides/benchmark](../benchmark/), and a Persistent Volume Claim (PVC) to store the results. Follow the instructions in the [benchmark doc](../benchmark/README.md).
 
 ### Example
 
 This example uses [run_only.sh](https://github.com/llm-d/llm-d-benchmark/blob/main/existing_stack/run_only.sh) with the template [precise_guide_template.yaml](../benchmark/precise_guide_template.yaml).
 
-The benchmark launches a pod (`llmdbench-harness-launcher`) that, in this case, uses `inference-perf` with a shared prefix synthetic workload named `shared_prefix_synthetic`. This workload runs several stages with different rates. The results will be stored on the provided PVC, accessible through the `llmdbench-harness-launcher` pod. Each experiment is saved under the `requests` folder, e.g.,/`requests/inference-perf_<experiment ID>_shared_prefix_precise-guide-<model name>` folder. 
+The benchmark launches a pod (`llmdbench-harness-launcher`) that, in this case, uses `inference-perf` with a shared prefix synthetic workload named `shared_prefix_synthetic`. This workload runs several stages with different rates. The results will be stored on the provided PVC, accessible through the `llmdbench-harness-launcher` pod. Each experiment is saved under the `requests` folder, e.g.,/`requests/inference-perf_<experiment ID>_shared_prefix_precise-guide-<model name>` folder.
 
 Several results files will be created (see [Benchmark doc](../benchmark/README.md)), including a yaml file in a "standard" benchmark report format (see [Benchmark Report](https://github.com/llm-d/llm-d-benchmark/blob/main/docs/benchmark_report.md)).
 
@@ -202,14 +202,14 @@ The `bash` commands below downloads the benchmark runner script (`run_only.sh`),
   curl -L -O https://raw.githubusercontent.com/llm-d/llm-d-benchmark/main/existing_stack/run_only.sh
   chmod u+x run_only.sh
   select f in $(
-      curl -s https://api.github.com/repos/llm-d/llm-d/contents/guides/benchmark?ref=main | 
+      curl -s https://api.github.com/repos/llm-d/llm-d/contents/guides/benchmark?ref=main |
       sed -n '/[[:space:]]*"name":[[:space:]][[:space:]]*"\(precise.*\_template\.yaml\)".*/ s//\1/p'
-    ); do 
+    ); do
     curl -LJO "https://raw.githubusercontent.com/llm-d/llm-d/main/guides/benchmark/$f"
     break
   done
   ```
-  
+
 Choose the `precise_guide_template.yaml` template, then run:
 
   ```bash
@@ -220,81 +220,81 @@ Choose the `precise_guide_template.yaml` template, then run:
   ```
 
 Edit `config.yaml` if further customization is needed, and then run the command
+
   ```bash
   ./run_only.sh -c config.yaml
   ```
 
-The output will show the progress of the `inference-perf` benchmark as it runs 
+The output will show the progress of the `inference-perf` benchmark as it runs
 <details>
 <summary><b><i>Click</i></b> here to view the expected output</summary>
 
-  ```
+  ```text
   ...
   2026-01-28 18:06:20,130 - inference_perf.client.filestorage.local - INFO - Report files will be stored at: /requests/inference-perf_1769623549_shared_prefix-precise-guide-Qwen3-32B
   2026-01-28 18:06:23,584 - inference_perf.loadgen.load_generator - INFO - Stage 0 - run started
   Stage 0 progress: 100%|█████████▉| 0.996/1.0 [01:19<00:00, 35.86s/it]             2026-01-28 18:07:43,989 - inference_perf.loadgen.load_generator - INFO - Stage 0 - run completed
-  Stage 0 progress: 100%|██████████| 1.0/1.0 [01:20<00:00, 80.08s/it]  
+  Stage 0 progress: 100%|██████████| 1.0/1.0 [01:20<00:00, 80.08s/it]
   2026-01-28 18:07:44,990 - inference_perf.loadgen.load_generator - INFO - Stage 1 - run started
-  Stage 1 progress: 100%|██████████| 1.0/1.0 [00:38<00:00, 38.04s/it]                 
+  Stage 1 progress: 100%|██████████| 1.0/1.0 [00:38<00:00, 38.04s/it]
   2026-01-28 18:08:23,032 - inference_perf.loadgen.load_generator - INFO - Stage 1 - run completed
   Stage 2 progress:   0%|          | 0/1.0 [00:00<?, ?it/s]2026-01-28 18:08:24,033 - inference_perf.loadgen.load_generator - INFO - Stage 2 - run started
   Stage 2 progress:  98%|█████████▊| 0.98/1.0 [00:42<00:00, 17.81s/it]2026-01-28 18:09:07,078 - inference_perf.loadgen.load_generator - INFO - Stage 2 - run completed
-  Stage 2 progress: 100%|██████████| 1.0/1.0 [00:43<00:00, 43.04s/it] 
+  Stage 2 progress: 100%|██████████| 1.0/1.0 [00:43<00:00, 43.04s/it]
   2026-01-28 18:09:08,079 - inference_perf.loadgen.load_generator - INFO - Stage 3 - run started
-  Stage 3 progress: 100%|██████████| 1.0/1.0 [00:43<00:00, 43.05s/it]                 
+  Stage 3 progress: 100%|██████████| 1.0/1.0 [00:43<00:00, 43.05s/it]
   2026-01-28 18:09:51,133 - inference_perf.loadgen.load_generator - INFO - Stage 3 - run completed
   Stage 4 progress:   0%|          | 0/1.0 [00:00<?, ?it/s]2026-01-28 18:09:52,134 - inference_perf.loadgen.load_generator - INFO - Stage 4 - run started
-  Stage 4 progress: 100%|██████████| 1.0/1.0 [01:12<00:00, 72.07s/it]                   
+  Stage 4 progress: 100%|██████████| 1.0/1.0 [01:12<00:00, 72.07s/it]
   2026-01-28 18:11:04,214 - inference_perf.loadgen.load_generator - INFO - Stage 4 - run completed
   2026-01-28 18:11:05,215 - inference_perf.loadgen.load_generator - INFO - Stage 5 - run started
-  Stage 5 progress: 100%|██████████| 1.0/1.0 [01:07<00:00, 67.08s/it]                  
+  Stage 5 progress: 100%|██████████| 1.0/1.0 [01:07<00:00, 67.08s/it]
   2026-01-28 18:12:12,296 - inference_perf.loadgen.load_generator - INFO - Stage 5 - run completed
   Stage 6 progress:   0%|          | 0/1.0 [00:00<?, ?it/s]2026-01-28 18:12:13,297 - inference_perf.loadgen.load_generator - INFO - Stage 6 - run started
   Stage 6 progress:  99%|█████████▊| 0.9866666666666667/1.0 [01:04<00:00, 28.03s/it]2026-01-28 18:13:18,367 - inference_perf.loadgen.load_generator - INFO - Stage 6 - run completed
-  Stage 6 progress: 100%|██████████| 1.0/1.0 [01:05<00:00, 65.06s/it]               
+  Stage 6 progress: 100%|██████████| 1.0/1.0 [01:05<00:00, 65.06s/it]
   2026-01-28 18:13:19,367 - inference_perf.loadgen.load_generator - INFO - Stage 7 - run started
   Stage 7 progress:  99%|█████████▊| 0.9866666666666667/1.0 [01:01<00:00, 26.38s/it]2026-01-28 18:14:21,444 - inference_perf.loadgen.load_generator - INFO - Stage 7 - run completed
-  Stage 7 progress: 100%|██████████| 1.0/1.0 [01:02<00:00, 62.07s/it]               
+  Stage 7 progress: 100%|██████████| 1.0/1.0 [01:02<00:00, 62.07s/it]
   Stage 8 progress:   0%|          | 0/1.0 [00:00<?, ?it/s]2026-01-28 18:14:22,445 - inference_perf.loadgen.load_generator - INFO - Stage 8 - run started
-  Stage 8 progress: 100%|██████████| 1.0/1.0 [00:59<00:00, 59.07s/it]                 
+  Stage 8 progress: 100%|██████████| 1.0/1.0 [00:59<00:00, 59.07s/it]
   2026-01-28 18:15:21,531 - inference_perf.loadgen.load_generator - INFO - Stage 8 - run completed
   2026-01-28 18:15:22,531 - inference_perf.loadgen.load_generator - INFO - Stage 9 - run started
-  Stage 9 progress: 100%|██████████| 1.0/1.0 [01:49<00:00, 109.11s/it]                 
+  Stage 9 progress: 100%|██████████| 1.0/1.0 [01:49<00:00, 109.11s/it]
   2026-01-28 18:17:11,663 - inference_perf.loadgen.load_generator - INFO - Stage 9 - run completed
   2026-01-28 18:17:12,665 - inference_perf.loadgen.load_generator - INFO - Stage 10 - run started
   Stage 10 progress: 100%|█████████▉| 0.9974160206718347/1.0 [01:54<00:00, 230.22s/it]2026-01-28 18:19:07,802 - inference_perf.loadgen.load_generator - INFO - Stage 10 - run completed
-  Stage 10 progress: 100%|██████████| 1.0/1.0 [01:55<00:00, 115.12s/it]               
+  Stage 10 progress: 100%|██████████| 1.0/1.0 [01:55<00:00, 115.12s/it]
   Stage 11 progress:   0%|          | 0/1.0 [00:00<?, ?it/s]2026-01-28 18:19:08,803 - inference_perf.loadgen.load_generator - INFO - Stage 11 - run started
   Stage 11 progress: 100%|█████████▉| 0.9980237154150198/1.0 [01:50<00:00, 131.50s/it]2026-01-28 18:20:59,920 - inference_perf.loadgen.load_generator - INFO - Stage 11 - run completed
-  Stage 11 progress: 100%|██████████| 1.0/1.0 [01:51<00:00, 111.10s/it]               
+  Stage 11 progress: 100%|██████████| 1.0/1.0 [01:51<00:00, 111.10s/it]
   2026-01-28 18:21:00,921 - inference_perf.loadgen.load_generator - INFO - Stage 12 - run started
   Stage 12 progress: 100%|█████████▉| 0.998639455782313/1.0 [01:46<00:00, 120.81s/it] 2026-01-28 18:22:48,084 - inference_perf.loadgen.load_generator - INFO - Stage 12 - run completed
-  Stage 12 progress: 100%|██████████| 1.0/1.0 [01:47<00:00, 107.13s/it]              
+  Stage 12 progress: 100%|██████████| 1.0/1.0 [01:47<00:00, 107.13s/it]
   2026-01-28 18:22:49,085 - inference_perf.loadgen.load_generator - INFO - Stage 13 - run started
   Stage 13 progress: 100%|██████████| 1.0/1.0 [01:49<00:00, 157.90s/it]               2026-01-28 18:24:38,230 - inference_perf.loadgen.load_generator - INFO - Stage 13 - run completed
   Stage 13 progress: 100%|██████████| 1.0/1.0 [01:49<00:00, 109.13s/it]
   2026-01-28 18:24:39,231 - inference_perf.loadgen.load_generator - INFO - Stage 14 - run started
   Stage 14 progress: 100%|█████████▉| 0.997979797979798/1.0 [01:45<00:00, 103.83s/it] 2026-01-28 18:26:26,763 - inference_perf.loadgen.load_generator - INFO - Stage 14 - run completed
-  Stage 14 progress: 100%|██████████| 1.0/1.0 [01:47<00:00, 107.13s/it]              
+  Stage 14 progress: 100%|██████████| 1.0/1.0 [01:47<00:00, 107.13s/it]
   2026-01-28 18:26:27,764 - inference_perf.loadgen.load_generator - INFO - Stage 15 - run started
-  Stage 15 progress: 100%|██████████| 1.0/1.0 [01:48<00:00, 108.14s/it]                  
+  Stage 15 progress: 100%|██████████| 1.0/1.0 [01:48<00:00, 108.14s/it]
   2026-01-28 18:28:15,925 - inference_perf.loadgen.load_generator - INFO - Stage 15 - run completed
   2026-01-28 18:28:16,926 - inference_perf.loadgen.load_generator - INFO - Stage 16 - run started
   Stage 16 progress: 100%|█████████▉| 0.9973333333333333/1.0 [01:49<00:00, 219.58s/it]2026-01-28 18:30:07,091 - inference_perf.loadgen.load_generator - INFO - Stage 16 - run completed
-  Stage 16 progress: 100%|██████████| 1.0/1.0 [01:50<00:00, 110.15s/it]               
+  Stage 16 progress: 100%|██████████| 1.0/1.0 [01:50<00:00, 110.15s/it]
   2026-01-28 18:30:08,098 - inference_perf.reportgen.base - INFO - Generating Reports...
   ...
   ```
 
 </details>
 
-
 ### Benchmarking Report
-  
-There is a report for each stage. 
+
+There is a report for each stage.
 <details>
 <summary><b><i>Click</i></b> here to view the report for `rate=10` from the above example</summary>
-  
+
   ```yaml
   metrics:
     latency:
@@ -556,14 +556,13 @@ There is a report for each stage.
 
 ### Comparing LLM-d scheduling to a simple kubernetes service
 
-We examine the overall behavior of the entire workload of the example above, using the `summary_lifecycle_metrics.json` produced by 
-`inference-perf`.   
+We examine the overall behavior of the entire workload of the example above, using the `summary_lifecycle_metrics.json` produced by
+`inference-perf`.
 For comparison, we ran the same workload on a k8s service endpoint that directly uses the vLLM pods as backends.
 
 - **Throughput**: Requests/sec **108.7%** ; Output tokens/sec **109.4%**
 - **Latency**: TTFT **-99.7%** ; E2E request latency **-42.8%**
 - **Per-token speed**: Time per output token **13.0%** (**slower**)
-
 
 | Metric (median)                                                   | k8s         | llmd        | Δ (llmd - k8s) | Δ% vs k8s |
 |:------------------------------------------------------------------|:------------|:------------|:---------------|:----------|

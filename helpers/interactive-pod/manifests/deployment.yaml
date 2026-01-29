@@ -8,7 +8,7 @@ spec:
   replicas: 1
   revisionHistoryLimit: 2
   strategy:
-    type: Recreate # don't run two interactive pods at once during updates
+    type: Recreate  # don't run two interactive pods at once during updates
   selector:
     matchLabels:
       app: interactive-pod

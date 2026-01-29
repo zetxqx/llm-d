@@ -119,7 +119,7 @@ releases:
       - ms-inference-scheduling/values.yaml
     {{- end }}
     set:
-    {{- if or (eq .Environment.Name "gke") (eq .Environment.Name "gke_tpu") }}  
+    {{- if or (eq .Environment.Name "gke") (eq .Environment.Name "gke_tpu") }}
       - name: "decode.monitoring.podmonitor.enabled"
         value: false
     {{- end }}

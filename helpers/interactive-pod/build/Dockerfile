@@ -1,6 +1,6 @@
 FROM python:3.12-slim AS base
 
-RUN apt update && apt install -y git \
+RUN apt-get update && apt-get install -y git \
     # requests
     openssl \
     # vegeta \
@@ -29,7 +29,7 @@ RUN apt update && apt install -y git \
     # cluster management + logs
     kubectl \
     less \
-    # specialty device management 
+    # specialty device management
     pciutils \
     rdma-core \
     ibverbs-providers \
@@ -60,6 +60,7 @@ WORKDIR /app
 
 COPY requirements.txt requirements.txt
 
+# hadolint ignore=DL3013
 RUN pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 RUN pip install -r requirements.txt
 
@@ -68,16 +69,16 @@ RUN git clone https://github.com/vllm-project/vllm.git && \
     cd vllm && git checkout ${VLLM_SHA} && \
     git config --system --add safe.directory /app/vllm
 
-ADD install-max-token-guidellm-hack.sh /app/install-max-token-guidellm-hack.sh
+COPY install-max-token-guidellm-hack.sh /app/install-max-token-guidellm-hack.sh
 RUN /app/install-max-token-guidellm-hack.sh && \
     rm /app/install-max-token-guidellm-hack.sh
 
-ADD prepare-inference.sh /app/prepare-inference.sh
+COPY prepare-inference.sh /app/prepare-inference.sh
 
 WORKDIR /app/vllm/benchmarks
 RUN wget https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/ShareGPT_V3_unfiltered_cleaned_split.json
 
-ADD README.md /app/README.md
+COPY README.md /app/README.md
 
 WORKDIR /app
 ENTRYPOINT ["/bin/bash"]

@@ -20,7 +20,7 @@ This document provides complete steps for deploying Intel XPU PD (Prefill-Decode
 
 * Create a namespace for installation.
 
-  ```
+  ```bash
   export NAMESPACE=llm-d-pd # or any other namespace (shorter names recommended)
   kubectl create namespace ${NAMESPACE}
   ```
@@ -204,7 +204,7 @@ helm list -n llm-d-pd
 
 Expected output:
 
-```
+```text
 NAME       NAMESPACE   REVISION   STATUS     CHART
 gaie-pd    llm-d-pd    1          deployed   inferencepool-v0.5.1
 infra-pd   llm-d-pd    1          deployed   llm-d-infra-v1.3.0
