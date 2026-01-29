@@ -188,6 +188,7 @@ jobs:
             type=gha,mode=max,scope=cuda-dev-builder-${{ matrix.os }}-${{ matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
+            CACHE_BUSTER=$(date)
             TARGETOS=${{ matrix.os }}
             TARGETPLATFORM=${{ matrix.platform }}
             BUILD_BASE_IMAGE_SUFFIX=${{ matrix.os == 'ubuntu' && 'ubuntu20.04' || matrix.base_image_suffix }}
@@ -213,6 +214,7 @@ jobs:
           push: true
           provenance: false
           build-args: |
+            CACHE_BUSTER=$(date)
             TARGETOS=${{ matrix.os }}
             TARGETPLATFORM=${{ matrix.platform }}
             BUILD_BASE_IMAGE_SUFFIX=${{ matrix.os == 'ubuntu' && 'ubuntu20.04' || matrix.base_image_suffix }}
@@ -505,6 +507,8 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: true
+          build-args: |
+            CACHE_BUSTER=$(date)
           cache-from: type=gha,scope=xpu-dev
           cache-to: type=gha,mode=max,scope=xpu-dev,oci-mediatypes=true,compression=zstd
           tags: |
@@ -590,6 +594,8 @@ jobs:
           provenance: true
           cache-from: type=gha,scope=cpu-dev
           cache-to: type=gha,mode=max,scope=cpu-dev,oci-mediatypes=true,compression=zstd
+          build-args:
+            CACHE_BUSTER=$(date)
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-cpu-dev:${{ steps.set-tag.outputs.tag }}
             ${{ steps.set-tag.outputs.pr_tag != '' && format('{0}/{1}-cpu-dev:{2}', env.REGISTRY, github.repository, steps.set-tag.outputs.pr_tag) || '' }}

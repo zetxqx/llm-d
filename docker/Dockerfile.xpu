@@ -79,6 +79,11 @@ CMD ["/bin/bash"]
 
 FROM vllm-base AS runtime
 
+ARG CACHE_BUSTER
+RUN if [ -n "${CACHE_BUSTER}" ]; then \
+        echo "$CACHE_BUSTER" > /tmp/builder-buster; \
+    fi;
+
 # install additional dependencies for openai api server
 # hadolint ignore=DL3013
 RUN --mount=type=cache,target=/root/.cache/pip \

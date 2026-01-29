@@ -265,6 +265,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ============================================================================
 FROM nvcr.io/nvidia/cuda:${CUDA_MAJOR}.${CUDA_MINOR}.${CUDA_PATCH}-devel-${FINAL_BASE_IMAGE_SUFFIX} AS runtime
 
+ARG CACHE_BUSTER
+RUN if [ -n "${CACHE_BUSTER}" ]; then \
+        echo "$CACHE_BUSTER" > /tmp/builder-buster; \
+    fi;
+
 ARG CUDA_MAJOR
 ARG CUDA_MINOR
 ARG CUDA_PATCH

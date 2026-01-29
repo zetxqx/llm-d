@@ -1,6 +1,11 @@
 # Using Ubuntu 22.04 to match upstream vLLM compilation environment with glibc 2.35 for now.
 FROM ubuntu:22.04 AS base-common
 
+ARG CACHE_BUSTER
+RUN if [ -n "${CACHE_BUSTER}" ]; then \
+        echo "$CACHE_BUSTER" > /tmp/builder-buster; \
+    fi;
+
 ARG PYTHON_VERSION=3.12
 ARG PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cpu/"
 ARG VLLM_REPO="https://github.com/vllm-project/vllm.git"
@@ -79,6 +84,11 @@ ENV LD_PRELOAD="/usr/lib/aarch64-linux-gnu/libtcmalloc_minimal.so.4"
 # Build vLLM wheel from source
 ###############################################################
 FROM base-${TARGETARCH} AS vllm-build
+
+ARG CACHE_BUSTER
+RUN if [ -n "${CACHE_BUSTER}" ]; then \
+        echo "$CACHE_BUSTER" > /tmp/builder-buster; \
+    fi;
 
 # Reduce parallel job from 32(vllm prev-0.13.0 pytorch2.8) to 6 due to vllm v0.14.0(pytorch2.9+)
 # resource requirements
