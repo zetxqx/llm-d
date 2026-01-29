@@ -27,7 +27,7 @@ if [ "${NVSHMEM_USE_GIT}" = "true" ]; then
     git clone "${NVSHMEM_REPO}" nvshmem_src && cd nvshmem_src
     git checkout -q "${NVSHMEM_VERSION}"
 else
-    wget "https://developer.download.nvidia.com/compute/redist/nvshmem/${NVSHMEM_VERSION}/source/nvshmem_src_cuda12-all-all-${NVSHMEM_VERSION}.tar.gz" \
+    wget "https://developer.download.nvidia.com/compute/redist/nvshmem/${NVSHMEM_VERSION}/source/nvshmem_src_cuda${CUDA_MAJOR}-all-all-${NVSHMEM_VERSION}.tar.gz" \
     -O "nvshmem_src_cuda${CUDA_MAJOR}.tar.gz"
     tar -xf "nvshmem_src_cuda${CUDA_MAJOR}.tar.gz"
     cd nvshmem_src
