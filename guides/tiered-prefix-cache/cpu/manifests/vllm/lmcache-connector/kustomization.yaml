@@ -10,25 +10,27 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: "lmcache/vllm-openai:v0.3.7"
+        value: quay.io/oroz/llm-d:cpu-offloading-12 # TODO:Update this to use the official llm-d image once https://github.com/llm-d/llm-d/issues/663 is resolved
       - op: replace
         path: /spec/template/spec/containers/0/command
         value:
-          - "/opt/venv/bin/vllm"
+          - "vllm"
       - op: replace
         path: /spec/template/spec/containers/0/args
         value:
-            - "serve"
-            - "Qwen/Qwen3-32B"
-            - "--tensor-parallel-size"
-            - "2"
-            - "--port"
-            - "8000"
-            - "--max-num-seq"
-            - "1024"
-            - "--kv-transfer-config"
-            - '{"kv_connector":"LMCacheConnectorV1","kv_role":"kv_both"}'
-            - "--enable_prefix_caching"
+          - "serve"
+          - "Qwen/Qwen3-32B"
+          - "--tensor-parallel-size"
+          - "2"
+          - "--port"
+          - "8000"
+          - "--max-num-seq"
+          - "1024"
+          - "--kv-transfer-config"
+          - '{"kv_connector":"LMCacheConnectorV1","kv_role":"kv_both"}'
+          - "--enable_prefix_caching"
+          - "--gpu-memory-utilization"
+          - "0.8"
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:
@@ -40,6 +42,11 @@ patches:
           name: PYTHONHASHSEED
           value: "123"
       - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: PROMETHEUS_MULTIPROC_DIR
+          value: "/tmp/lmcache_prometheus"
+      - op: add
         path: /spec/template/spec/containers/0/resources
         value:
           limits:
@@ -47,3 +54,19 @@ patches:
           requests:
             nvidia.com/gpu: 2
             memory: 400G
+
+# Mount an emptyDir to collect prometheus metrics
+  - target:
+      kind: Deployment
+      name: llm-d-model-server
+    patch: |-
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value:
+          name: lmcache-prometheus-metrics
+          emptyDir: {}
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value:
+          name: lmcache-prometheus-metrics
+          mountPath: /tmp/lmcache_prometheus
