@@ -118,7 +118,7 @@ prefill:
         - containerPort: 8000
           name: vllm
           protocol: TCP
-        - containerPort: 5557
+        - containerPort: 5600
           name: nixl
           protocol: TCP
       resources:
