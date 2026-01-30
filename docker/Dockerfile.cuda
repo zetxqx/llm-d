@@ -47,7 +47,7 @@ ARG NIXL_VERSION="0.8.0"
 ARG INFINISTORE_REPO="https://github.com/bytedance/InfiniStore.git"
 ARG INFINISTORE_VERSION="0.2.33"
 ARG LMCACHE_REPO="https://github.com/LMCache/LMCache.git"
-ARG LMCACHE_VERSION="v0.3.8"
+ARG LMCACHE_VERSION="v0.3.13"
 
 # Kernels
 ARG DEEPEP_REPO="https://github.com/smarterclayton/DeepEP"
@@ -146,9 +146,25 @@ ENV NVSHMEM_DIR="/opt/nvshmem-${NVSHMEM_VERSION}" \
     NIXL_PREFIX="/opt/nixl"
 
 ENV PATH="${NVSHMEM_DIR}/bin:${VIRTUAL_ENV}/bin:${PATH}" \
-    LIBRARY_PATH="${EFA_PREFIX}/lib:${EFA_PREFIX}/lib64:${UCX_PREFIX}/lib:${UCX_PREFIX}/lib64:${NVSHMEM_DIR}/lib:${NVSHMEM_DIR}/lib64:${CUDA_HOME}/lib64:/usr/local/lib:/usr/local/lib64" \
-    CPATH="${NVSHMEM_DIR}/include:/usr/include:/usr/local/include:${CUDA_HOME}/include:${CPATH}" \
-    PKG_CONFIG_PATH="${UCX_PREFIX}/lib/pkgconfig:${UCX_PREFIX}/lib64/pkgconfig:${EFA_PREFIX}/lib/pkgconfig:${EFA_PREFIX}/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/aarch64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig:${PKG_CONFIG_PATH}"
+    LIBRARY_PATH="${EFA_PREFIX}/lib:${EFA_PREFIX}/lib64:\
+${UCX_PREFIX}/lib:${UCX_PREFIX}/lib64:\
+${NVSHMEM_DIR}/lib:${NVSHMEM_DIR}/lib64:\
+${CUDA_HOME}/lib64/stubs:${CUDA_HOME}/lib64:\
+/usr/local/lib:/usr/local/lib64:\
+${LIBRARY_PATH}" \
+    CPATH="${NVSHMEM_DIR}/include:\
+${CUDA_HOME}/include:\
+/usr/local/include:\
+/usr/include:\
+${CPATH}" \
+    PKG_CONFIG_PATH="${UCX_PREFIX}/lib/pkgconfig:${UCX_PREFIX}/lib64/pkgconfig:\
+${EFA_PREFIX}/lib/pkgconfig:${EFA_PREFIX}/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/aarch64-linux-gnu/pkgconfig:\
+/usr/lib64/pkgconfig:/usr/lib/pkgconfig:\
+/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig:\
+/usr/share/pkgconfig:\
+${PKG_CONFIG_PATH}"
 
 # Install EFA
 ARG EFA_INSTALLER_VERSION
