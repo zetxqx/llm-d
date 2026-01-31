@@ -11,6 +11,9 @@ environments:
   gke: &GKE
     values:
       - ../prereq/gateway-provider/common-configurations/gke.yaml
+  gke_pd_rdma: &GKE
+    values:
+      - ../prereq/gateway-provider/common-configurations/gke.yaml
   gke_tpu: &GKETPU
     <<: *GKE
   xpu: &XPU
@@ -97,6 +100,8 @@ releases:
       - ms-pd/values_xpu.yaml
     {{- else if eq .Environment.Name "gke_tpu" }}
       - ms-pd/values_tpu.yaml
+    {{- else if eq .Environment.Name "gke_pd_rdma" }}
+      - ms-pd/values_gke_rdma.yaml
     {{- else }}
       - ms-pd/values.yaml
     {{- end }}
