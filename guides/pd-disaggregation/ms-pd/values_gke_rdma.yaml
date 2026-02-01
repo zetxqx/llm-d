@@ -40,11 +40,9 @@ decode:
         valueFrom:
           fieldRef:
             fieldPath: status.podIP
-      - name: VLLM_LOGGING_LEVEL
-        value: DEBUG
     ports:
       - containerPort: 8200
-        name: metrics
+        name: vllm
         protocol: TCP
     resources:
       limits:
@@ -113,10 +111,9 @@ prefill:
     args:
       - |
         source /usr/local/gib/scripts/set_nccl_env.sh
-        export LD_LIBRARY_PATH=/usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
-        vllm serve RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic \
+        vllm serve openai/gpt-oss-120b \
           --port 8000 \
-          --served-model-name "RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic" \
+          --served-model-name "openai/gpt-oss-120b" \
           --tensor-parallel-size 8 \
           --block-size 128 \
           --kv-transfer-config '{"kv_connector":"NixlConnector", "kv_role":"kv_both"}' \
@@ -128,8 +125,6 @@ prefill:
         valueFrom:
           fieldRef:
             fieldPath: status.podIP
-      - name: VLLM_LOGGING_LEVEL
-        value: DEBUG
     ports:
       - containerPort: 8000
         name: metrics
