@@ -189,6 +189,52 @@ For instructions on getting started making inference requests see [our docs](../
 
 **_NOTE:_** Compared to the other examples, this one takes anywhere between 7-10 minutes for the vllm API servers to startup so this might take longer before you can interact with this example.
 
+## Benchmarking
+
+### Overview
+We deployed the default wide-ep-lws user guide on GKE (`./manifests/modelserver/gke-a4`).
+
+* Provider: GKE
+* Prefill: 1 instance with EP=16
+* Decode: 1 instance with EP=16
+* 4 `a4-highgpu-8g` VMs, 32 GPUs
+
+We use the [inference-perf](https://github.com/kubernetes-sigs/inference-perf/tree/main) benchmark tool to generate random datasets with 1K input length and 1K output length. This benchmark targets batch use case and we aim to find the maximum throughput by sweeping from lower to higher request rates up to 250 QPS.
+
+### Run Benchmark
+
+1. Deploy the wide-ep-lws stack following the Installation steps above. Once the stack is ready, obtain the gateway IP: 
+
+```bash
+export GATEWAY_IP=$(kubectl get gateway/llm-d-inference-gateway -n ${NAMESPACE} -o jsonpath='{.status.addresses[0].value}')
+```
+
+The `GATEWAY_IP` environment variable will be used in the [benchmark template](../benchmark/wide_ep_template.yaml).
+
+2. Follow the [benchmark guide](../../guides/benchmark/README.md) to deploy the benchmark tool and analyze the benchmark results. Notably, select the corresponding benchmark template:
+
+```
+export BENCHMARK_TEMPLATE="${BENCH_TEMPLATE_DIR}"/wide_ep_template.yaml
+```
+
+### Results
+
+<img src="throughput_vs_qps.png" width="900" alt="Throughput vs QPS">
+<img src="throughput_vs_latency.png" width="300" alt="Throughput vs Latency">
+
+At request rate 250, we achieved the max throughput:
+
+```
+"throughput": {
+    "input_tokens_per_sec": 51218.79261732335,
+    "output_tokens_per_sec": 49783.58426326592,
+    "total_tokens_per_sec": 101002.37688058926,
+    "requests_per_sec": 50.02468992880545
+}
+```
+
+This equals to 3200 input tokens/s/GPU and 3100 output tokens/s/GPU.
+
 ## Cleanup
 
 To remove the deployment:
