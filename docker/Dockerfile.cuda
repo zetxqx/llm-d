@@ -438,6 +438,9 @@ ARG VLLM_PREBUILT
 # Dictates if we should pull precompiled binaries when installing vllm editably. These commits must be on main in vLLM.
 ARG VLLM_USE_PRECOMPILED
 
+# Optional: suppress verbose Python output during pip install
+ARG SUPPRESS_PYTHON_OUTPUT
+
 # A script that starts if users exec into the image with bash. It warns that vLLM is built with precompiled by default,
 # and so if they change the vLLM version or use their fork, it may no longer work due to the precompiled shared libraries
 # pulled from teh vLLM wheel index.
@@ -452,7 +455,7 @@ COPY scripts/warn-vllm-precompiled.sh /opt/
 COPY docker/scripts/cuda/runtime/install-vllm.sh /tmp/install-vllm.sh
 RUN --mount=type=cache,target=/var/cache/git \
     chmod +x /tmp/install-vllm.sh && \
-    /tmp/install-vllm.sh && \
+    SUPPRESS_PYTHON_OUTPUT="${SUPPRESS_PYTHON_OUTPUT}" /tmp/install-vllm.sh && \
     rm /tmp/install-vllm.sh
 
 # install OTEL packages to enable tracing
