@@ -4,6 +4,16 @@
 
 This guide demonstrates how to configure the inference scheduler to use the new precise prefix cache aware routing based on [vLLM KV-Events](https://github.com/vllm-project/vllm/issues/16669) data. Precise prefix cache aware routing pulls up-to-date prefix cache status from serving instances, eliminating the need for additional indexing services and increasing cache hit rate at high throughput.
 
+## Hardware Requirements
+
+This example out of the box uses 16 GPUs (8 replicas x 2 GPUs each) of any supported kind:
+
+- **NVIDIA GPUs**: Any NVIDIA GPU (support determined by the inferencing image used)
+- **Intel XPU/GPUs**: Intel Data Center GPU Max 1550 or compatible Intel XPU device
+
+**Using fewer accelerators**: Fewer accelerators can be used by modifying the `values.yaml` corresponding to your deployment. For example, to use only 2 GPUs with the default NVIDIA GPU deployment, update `replicas: 2` in [ms-kv-events/values.yaml](./ms-kv-events/values.yaml#L16-L21).
+
+
 ## Prerequisites
 
 - Have the [proper client tools installed on your local system](../prereq/client-setup/README.md) to use this guide.

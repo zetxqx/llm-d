@@ -8,11 +8,13 @@ This profile defaults to the approximate prefix cache aware scorer, which only o
 
 ## Hardware Requirements
 
-This example out of the box uses 16 GPUs (8 replicas x 2 GPUs each) of any supported kind, though fewer can be used so long as `values.yaml` is also updated accordingly:
+This example out of the box uses 16 GPUs (8 replicas x 2 GPUs each) of any supported kind:
 
 - **NVIDIA GPUs**: Any NVIDIA GPU (support determined by the inferencing image used)
 - **Intel XPU/GPUs**: Intel Data Center GPU Max 1550 or compatible Intel XPU device
 - **TPUs**: Google Cloud TPUs (when using GKE TPU configuration)
+
+**Using fewer accelerators**: Fewer accelerators can be used by modifying the `values.yaml` corresponding to your deployment. For example, to use only 2 GPUs with the default NVIDIA GPU deployment, update `replicas: 2` in [ms-inference-scheduling/values.yaml](./ms-inference-scheduling/values.yaml#L17-L22).
 
 **Alternative CPU Deployment**: For CPU-only deployment (no GPUs required), see the [Hardware Backends](#hardware-backends) section for CPU-specific deployment instructions. CPU deployment requires Intel/AMD CPUs with 64 cores and 64GB RAM per replica.
 
