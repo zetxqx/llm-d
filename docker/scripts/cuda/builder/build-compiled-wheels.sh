@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeu
+set -Eeux
 
 # builds compiled extension wheels (FlashInfer, DeepEP, DeepGEMM, pplx-kernels)
 #

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeu
+set -Eeux
 
 # installs base packages, EPEL/universe repos, and CUDA repository
 #

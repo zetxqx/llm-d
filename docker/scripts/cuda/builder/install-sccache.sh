@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeu
+set -Eeux
 
 # installs sccache binary from github releases and verifies connectivity
 #
