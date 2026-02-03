@@ -5,6 +5,12 @@ modelArtifacts:
   name: "Qwen/Qwen3-32B"
   size: 80Gi
   authSecretName: "llm-d-hf-token"
+  labels:
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "inference-scheduling"
+    llm-d.ai/accelerator-variant: "gpu"
+    llm-d.ai/accelerator-vendor: "nvidia"
+    llm-d.ai/model: "Qwen3-32B"
 
 routing:
   proxy:
@@ -28,7 +34,7 @@ decode:
       interval: "30s"
   containers:
     - name: "vllm"
-      image: ghcr.io/llm-d/llm-d-cuda:v0.4.0
+      image: ghcr.io/llm-d/llm-d-cuda-dev:sha-1483316
       modelCommand: vllmServe
       args:
         - "--disable-uvicorn-access-log"

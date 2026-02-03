@@ -3,7 +3,10 @@ kind: LeaderWorkerSet
 metadata:
   name: wide-ep-llm-d-decode
   labels:
-    llm-d.ai/inferenceServing: "true"
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "wide-ep-lws"
+    llm-d.ai/accelerator-variant: "gpu"
+    llm-d.ai/accelerator-vendor: "nvidia"
     llm-d.ai/model: DeepSeek-R1-0528
     llm-d.ai/role: decode
 spec:
@@ -13,7 +16,10 @@ spec:
     workerTemplate:
       metadata:
         labels:
-          llm-d.ai/inferenceServing: "true"
+          llm-d.ai/inference-serving: "true"
+          llm-d.ai/guide: "wide-ep-lws"
+          llm-d.ai/accelerator-variant: "gpu"
+          llm-d.ai/accelerator-vendor: "nvidia"
           llm-d.ai/model: DeepSeek-R1-0528
           llm-d.ai/role: decode
       spec:
@@ -27,7 +33,7 @@ spec:
               - --zap-log-level=1
               - --secure-proxy=false
               - --enable-prefiller-sampling
-            image: ghcr.io/llm-d/llm-d-routing-sidecar:v0.4.0
+            image: ghcr.io/llm-d/llm-d-routing-sidecar:v0.5.0
             imagePullPolicy: Always
             ports:
               - containerPort: 8000
@@ -49,7 +55,7 @@ spec:
             emptyDir: {}
         containers:
           - name: vllm
-            image: ghcr.io/llm-d/llm-d-cuda-dev:sha-24f07f2
+            image: ghcr.io/llm-d/llm-d-cuda-dev:sha-1483316
             securityContext:
               capabilities:
                 add:

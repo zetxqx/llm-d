@@ -2,14 +2,14 @@
 
 ## Overview
 
-This guide demonstrates how to deploy Llama-70B using vLLM's P/D disaggregation support with NIXL. This guide has been validated on:
+This guide demonstrates how to deploy GPT-OSS-120B using vLLM's P/D disaggregation support with NIXL. This guide has been validated on:
 
 * an 8xH200 cluster with InfiniBand networking
 * an 8xH200 cluster on GKE with RoCE networking
 
 > WARNING: We are still investigating and optimizing performance for other hardware and networking configurations
 
-In this example, we will demonstrate a deployment of `Llama-3.3-70B-Instruct-FP8` with:
+In this example, we will demonstrate a deployment of `openai/gpt-oss-120b` with:
 
 * 4 TP=1 Prefill Workers
 * 1 TP=4 Decode Worker
@@ -25,7 +25,7 @@ improving interactivity. For a given ITL goal, P/D disaggregation can benefit ov
 
 However, P/D disaggregation is not a target for all workloads. We suggest exploring P/D disaggregation for workloads with:
 
-* Large models (e.g. Llama-70B+, not Llama-8B)
+* Large models (e.g. gpt-oss-120b+, not gpt-oss-20B)
 * Longer input sequence lengths (e.g 10k ISL | 1k OSL, not 200 ISL | 200 OSL)
 * Sparse MoE architectures with opportunities for wide-EP
 
@@ -110,9 +110,9 @@ kubectl apply -f httproute.gke.yaml -n ${NAMESPACE}
 ```bash
 helm list -n ${NAMESPACE}
 NAME        NAMESPACE   REVISION    UPDATED                                 STATUS      CHART                       APP VERSION
-gaie-pd     llm-d-pd    1           2025-08-24 12:54:51.231537 -0700 PDT    deployed    inferencepool-v1.2.0        v1.2.0
+gaie-pd     llm-d-pd    1           2025-08-24 12:54:51.231537 -0700 PDT    deployed    inferencepool-v1.3.0        v1.3.0
 infra-pd    llm-d-pd    1           2025-08-24 12:54:46.983361 -0700 PDT    deployed    llm-d-infra-v1.3.6          v0.3.0
-ms-pd       llm-d-pd    1           2025-08-24 12:54:56.736873 -0700 PDT    deployed    llm-d-modelservice-v0.3.17  v0.3.0
+ms-pd       llm-d-pd    1           2025-08-24 12:54:56.736873 -0700 PDT    deployed    llm-d-modelservice-v0.4.5   v0.4.0
 ```
 
 * Out of the box with this example you should have the following resources:
@@ -169,7 +169,7 @@ Some examples in which you might want to do selective PD might include:
 * When the prompt is short enough that the amount of work split inference into prefill and decode phases, and then open a kv transfer between those two GPUs is greater than the amount of work to do both phases on the same decode inference worker.
 * When Prefill units are at full capacity.
 
-For information on this plugin, see our [`pd-profile-handler` docs in the inference-scheduler](https://github.com/llm-d/llm-d-inference-scheduler/blob/v0.3.0/docs/architecture.md?plain=1#L205-L210)
+For information on this plugin, see our [`pd-profile-handler` docs in the inference-scheduler](https://github.com/llm-d/llm-d-inference-scheduler/blob/v0.5.0/docs/architecture.md?plain=1#L205-L210)
 
 ## Benchmarking
 

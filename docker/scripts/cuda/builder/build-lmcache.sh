@@ -35,12 +35,16 @@ if [ "${USE_SCCACHE}" = "true" ]; then
     export PATH="$WRAPDIR:$PATH"
 fi
 git clone "${INFINISTORE_REPO}" infinistore && cd infinistore
+# pull tags for correct versioning on the wheel
+git fetch --tags --force
 git checkout -q "${INFINISTORE_VERSION}"
 uv build --wheel --no-build-isolation --out-dir /wheels
 cd ..
 rm -rf infinistore
 
 git clone "${LMCACHE_REPO}" lmcache && cd lmcache
+# pull tags for correct versioning on the wheel
+git fetch --tags --force
 git checkout -q "${LMCACHE_VERSION}"
 
 # Prevent torch from whining when using sccache and misdetecting the compiler

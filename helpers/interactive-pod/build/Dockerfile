@@ -64,7 +64,7 @@ COPY requirements.txt requirements.txt
 RUN pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 RUN pip install -r requirements.txt
 
-ARG VLLM_SHA=b6381ced9c52271f799a8348fcc98c5f40528cdf
+ARG VLLM_SHA="d7de043d55d1dd629554467e23874097e1c48993"
 RUN git clone https://github.com/vllm-project/vllm.git && \
     cd vllm && git checkout ${VLLM_SHA} && \
     git config --system --add safe.directory /app/vllm
@@ -74,6 +74,8 @@ RUN /app/install-max-token-guidellm-hack.sh && \
     rm /app/install-max-token-guidellm-hack.sh
 
 COPY prepare-inference.sh /app/prepare-inference.sh
+
+COPY run-guide-llm.sh /app/run-guide-llm.sh
 
 WORKDIR /app/vllm/benchmarks
 RUN wget https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/ShareGPT_V3_unfiltered_cleaned_split.json

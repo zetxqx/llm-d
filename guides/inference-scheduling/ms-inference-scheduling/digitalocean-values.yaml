@@ -8,6 +8,12 @@ modelArtifacts:
   name: "Qwen/Qwen3-0.6B"
   size: 8Gi
   authSecretName: ""  # No HF token required for this model
+  labels:
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "inference-scheduling"
+    llm-d.ai/accelerator-variant: "gpu"
+    llm-d.ai/accelerator-vendor: "nvidia"
+    llm-d.ai/model: "Qwen3-0.6B"
 
 routing:
   proxy:
@@ -22,7 +28,7 @@ decode:
   replicas: 2
   containers:
     - name: "vllm"
-      image: ghcr.io/llm-d/llm-d-cuda:v0.4.0
+      image: ghcr.io/llm-d/llm-d-cuda-dev:sha-1483316
       modelCommand: vllmServe  # Required by chart
       args:
         - "--gpu-memory-utilization"  # DigitalOcean GPU optimization

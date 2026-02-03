@@ -6,8 +6,11 @@ modelArtifacts:
   size: 20Gi
   authSecretName: "llm-d-hf-token"
   labels:
-    llm-d.ai/inferenceServing: "true"
-    llm-d.ai/model: ms-workload-autoscaler-llm-d-modelservice
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "workload-autoscaling"
+    llm-d.ai/accelerator-variant: "gpu"
+    llm-d.ai/accelerator-vendor: "nvidia"
+    llm-d.ai/model: ms-workload-autoscaler-llm-d-modelservice # exception to new model labeling pattern, used for scaling
 
 routing:
   servicePort: 8000
@@ -29,7 +32,7 @@ decode:
         release: llmd  # Required for Prometheus to discover this PodMonitor
   containers:
     - name: "vllm"
-      image: ghcr.io/llm-d/llm-d-cuda:v0.5.0
+      image: ghcr.io/llm-d/llm-d-cuda-dev:sha-1483316
       modelCommand: vllmServe
       args:
         - "--disable-uvicorn-access-log"

@@ -6,6 +6,11 @@ modelArtifacts:
   size: 100Gi
   authSecretName: "llm-d-hf-token"
   name: "meta-llama/Llama-3.2-3B-Instruct"
+  labels:
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "inference-scheduling"
+    llm-d.ai/hardware-vairant: "cpu"
+    llm-d.ai/model: "Qwen3-0.6B"
 
 accelerator:
   type: cpu

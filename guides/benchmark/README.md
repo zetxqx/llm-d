@@ -200,7 +200,7 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
   ------------------------------------------------------------
 
   ===> Mon Dec 29 18:14:20 IST 2025 - ./run_only.sh:63
-  ℹ️ Using endpoint_stack_name=inference-scheduling-Qwen3-0.6B on endpoint_namespace=dean-ns1 running model=Qwen/Qwen3-0.6B at endpoint_base_url=http://infra-inference-scheduling-inference-gateway-istio.dean-ns1.svc.cluster.local:80
+  ℹ️ Using endpoint_stack_name=inference-scheduling-Qwen3-32B on endpoint_namespace=dean-ns1 running model=Qwen/Qwen3-32B at endpoint_base_url=http://infra-inference-scheduling-inference-gateway-istio.dean-ns1.svc.cluster.local:80
   ------------------------------------------------------------
 
   ===> Mon Dec 29 18:14:20 IST 2025 - ./run_only.sh:63
@@ -220,7 +220,7 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
   ------------------------------------------------------------
 
   ===> Mon Dec 29 18:14:21 IST 2025 - ./run_only.sh:63
-  🔍 Verifying model Qwen/Qwen3-0.6B on endpoint http://infra-inference-scheduling-inference-gateway-istio.dean-ns1.svc.cluster.local:80/v1/completions using pod verify-model-1767024860
+  🔍 Verifying model Qwen/Qwen3-32B on endpoint http://infra-inference-scheduling-inference-gateway-istio.dean-ns1.svc.cluster.local:80/v1/completions using pod verify-model-1767024860
   ------------------------------------------------------------
   HTTP/1.1 200 OK
   x-envoy-upstream-service-time: 41
@@ -230,7 +230,7 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
   server: istio-envoy
   transfer-encoding: chunked
 
-  {"choices":[{"finish_reason":"length","index":0,"logprobs":null,"prompt_logprobs":null,"prompt_token_ids":null,"stop_reason":null,"text":"Question::HelloQuestion() {\n    question = \"Hello, World!\";\n    answer","token_ids":null}],"created":1767024864,"id":"cmpl-36726d69-84e3-48c6-98c1-8161ca9dce8a","kv_transfer_params":null,"model":"Qwen/Qwen3-0.6B","object":"text_completion","service_tier":null,"system_fingerprint":null,"usage":{"completion_tokens":16,"prompt_tokens":1,"prompt_tokens_details":null,"total_tokens":17}}
+  {"choices":[{"finish_reason":"length","index":0,"logprobs":null,"prompt_logprobs":null,"prompt_token_ids":null,"stop_reason":null,"text":"Question::HelloQuestion() {\n    question = \"Hello, World!\";\n    answer","token_ids":null}],"created":1767024864,"id":"cmpl-36726d69-84e3-48c6-98c1-8161ca9dce8a","kv_transfer_params":null,"model":"Qwen/Qwen3-32B","object":"text_completion","service_tier":null,"system_fingerprint":null,"usage":{"completion_tokens":16,"prompt_tokens":1,"prompt_tokens_details":null,"total_tokens":17}}
   ===> Mon Dec 29 18:14:26 IST 2025 - ./run_only.sh:63
   🔧 Preparing ConfigMap with workload profiles
   ------------------------------------------------------------
@@ -324,7 +324,7 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
         LLMDBENCH_HARNESS_NAME:                       guidellm
         LLMDBENCH_RUN_EXPERIMENT_RESULTS_DIR_PREFIX:  /requests
         LLMDBENCH_RUN_DATASET_DIR:                    /workspace
-        LLMDBENCH_HARNESS_STACK_NAME:                 inference-scheduling-Qwen3-0.6B
+        LLMDBENCH_HARNESS_STACK_NAME:                 inference-scheduling-Qwen3-32B
       Mounts:
         /requests from results (rw)
         /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-4jjd2 (ro)
@@ -372,11 +372,11 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
   ===> Mon Dec 29 18:14:36 IST 2025 - ./run_only.sh:63
   ℹ️ Running benchmark with workload rate_comparison
   ------------------------------------------------------------
-  LLMDBENCH_CONTROL_WORK_DIR=/requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-0.6B
+  LLMDBENCH_CONTROL_WORK_DIR=/requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-32B
   LLMDBENCH_HARNESS_GIT_BRANCH=adfa108ab1df6f2a1452d1037a71817a493303a8
   LLMDBENCH_HARNESS_GIT_REPO=https://github.com/vllm-project/guidellm.git
   LLMDBENCH_HARNESS_NAME=guidellm
-  LLMDBENCH_HARNESS_STACK_NAME=inference-scheduling-Qwen3-0.6B
+  LLMDBENCH_HARNESS_STACK_NAME=inference-scheduling-Qwen3-32B
   LLMDBENCH_MAGIC_ENVAR=harness_pod
   LLMDBENCH_RUN_DATASET_DIR=/workspace
   LLMDBENCH_RUN_EXPERIMENT_ANALYZER=guidellm-analyze_results.sh
@@ -387,16 +387,16 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
   LLMDBENCH_RUN_EXPERIMENT_HARNESS_WORKLOAD_AUTO=0
   LLMDBENCH_RUN_EXPERIMENT_HARNESS_WORKLOAD_NAME=rate_comparison.yaml
   LLMDBENCH_RUN_EXPERIMENT_ID=1767024860_rate_comparison
-  LLMDBENCH_RUN_EXPERIMENT_RESULTS_DIR=/requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-0.6B
+  LLMDBENCH_RUN_EXPERIMENT_RESULTS_DIR=/requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-32B
   LLMDBENCH_RUN_EXPERIMENT_RESULTS_DIR_PREFIX=/requests
-  LLMDBENCH_RUN_EXPERIMENT_RESULTS_DIR_SUFFIX=guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-0.6B
+  LLMDBENCH_RUN_EXPERIMENT_RESULTS_DIR_SUFFIX=guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-32B
   LLMDBENCH_RUN_WORKSPACE_DIR=/workspace
   Running harness: /usr/local/bin/guidellm-llm-d-benchmark.sh
-  Using experiment result dir: /requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-0.6B
-  ✔ OpenAIHTTPBackend backend validated with model Qwen/Qwen3-0.6B
+  Using experiment result dir: /requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-32B
+  ✔ OpenAIHTTPBackend backend validated with model Qwen/Qwen3-32B
     {'target':
     'http://infra-inference-scheduling-inference-gateway-istio.dean-ns1.svc.cluste
-    r.local:80', 'model': 'Qwen/Qwen3-0.6B', 'timeout': 60.0, 'http2': True,
+    r.local:80', 'model': 'Qwen/Qwen3-32B', 'timeout': 60.0, 'http2': True,
     'follow_redirects': True, 'verify': False, 'openai_paths': {'health':
     'health', 'models': 'v1/models', 'text_completions': 'v1/completions',
     'chat_completions': 'v1/chat/completions', 'audio_transcriptions':
@@ -405,7 +405,7 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
     'http://infra-inference-scheduling-inference-gateway-istio.dean-ns1.svc.cluste
     r.local:80/health'}}
   ✔ Processor resolved
-    Using model 'Qwen/Qwen3-0.6B' as processor
+    Using model 'Qwen/Qwen3-32B' as processor
   ✔ Request loader initialized with inf unique requests
     {'data': "[{'prompt_tokens': 50, 'output_tokens': 50}]", 'data_args': '[]',
     'data_samples': -1, 'preprocessors': ['GenerativeColumnMapper',
@@ -428,7 +428,7 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
   ✔ Output formats resolved
     {'json':
     "output_path=PosixPath('/requests/guidellm_1767024860_rate_comparison_inferenc
-    e-scheduling-Qwen3-0.6B/results.json')"}
+    e-scheduling-Qwen3-32B/results.json')"}
   ✔ Setup complete, starting benchmarks...
 
 
@@ -500,14 +500,14 @@ This example uses `guidellm` with a [`rate_comparison`](./inference_scheduling_g
 
   ✔ Benchmarking complete, generated 2 benchmark(s)
   …   json    :
-  /requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-0.6B/re
+  /requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-32B/re
   sults.json
   Harness completed successfully.
   Converting results.json
   Warning: LLMDBENCH_DEPLOY_METHODS undefined, cannot determine deployment method.Warning: LLMDBENCH_DEPLOY_METHODS undefined, cannot determine deployment method.Results data conversion completed successfully.
   Harness completed: /usr/local/bin/guidellm-llm-d-benchmark.sh
   Running analysis: /usr/local/bin/guidellm-analyze_results.sh
-  Done. Data is available at "/requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-0.6B"
+  Done. Data is available at "/requests/guidellm_1767024860_rate_comparison_inference-scheduling-Qwen3-32B"
 
   ===> Mon Dec 29 18:15:51 IST 2025 - ./run_only.sh:63
   ℹ️ Benchmark workload rate_comparison complete.
@@ -540,10 +540,10 @@ This example uses `inference-perf` with a [`shared-prefix`](./inference_scheduli
 After running With this template, the `/requests` folder will include a `<results-folder>` named
 
 ```bash
-inference-perf_1765442721_shared_prefix_synthetic_inference-scheduling-Qwen3-0.6B
+inference-perf_1765442721_shared_prefix_synthetic_inference-scheduling-Qwen3-32B
 ```
 
-The name indicates `inference-perf` was used as harness, the workload was `shared_prefix_synthetic` and the user-defined stack name was `inference-scheduling-Qwen3-0.6B`.
+The name indicates `inference-perf` was used as harness, the workload was `shared_prefix_synthetic` and the user-defined stack name was `inference-scheduling-Qwen3-32B`.
 
 ### Workload file
 
@@ -575,11 +575,11 @@ The harness workload configuration file, as was used, is copied into the the exp
     streaming: true
   server:
     type: vllm
-    model_name: Qwen/Qwen3-0.6B
+    model_name: Qwen/Qwen3-32B
     base_url: http://infra-inference-scheduling-inference-gateway.dpikus-ns.svc.cluster.local:80
     ignore_eos: true
   tokenizer:
-    pretrained_model_name_or_path: Qwen/Qwen3-0.6B
+    pretrained_model_name_or_path: Qwen/Qwen3-32B
   data:
     type: shared_prefix
     shared_prefix:
@@ -595,7 +595,7 @@ The harness workload configuration file, as was used, is copied into the the exp
       per_request: true
   storage:
     local_storage:
-      path: /requests/inference-perf_1765442721_shared_prefix_synthetic_inference-scheduling-Qwen3-0.6B
+      path: /requests/inference-perf_1765442721_shared_prefix_synthetic_inference-scheduling-Qwen3-32B
   ```
 
 </details>
@@ -827,8 +827,8 @@ These are the properties of the stack (`envsubst` would replace `NAMESPACE` and 
 
   ```yaml
   endpoint:
-    stack_name: &stack_name inference-scheduling-Qwen3-0.6B  # user defined name for the stack (results prefix)
-    model: &model Qwen/Qwen3-0.6B                      # Exact HuggingFace model name. Must match stack deployed.
+    stack_name: &stack_name inference-scheduling-Qwen3-32B  # user defined name for the stack (results prefix)
+    model: &model Qwen/Qwen3-32B                      # Exact HuggingFace model name. Must match stack deployed.
     namespace: &namespace $NAMESPACE
     base_url: &url http://${GATEWAY_SVC}.${NAMESPACE}.svc.cluster.local:80  # Base URL of inference endpoint
     hf_token_secret: llm-d-hf-token   # The name of secret that contains the HF token of the stack

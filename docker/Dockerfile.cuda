@@ -34,7 +34,7 @@ ARG GDRCOPY_REPO="https://github.com/NVIDIA/gdrcopy.git"
 ARG GDRCOPY_VERSION="v2.5.1"
 
 ARG UCX_REPO="https://github.com/openucx/ucx.git"
-ARG UCX_VERSION="v1.19.0"
+ARG UCX_VERSION="1.20.0"
 
 ARG NVSHMEM_USE_GIT="true"
 ARG NVSHMEM_REPO="https://github.com/NVIDIA/nvshmem.git"
@@ -42,7 +42,7 @@ ARG NVSHMEM_VERSION="v3.4.5-0"
 
 ARG BUILD_NIXL_FROM_SOURCE="true"
 ARG NIXL_REPO="https://github.com/ai-dynamo/nixl.git"
-ARG NIXL_VERSION="0.8.0"
+ARG NIXL_VERSION="0.9.0"
 
 ARG INFINISTORE_REPO="https://github.com/bytedance/InfiniStore.git"
 ARG INFINISTORE_VERSION="0.2.33"
@@ -61,8 +61,8 @@ ARG FLASHINFER_VERSION="v0.5.3"
 
 # vLLM build settings
 ARG VLLM_REPO="https://github.com/vllm-project/vllm.git"
-ARG VLLM_COMMIT_SHA="72506c98349d6bcd32b4e33eec7b5513453c1502"
-ARG VLLM_PRECOMPILED_WHEEL_COMMIT="72506c98349d6bcd32b4e33eec7b5513453c1502"
+ARG VLLM_COMMIT_SHA="d7de043d55d1dd629554467e23874097e1c48993"
+ARG VLLM_PRECOMPILED_WHEEL_COMMIT="d7de043d55d1dd629554467e23874097e1c48993"
 ARG VLLM_PREBUILT=0
 ARG VLLM_USE_PRECOMPILED=1
 
@@ -456,8 +456,7 @@ COPY scripts/warn-vllm-precompiled.sh /opt/
     # 2) install vllm from a wheel on the vllm wheels index - prod option, no flexbility
 COPY docker/scripts/cuda/runtime/install-vllm.sh /tmp/install-vllm.sh
 RUN --mount=type=cache,target=/var/cache/git \
-    chmod +x /tmp/install-vllm.sh && \
-    SUPPRESS_PYTHON_OUTPUT="${SUPPRESS_PYTHON_OUTPUT}" /tmp/install-vllm.sh && \
+    /tmp/install-vllm.sh && \
     rm /tmp/install-vllm.sh
 
 # install OTEL packages to enable tracing

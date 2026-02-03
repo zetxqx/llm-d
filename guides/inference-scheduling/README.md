@@ -160,7 +160,7 @@ helm list -n ${NAMESPACE}
 NAME                        NAMESPACE                   REVISION  UPDATED                                 STATUS      CHART                       APP VERSION
 gaie-inference-scheduling   llm-d-inference-scheduler   1         2026-01-26 15:11:26.506854 +0200 IST    deployed    inferencepool-v1.3.0        v1.3.0
 infra-inference-scheduling  llm-d-inference-scheduler   1         2026-01-26 15:11:21.008163 +0200 IST    deployed    llm-d-infra-v1.3.6          v0.3.0
-ms-inference-scheduling     llm-d-inference-scheduler   1         2026-01-26 15:11:39.385111 +0200 IST    deployed    llm-d-modelservice-v0.3.17  v0.3.0
+ms-inference-scheduling     llm-d-inference-scheduler   1         2026-01-26 15:11:39.385111 +0200 IST    deployed    llm-d-modelservice-v0.4.5   v0.4.0
 ```
 
 - Out of the box with this example you should have the following resources:
@@ -204,8 +204,8 @@ replicaset.apps/ms-inference-scheduling-llm-d-modelservice-decode-866b7c8768    
 ```bash
 helm list -n ${NAMESPACE}
 NAME                        NAMESPACE                 REVISION  UPDATED                               STATUS    CHART                       APP VERSION
-gaie-inference-scheduling   llm-d-inference-scheduler 1         2025-08-24 11:24:53.231918 -0700 PDT  deployed  inferencepool-v1.2.0        v1.2.0
-ms-inference-scheduling     llm-d-inference-scheduler 1         2025-08-24 11:24:58.360173 -0700 PDT  deployed  llm-d-modelservice-v0.3.17  v0.3.0
+gaie-inference-scheduling   llm-d-inference-scheduler 1         2025-08-24 11:24:53.231918 -0700 PDT  deployed  inferencepool-v1.3.0        v1.3.0
+ms-inference-scheduling     llm-d-inference-scheduler 1         2025-08-24 11:24:58.360173 -0700 PDT  deployed  llm-d-modelservice-v0.4.5   v0.4.0
 ```
 
 - Out of the box with this example you should have the following resources:

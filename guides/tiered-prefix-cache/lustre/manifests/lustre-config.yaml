@@ -34,7 +34,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      llm-d.ai/inferenceServing: "true"
+      llm-d.ai/inference-serving: "true"
   endpoints:
   - port: 8000
     interval: 15s

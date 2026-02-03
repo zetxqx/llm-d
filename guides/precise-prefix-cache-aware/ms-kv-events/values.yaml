@@ -5,6 +5,13 @@ modelArtifacts:
   name: "Qwen/Qwen3-32B"
   size: 80Gi
   authSecretName: "llm-d-hf-token"
+  labels:
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "precise-prefix-cache-aware"
+    llm-d.ai/accelerator-variant: "gpu"
+    llm-d.ai/accelerator-vendor: "nvidia"
+    llm-d.ai/model: "Qwen3-32B"
+
 
 routing:
   proxy:

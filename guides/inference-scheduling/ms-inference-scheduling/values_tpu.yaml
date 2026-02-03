@@ -1,4 +1,3 @@
-# This values.yaml file creates the resources for Qwen/Qwen3-0.6B
 multinode: false
 
 modelArtifacts:
@@ -6,6 +5,12 @@ modelArtifacts:
   size: 700Gi
   authSecretName: "llm-d-hf-token"
   name: Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
+  labels:
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "inference-scheduling"
+    llm-d.ai/hardware-vairant: "tpu"
+    llm-d.ai/hardware-vendor: "goolge"
+    llm-d.ai/model: Qwen3-Coder-480B-A35B-Instruct-FP8
 
 routing:
   proxy:

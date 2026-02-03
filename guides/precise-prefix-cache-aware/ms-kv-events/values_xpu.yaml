@@ -8,6 +8,12 @@ modelArtifacts:
   uri: "hf://Qwen/Qwen3-0.6B"
   size: 10Gi
   authSecretName: "llm-d-hf-token"
+  labels:
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "precise-prefix-cache-aware"
+    llm-d.ai/accelerator-variant: "xpu"
+    llm-d.ai/accelerator-vendor: "intel"
+    llm-d.ai/model: "Qwen3-0.6B"
 
 dra:
   enabled: true
