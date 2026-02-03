@@ -32,7 +32,7 @@ decode:
       interval: "30s"
   containers:
     - name: "vllm"
-      image: ghcr.io/llm-d/llm-d-cuda-dev:sha-1483316
+      image: ghcr.io/llm-d/llm-d-cuda:v0.5.0
       modelCommand: vllmServe
       args:
         - "--block-size"
@@ -50,6 +50,9 @@ decode:
       ports:
         - containerPort: 8200
           name: vllm
+          protocol: TCP
+        - containerPort: 5600
+          name: nixl
           protocol: TCP
       resources:
         limits:
@@ -115,7 +118,7 @@ prefill:
       interval: "30s"
   containers:
     - name: "vllm"
-      image: ghcr.io/llm-d/llm-d-cuda-dev:sha-1483316
+      image: ghcr.io/llm-d/llm-d-cuda:v0.5.0
       modelCommand: vllmServe
       args:
         - "--block-size"

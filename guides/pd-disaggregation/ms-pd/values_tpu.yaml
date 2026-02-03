@@ -40,7 +40,7 @@ decode:
       interval: "30s"
   containers:
     - name: "vllm"
-      image: vllm/vllm-tpu:v0.13.2
+      image: vllm/vllm-tpu:v0.13.2-ironwood
       modelCommand: vllmServe
       args:
         # Keep tensor-parallelism as the first set of arguments

@@ -37,7 +37,7 @@ decode:
       interval: "30s"
   containers:
     - name: "vllm"
-      image: "vllm/vllm-tpu:nightly-ironwood-20260113-8424c78-df7e127"
+      image: "vllm/vllm-tpu:v0.13.2-ironwood"
       modelCommand: vllmServe
       args:
         - --data-parallel-size=1

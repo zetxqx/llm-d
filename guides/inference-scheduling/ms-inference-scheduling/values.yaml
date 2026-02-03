@@ -34,7 +34,7 @@ decode:
       interval: "30s"
   containers:
     - name: "vllm"
-      image: ghcr.io/llm-d/llm-d-cuda-dev:sha-1483316
+      image: ghcr.io/llm-d/llm-d-cuda:v0.5.0
       modelCommand: vllmServe
       args:
         - "--disable-uvicorn-access-log"

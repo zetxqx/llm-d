@@ -34,7 +34,7 @@ decode:
       interval: "30s"
   containers:
     - name: "vllm"
-      image: vllm/vllm-openai:v0.14.1-cu130
+      image: ghcr.io/llm-d/llm-d-cuda:v0.5.0
       modelCommand: vllmServe
       args:
         - "--block-size=64"
