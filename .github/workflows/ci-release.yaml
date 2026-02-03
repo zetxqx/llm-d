@@ -71,15 +71,46 @@ jobs:
             type=raw,value=${{ github.ref_name }},enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
             type=raw,value=latest,enable=true
 
-      - name: Build & Push
+      - name: Build the builder image layer
         id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile.cuda
           platforms: ${{ matrix.platform }}
+          target: builder
+          push: false
+          build-args: |
+            TARGETOS=${{ matrix.os }}
+            BUILD_BASE_IMAGE_SUFFIX=${{ matrix.os == 'ubuntu' && 'ubuntu20.04' || matrix.base_image_suffix }}
+            FINAL_BASE_IMAGE_SUFFIX=${{ matrix.base_image_suffix }}
+            CACHE_BUSTER=${{ github.ref_name }}-${{ github.run_id }}
+          cache-from: >-
+            type=gha,scope=cuda-${{ matrix.os }}-builder-${{
+            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
+          cache-to: >-
+            type=gha,mode=max,scope=cuda-${{ matrix.os }}-builder-${{
+            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
+          labels: ${{ steps.meta.outputs.labels }}
+          github-token: ${{ secrets.GHCR_TOKEN }}
+          secrets: |
+            aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID_S3_BUCKET_ONLY }}
+            aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY_S3_BUCKET_ONLY }}
+            subman_org=${{ secrets.SUBMAN_ORG }}
+            subman_activation_key=${{ secrets.SUBMAN_ACTIVATION_KEY }}
+        env:
+          DOCKER_BUILDKIT: "1"
+          BUILDKIT_PROGRESS: "plain"
+
+      - name: Build the final image layer
+        id: build-image-final-layer
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.cuda
+          platforms: ${{ matrix.platform }}
+          target: builder
           push: true
-          provenance: false
           build-args: |
             TARGETOS=${{ matrix.os }}
             BUILD_BASE_IMAGE_SUFFIX=${{ matrix.os == 'ubuntu' && 'ubuntu20.04' || matrix.base_image_suffix }}
@@ -96,12 +127,18 @@ jobs:
             type=image,name=${{ env.REGISTRY }}/${{ github.repository }}-cuda${{ matrix.image_suffix }},
             push-by-digest=true,name-canonical=true,push=true
           github-token: ${{ secrets.GHCR_TOKEN }}
-          secrets: |
-            aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID_S3_BUCKET_ONLY }}
-            aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY_S3_BUCKET_ONLY }}
         env:
           DOCKER_BUILDKIT: "1"
           BUILDKIT_PROGRESS: "plain"
+
+      - name: Verify remote digest exists
+        if: ${{ steps.build-image-final-layer.outputs.digest != '' }}
+        run: |
+          set -x
+          digest="${{ steps.build-image-final-layer.outputs.digest }}"
+          ref="${{ env.REGISTRY }}/${{ github.repository }}-cuda${{ matrix.image_suffix }}@${digest}"
+          echo "Checking remote ref: $ref"
+          docker buildx imagetools inspect "$ref" >/dev/null
 
       - name: Export digest
         run: |
