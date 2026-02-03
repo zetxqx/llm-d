@@ -9,16 +9,16 @@ dra:
   type: intel
 
 modelArtifacts:
-  uri: "hf://deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+  uri: "hf://Qwen/Qwen3-0.6B"
   size: 10Gi  # Smaller model size for Intel XPU
   authSecretName: "llm-d-hf-token"
-  name: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+  name: "Qwen/Qwen3-0.6B"
   labels:
     llm-d.ai/inference-serving: "true"
     llm-d.ai/guide: "pd-disaggregation"
     llm-d.ai/hardware-vairant: "xpu"
     llm-d.ai/hardware-vendor: "intel"
-    llm-d.ai/model: "DeepSeek-R1-Distill-Qwen-1.5B"
+    llm-d.ai/model: "Qwen/Qwen3-0.6B"
 
 routing:
   servicePort: 8000
@@ -44,7 +44,7 @@ decode:
       modelCommand: vllmServe
       args:
         - "--block-size"
-        - "128"
+        - "64"
         - "--kv-transfer-config"
         - '{"kv_connector":"NixlConnector", "kv_role":"kv_both", "kv_buffer_device":"cpu"}'
         - "--disable-log-requests"
@@ -62,6 +62,15 @@ decode:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
+        - name: VLLM_NIXL_SIDE_CHANNEL_PORT
+          value: "5600"
+        # Intel XPU environment variables (required after switching to DRA)
+        - name: VLLM_USE_V1
+          value: "1"
+        - name: TORCH_LLM_ALLREDUCE
+          value: "1"
+        - name: VLLM_WORKER_MULTIPROC_METHOD
+          value: "spawn"
       ports:
         - containerPort: 8200
           name: vllm
@@ -80,13 +89,43 @@ decode:
           # note: XPU resources get controlled by parallelism + accelerators above
       mountModelVolume: true
       volumeMounts:
-        - name: dshm
+        - name: metrics-volume
+          mountPath: /.config
+        - name: shm
           mountPath: /dev/shm
+        - name: torch-compile-cache
+          mountPath: /.cache
+      startupProbe:
+        httpGet:
+          path: /v1/models
+          port: vllm
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 60
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: vllm
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 20
+      readinessProbe:
+        httpGet:
+          path: /v1/models
+          port: vllm
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
   volumes:
-    - name: dshm
+    - name: metrics-volume
+      emptyDir: {}
+    - name: shm
       emptyDir:
         medium: Memory
-        sizeLimit: 4Gi
+        sizeLimit: "16Gi"
+    - name: torch-compile-cache
+      emptyDir: {}
 
 prefill:
   parallelism:
@@ -105,10 +144,9 @@ prefill:
       modelCommand: vllmServe
       args:
         - "--block-size"
-        - "128"
+        - "64"
         - "--kv-transfer-config"
         - '{"kv_connector":"NixlConnector", "kv_role":"kv_both", "kv_buffer_device":"cpu"}'
-        - "--disable-log-requests"
         - "--disable-uvicorn-access-log"
         - "--max-model-len"
         - "32000"
@@ -123,6 +161,15 @@ prefill:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
+        - name: VLLM_NIXL_SIDE_CHANNEL_PORT
+          value: "5600"
+        # Intel XPU environment variables (required after switching to DRA)
+        - name: VLLM_USE_V1
+          value: "1"
+        - name: TORCH_LLM_ALLREDUCE
+          value: "1"
+        - name: VLLM_WORKER_MULTIPROC_METHOD
+          value: "spawn"
       ports:
         - containerPort: 8000
           name: vllm
@@ -141,10 +188,40 @@ prefill:
           # note: XPU resources get controlled by parallelism + dra above
       mountModelVolume: true
       volumeMounts:
-        - name: dshm
+        - name: metrics-volume
+          mountPath: /.config
+        - name: shm
           mountPath: /dev/shm
+        - name: torch-compile-cache
+          mountPath: /.cache
+      startupProbe:
+        httpGet:
+          path: /v1/models
+          port: vllm
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 60
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: vllm
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 20
+      readinessProbe:
+        httpGet:
+          path: /v1/models
+          port: vllm
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
   volumes:
-    - name: dshm
+    - name: metrics-volume
+      emptyDir: {}
+    - name: shm
       emptyDir:
         medium: Memory
-        sizeLimit: 4Gi
+        sizeLimit: "16Gi"
+    - name: torch-compile-cache
+      emptyDir: {}
