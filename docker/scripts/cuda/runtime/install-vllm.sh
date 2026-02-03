@@ -3,6 +3,9 @@ set -Eeu
 
 # installs vllm and dependencies in runtime stage
 #
+# Optional environment variabls:
+# - SUPPRESS_PYTHON_OUTPUT: If we should suppres vLLM installation logs
+: "${SUPPRESS_PYTHON_OUTPUT:=}"
 # Required environment variables:
 # - VLLM_REPO: vLLM git repository URL
 # - VLLM_COMMIT_SHA: vLLM commit SHA to checkout

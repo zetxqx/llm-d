@@ -44,6 +44,7 @@ rm -rf flashinfer
 # build DeepEP wheel
 git clone "${DEEPEP_REPO}" deepep
 cd deepep
+git fetch origin "${DEEPEP_VERSION}" # Workaround for claytons floating commit
 git checkout -q "${DEEPEP_VERSION}"
 uv build --wheel --no-build-isolation --out-dir /wheels
 cd ..
