@@ -4,9 +4,9 @@
 multinode: false
 
 # Configure accelerator type for Intel XPU via DRA
-dra:
-  enabled: true
-  type: intel
+accelerator:
+  type: intel-i915
+  dra: true
 
 modelArtifacts:
   uri: "hf://Qwen/Qwen3-0.6B"
@@ -16,9 +16,9 @@ modelArtifacts:
   labels:
     llm-d.ai/inference-serving: "true"
     llm-d.ai/guide: "pd-disaggregation"
-    llm-d.ai/hardware-vairant: "xpu"
+    llm-d.ai/hardware-variant: "xpu"
     llm-d.ai/hardware-vendor: "intel"
-    llm-d.ai/model: "Qwen/Qwen3-0.6B"
+    llm-d.ai/model: "Qwen3-0.6B"
 
 routing:
   servicePort: 8000

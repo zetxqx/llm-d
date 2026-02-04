@@ -9,14 +9,14 @@ modelArtifacts:
   labels:
     llm-d.ai/inference-serving: "true"
     llm-d.ai/guide: "inference-scheduling"
-    llm-d.ai/hardware-vairant: "xpu"
+    llm-d.ai/hardware-variant: "xpu"
     llm-d.ai/accelerator-vendor: "intel"
     llm-d.ai/model: "Qwen3-0.6B"
 
 # Configure accelerator type for Intel XPU via DRA
-dra:
-  enabled: true
-  type: intel
+accelerator:
+  type: intel-i915
+  dra: true
 
 routing:
   proxy:

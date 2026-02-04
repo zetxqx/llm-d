@@ -120,6 +120,22 @@ helmfile apply -e gke_tpu  -n ${NAMESPACE} # targets GKE externally managed as g
 helmfile apply -e cpu  -n ${NAMESPACE} # targets istio as gateway provider with CPU hardware
 ```
 
+##### Intel XPU Configuration
+
+For Intel XPU deployments, the `values_xpu.yaml` uses Dynamic Resource Allocation (DRA). By default it targets Intel Data Center GPU Max 1550 (i915 driver). For Intel BMG GPUs (Battlemage G21), update the accelerator type in `ms-inference-scheduling/values_xpu.yaml`:
+
+```yaml
+# For Intel Data Center GPU Max 1550 (default):
+accelerator:
+  type: intel-i915
+  dra: true
+
+# For Intel BMG GPU (Battlemage G21):
+accelerator:
+  type: intel-xe
+  dra: true
+```
+
 ##### CPU Inferencing
 
 This case expects using 4th Gen Intel Xeon processors (Sapphire Rapids) or later.

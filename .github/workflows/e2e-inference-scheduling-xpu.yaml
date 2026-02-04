@@ -3,6 +3,12 @@ name: XPU Inference Scheduling Test
 on:
   schedule:
     - cron: '0 10 * * *'  # 3AM PST (10:00 UTC)
+  pull_request:
+    paths:
+      - 'guides/inference-scheduling/**/values_xpu.yaml'
+      - 'guides/inference-scheduling/helmfile.yaml.gotmpl'
+      - 'guides/inference-scheduling/httproute.yaml'
+      - '.github/workflows/e2e-inference-scheduling-xpu.yaml'
   workflow_dispatch:
     inputs:
       pr_or_branch:

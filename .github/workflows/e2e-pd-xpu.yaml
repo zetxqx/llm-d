@@ -3,6 +3,12 @@ name: XPU PD Test
 on:
   schedule:
     - cron: '0 10 * * *'  # 3AM PST (10:00 UTC)
+  pull_request:
+    paths:
+      - 'guides/pd-disaggregation/**/values_xpu.yaml'
+      - 'guides/pd-disaggregation/helmfile.yaml.gotmpl'
+      - 'guides/pd-disaggregation/httproute.yaml'
+      - '.github/workflows/e2e-pd-xpu.yaml'
   workflow_dispatch:
     inputs:
       pr_or_branch:

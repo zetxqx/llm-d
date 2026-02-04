@@ -140,39 +140,25 @@ helmfile apply -f istio.helmfile.yaml --selector kind=gateway-control-plane
 
 ## Step 5: Deploy Intel XPU PD Disaggregation
 
-⚠️ **Important - For Intel BMG GPU Users**: Before running `helmfile apply`, you must update the GPU resource type in `ms-pd/values_xpu.yaml`:
+⚠️ **Important - For Intel BMG GPU Users**: Before running `helmfile apply`, you must update the accelerator type in `ms-pd/values_xpu.yaml`:
 
 ```yaml
 # Edit ms-pd/values_xpu.yaml
+# For Intel Data Center GPU Max 1550 (i915 driver):
 accelerator:
-  type: intel
-  resources:
-    intel: "gpu.intel.com/xe"  # Add gpu.intel.com/xe
+  type: intel-i915
+  dra: true
 
-# Also update decode and prefill resource specifications:
-decode:
-  containers:
-  - name: "vllm"
-    resources:
-      limits:
-        gpu.intel.com/xe: 1  # Change from gpu.intel.com/i915 to gpu.intel.com/xe
-      requests:
-        gpu.intel.com/xe: 1  # Change from gpu.intel.com/i915 to gpu.intel.com/xe
-
-prefill:
-  containers:
-  - name: "vllm"
-    resources:
-      limits:
-        gpu.intel.com/xe: 1  # Change from gpu.intel.com/i915 to gpu.intel.com/xe
-      requests:
-        gpu.intel.com/xe: 1  # Change from gpu.intel.com/i915 to gpu.intel.com/xe
+# For Intel BMG GPU (Battlemage G21, Xe driver):
+accelerator:
+  type: intel-xe
+  dra: true
 ```
 
-**Resource Requirements by GPU Type:**
+**Accelerator Type by GPU:**
 
-* **Intel Data Center GPU Max 1550**: Use `gpu.intel.com/i915`
-* **Intel BMG GPU (Battlemage G21)**: Use `gpu.intel.com/xe`
+* **Intel Data Center GPU Max 1550**: Use `type: intel-i915` (maps to `gpu.intel.com/i915`)
+* **Intel BMG GPU (Battlemage G21)**: Use `type: intel-xe` (maps to `gpu.intel.com/xe`)
 
 ```shell
 # Navigate to PD disaggregation guide directory
