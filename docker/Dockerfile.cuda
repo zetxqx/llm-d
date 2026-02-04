@@ -141,7 +141,7 @@ RUN --mount=type=secret,id=aws_access_key_id \
 RUN export UV_INSTALL_DIR=/usr/local/bin && \
     curl -LsSf https://astral.sh/uv/install.sh | sh && \
     uv venv /opt/vllm --python ${PYTHON_VERSION} && \
-    uv pip install --no-cache -U wheel meson-python ninja pybind11 build
+    uv pip install --no-cache -U wheel meson-python ninja pybind11 build setuptools setuptools-scm
 
 ENV NVSHMEM_DIR="/opt/nvshmem-${NVSHMEM_VERSION}" \
     # EFA_PREFIX="/opt/amazon/efa" \ # temporarily remove EFA
