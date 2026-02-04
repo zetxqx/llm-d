@@ -18,8 +18,6 @@ inferenceExtension:
     # Prometheus ServiceMonitor will be created when enabled for EPP metrics collection
     prometheus:
       enabled: false
-    gke:
-      enable: false
   pluginsConfigFile: "custom-plugins.yaml"
   pluginsCustomConfig:
     custom-plugins.yaml: |

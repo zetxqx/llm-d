@@ -9,8 +9,6 @@ inferenceExtension:
     # See https://github.com/kubernetes-sigs/gateway-api-inference-extension/pull/1905.
     kv-cache-usage-percentage-metric: "vllm:kv_cache_usage_perc"
   monitoring:
-    gke:
-      enable: false
     prometheus:
       enable: false
   pluginsConfigFile: "custom-plugins.yaml"
