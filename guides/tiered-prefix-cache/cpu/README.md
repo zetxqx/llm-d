@@ -70,7 +70,7 @@ helm install llm-d-infpool \
     -n ${NAMESPACE} \
     -f ./manifests/inferencepool/values.yaml \
     --set "provider.name=gke" \
-    --set "inferenceExtension.monitoring.prometheus.enabled=true" \
+    --set "inferenceExtension.monitoring.gke.enabled=true" \
     oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
     --version v1.3.0
 ```

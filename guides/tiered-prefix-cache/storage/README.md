@@ -226,19 +226,25 @@ llm-d-model-server-xxxxxxxx-xxxxx   1/1     Running   0          11m
 llm-d-model-server-xxxxxxxx-xxxxx   1/1     Running   0          11m
 ```
 
-### Verify Cache Loading from Storage
+### Verify KV cache is offloaded to storage
 
 <!-- TABS:START -->
 
 <!-- TAB:LMCache Connector -->
 #### LMCache Connector
 
-You can verify if the requests are being served from local storage by check the metric `lmcache:local_storaqe_usage` through following command.
+You can verify if the KV cache is being offloaded to local storage by checking the metric `lmcache:local_storaqe_usage` through following command.
 
 ```
 export IP=localhost
 export PORT=8000
-kubectl exec -it llm-d-model-server-xxxx-xxxx -- curl -i http://${IP}:${PORT}/metrics | grep lmcache:local_storage_usage
+export POD_NAME=llm-d-model-server-xxxx-xxxx
+kubectl exec -it $POD_NAME -- curl -i http://${IP}:${PORT}/metrics | grep lmcache:local_storage_usage
+```
+Verify the folder size where the Lustre instance is mounted, it should be in GBs after KV cache offloading completes, the actual size will differ based on the requests served.
+```
+kubectl exec -it $POD_NAME -- du -sh /mnt/files-storage
+65G	/mnt/files-storage
 ```
 
 <!-- TABS:END -->
