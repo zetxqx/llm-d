@@ -18,7 +18,6 @@ helm install llm-d-infpool \
   -n ${NAMESPACE} \
   -f ./values.yaml \
   --set "provider.name=gke" \
-  --set "inferenceExtension.monitoring.prometheus.enabled=true" \
   oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
   --version v1.3.0
 ```
@@ -33,7 +32,6 @@ helm install llm-d-infpool \
   -n ${NAMESPACE} \
   -f ./values.yaml \
   --set "provider.name=istio" \
-  --set "inferenceExtension.monitoring.prometheus.enabled=true" \
   oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
   --version v1.3.0
 ```

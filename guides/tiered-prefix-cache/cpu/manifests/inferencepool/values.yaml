@@ -10,7 +10,7 @@ inferenceExtension:
     kv-cache-usage-percentage-metric: "vllm:kv_cache_usage_perc"
   monitoring:
     prometheus:
-      enable: false
+      enable: true
   pluginsConfigFile: "custom-plugins.yaml"
   pluginsCustomConfig:
     custom-plugins.yaml: |
