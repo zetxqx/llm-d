@@ -322,132 +322,132 @@ The output will show the progress of the `inference-perf` benchmark as it runs
 
 There is a report for each stage.
 <details>
-<summary><b><i>Click</i></b> here to view the report for `rate=10` from the above example</summary>
+<summary><b><i>Click</i></b> here to view the report for `rate=60` from the above example</summary>
 
   ```yaml
   metrics:
     latency:
       inter_token_latency:
-        max: 0.18811781704425812
-        mean: 0.020669583557040024
-        min: 5.517038516700268e-06
-        p0p1: 2.6719751942437142e-05
-        p1: 0.014419194809161127
-        p10: 0.01656536371447146
-        p25: 0.018567895487649366
-        p5: 0.015728384861722587
-        p50: 0.020695073500974104
-        p75: 0.021503399751964025
-        p90: 0.02207457079202868
-        p95: 0.022546104292268866
-        p99: 0.08946080405090495
-        p99p9: 0.10259400638758956
+        max: 35.43773371190764
+        mean: 0.06307339200536964
+        min: 1.1860160157084465e-05
+        p0p1: 1.4890849590301514e-05
+        p1: 2.6392312720417975e-05
+        p5: 0.02422614870592952
+        p10: 0.029938062420114875
+        p25: 0.039873701985925436
+        p50: 0.04867863096296787
+        p75: 0.0630459520034492
+        p90: 0.07344035040587187
+        p95: 0.07974660084582862
+        p99: 0.14419003639370193
+        p99p9: 0.5742944853436264
         units: s/token
       normalized_time_per_output_token:
-        max: 0.717500958187884
-        mean: 0.04021876003301928
-        min: 0.01744550473873396
-        p0p1: 0.01751962216022992
-        p1: 0.0180509185810905
-        p10: 0.01923465710929764
-        p25: 0.02040626925639579
-        p5: 0.018997717847623295
-        p50: 0.021183353236022558
-        p75: 0.021865379507869025
-        p90: 0.022936470821125987
-        p95: 0.07059941448146335
-        p99: 0.6672186557748682
-        p99p9: 0.7082893342302221
+        max: 14.618343529000413
+        mean: 0.14241495066000814
+        min: 0.035802515719916155
+        p0p1: 0.03782138810012058
+        p1: 0.04849005040455956
+        p5: 0.05043996872663578
+        p10: 0.05188643801778131
+        p25: 0.0572424333777196
+        p50: 0.06453631682146807
+        p75: 0.07404797188383723
+        p90: 0.07771680512648735
+        p95: 0.30993874906186014
+        p99: 2.027729680289318
+        p99p9: 2.3493452857011636
         units: s/token
       request_latency:
-        max: 22.989790733961854
-        mean: 20.847309030755714
-        min: 17.35827721504029
-        p0p1: 17.44975291375129
-        p1: 17.961483361392748
-        p10: 19.066985952935646
-        p25: 20.198816913514747
-        p5: 18.737510592667967
-        p50: 20.977808750525583
-        p75: 21.562361991251237
-        p90: 22.255666058021596
-        p95: 22.56433772156015
-        p99: 22.960098422522424
-        p99p9: 22.98521691379562
+        max: 78.4193525230512
+        mean: 63.33755716286739
+        min: 44.93551961495541
+        p0p1: 46.37173816980305
+        p1: 48.68997510989429
+        p5: 50.11959722911706
+        p10: 51.29607102330774
+        p25: 56.10663582984125
+        p50: 60.84283083258197
+        p75: 72.43453730636975
+        p90: 75.70441831036005
+        p95: 76.62079849115108
+        p99: 77.9749475785275
+        p99p9: 78.3548669303835
         units: s
       time_per_output_token:
-        max: 0.022786254265985916
-        mean: 0.020669583557040027
-        min: 0.017162352968996857
-        p0p1: 0.017250305588040735
-        p1: 0.01777372067991237
-        p10: 0.018948828270088418
-        p25: 0.020017497138731414
-        p5: 0.01861606290267373
-        p50: 0.020810300373967038
-        p75: 0.021364415241492678
-        p90: 0.022014989444997628
-        p95: 0.022341811860160668
-        p99: 0.02270649872458249
-        p99p9: 0.02278452591815719
+        max: 0.0780726449158974
+        mean: 0.06307394394338414
+        min: 0.04481934450706467
+        p0p1: 0.04620728720779856
+        p1: 0.04828540956693236
+        p5: 0.04969819141475018
+        p10: 0.05103103168061934
+        p25: 0.055915482704527675
+        p50: 0.06060636710643302
+        p75: 0.07215238088747719
+        p90: 0.07540386062071193
+        p95: 0.0763322664985927
+        p99: 0.0777544502342969
+        p99p9: 0.0780582791631585
         units: s/token
       time_to_first_token:
-        max: 0.37973733502440155
-        mean: 0.1458328293156228
-        min: 0.05756738397758454
-        p0p1: 0.057710750947357156
-        p1: 0.058549812618875874
-        p10: 0.07117205987451598
-        p25: 0.07867017023090739
-        p5: 0.06478812359273434
-        p50: 0.15742571302689612
-        p75: 0.17041571525624022
-        p90: 0.21869741418631744
-        p95: 0.24442302147799633
-        p99: 0.3229195393121335
-        p99p9: 0.369758901104099
+        max: 0.7212718988303095
+        mean: 0.1915973921061183
+        min: 0.06682688393630087
+        p0p1: 0.07610414329846389
+        p1: 0.09087500265799463
+        p5: 0.10518365747993812
+        p10: 0.11437884196639062
+        p25: 0.13774361443938687
+        p50: 0.17786012799479067
+        p75: 0.22011002426734194
+        p90: 0.2595313634723425
+        p95: 0.347381148149725
+        p99: 0.5639443399198352
+        p99p9: 0.6903088580174407
         units: s
     requests:
       failures: 0
       input_length:
-        max: 7678.0
-        mean: 7578.415
-        min: 7510.0
-        p0p1: 7512.388
-        p1: 7523.98
-        p10: 7543.9
-        p25: 7557.0
-        p5: 7535.9
-        p50: 7575.0
-        p75: 7596.25
-        p90: 7618.0
-        p95: 7629.15
-        p99: 7653.04
-        p99p9: 7673.821
+        max: 7689.0
+        mean: 7584.456
+        min: 7515.0
+        p0p1: 7516.996
+        p1: 7526.0
+        p5: 7538.0
+        p10: 7546.0
+        p25: 7562.0
+        p50: 7582.0
+        p75: 7603.0
+        p90: 7624.0
+        p95: 7636.0
+        p99: 7668.0
+        p99p9: 7687.503
         units: count
       output_length:
-        max: 1001.0
-        mean: 938.355
-        min: 32.0
-        p0p1: 32.0
-        p1: 32.99
-        p10: 955.6
-        p25: 990.75
-        p5: 316.00000000000006
-        p50: 997.0
+        max: 1999.0
+        mean: 936.798
+        min: 4.0
+        p0p1: 29.495
+        p1: 33.0
+        p5: 192.7
+        p10: 944.9
+        p25: 992.0
+        p50: 998.0
         p75: 1000.0
         p90: 1000.0
         p95: 1000.0
         p99: 1000.0
-        p99p9: 1000.801
+        p99p9: 1997.004
         units: count
-      total: 200
+      total: 1500
     throughput:
-      output_tokens_per_sec: 4511.146742060757
-      requests_per_sec: 4.807505413261246
-      total_tokens_per_sec: 40944.41787850098
+      output_tokens_per_sec: 13931.990458359842
+      requests_per_sec: 14.87192592037968
+      total_tokens_per_sec: 126727.45823673902
     time:
-      duration: 21.37610672903247
+      duration: 24.924596473108977
   scenario:
     load:
       args:
@@ -585,25 +585,27 @@ There is a report for each stage.
 
 ### Comparing LLM-d scheduling to a simple kubernetes service
 
-We examine the overall behavior of the entire workload of the example above, using the `summary_lifecycle_metrics.json` produced by
-`inference-perf`.
-For comparison, we ran the same workload on a k8s service endpoint that directly uses the vLLM pods as backends.
+The following graphs illustrate the relationship between latency, throughput, and QPS, as generated by the `inference-perf --analyze`. For benchmarking, we compared our results against a standard Kubernetes (k8s) service endpoint that routes traffic directly to vLLM pods.
 
-- **Throughput**: Requests/sec **108.7%** ; Output tokens/sec **109.4%**
-- **Latency**: TTFT **-99.7%** ; E2E request latency **-42.8%**
-- **Per-token speed**: Time per output token **13.0%** (**slower**)
+<img src="./benchmark-results/latency_vs_qps.png" width="900" alt="Throughput vs QPS">
+<img src="./benchmark-results/throughput_vs_qps.png" width="450" alt="Throughput vs Latency">
 
-| Metric (median)                                                   | k8s         | llmd        | Δ (llmd - k8s) | Δ% vs k8s |
-|:------------------------------------------------------------------|:------------|:------------|:---------------|:----------|
-| Requests/sec                                                      | 5.7542      | 12.0101     | 6.2559         | 108.7%    |
-| Input tokens/sec                                                  | 43,609.4980 | 91,001.8874 | 47,392.3894    | 108.7%    |
-| Output tokens/sec                                                 | 5,390.6289  | 11,290.1722 | 5,899.5433     | 109.4%    |
-| Total tokens/sec                                                  | 49,000.1269 | 102,292.0596| 53,291.9326    | 108.8%    |
-| Approx. gen speed (1 / time_per_output_token) [tok/s/request]     | 21.614      | 19.121      | -2.493         | -11.5%    |
-| Request latency (s)                                               | 93.156      | 53.263      | -39.893        | -42.8%    |
-| TTFT (s)                                                          | 47.676      | 0.156       | -47.520        | -99.7%    |
-| Time/output token (ms)                                            | 46.27       | 52.30       | 6.03           | 13.0%     |
-| Inter-token latency (ms)                                          | 30.57       | 41.46       | 10.89          | 35.6%     |
+The following data captures the performance of the last stage conducted at a fixed request rate of **60**. We also compare the result with k8s service.
+
+- **Throughput**: Requests/sec **+159.5%** ; Output tokens/sec **+159.8%**
+- **Latency**: TTFT (mean) **-99.5%** ; E2E request latency (mean) **-39.9%**
+- **Per-token speed**: Time per output token (mean) **-10.4%** (faster)
+
+| Metric | k8s (Mean) | llmd (Mean) | Δ (llmd - k8s) | Δ% vs k8s |
+| :--- | :--- | :--- | :--- | :--- |
+| Requests/sec | 5.7306 | 14.8719 | +9.1413 | +159.5% |
+| Input tokens/sec | 43,417.86 | 112,795.47 | +69,377.61 | +159.8% |
+| Output tokens/sec | 5,362.16 | 13,931.99 | +8,569.83 | +159.8% |
+| Total tokens/sec | 48,780.02 | 126,727.46 | +77,947.44 | +159.8% |
+| Request latency (s) | 105.4133 | 63.3376 | -42.0757 | -39.9% |
+| TTFT (s) | 34.9145 | 0.1916 | -34.7229 | -99.5% |
+| Time/output token (ms) | 70.42 | 63.07 | -7.35 | -10.4% |
+| Inter-token latency (ms) | 70.42 | 63.07 | -7.35 | -10.4% |
 
 ## Cleanup
 
