@@ -34,7 +34,7 @@ ARG GDRCOPY_REPO="https://github.com/NVIDIA/gdrcopy.git"
 ARG GDRCOPY_VERSION="v2.5.1"
 
 ARG UCX_REPO="https://github.com/openucx/ucx.git"
-ARG UCX_VERSION="1.20.0"
+ARG UCX_VERSION="v1.20.0"
 
 ARG NVSHMEM_USE_GIT="true"
 ARG NVSHMEM_REPO="https://github.com/NVIDIA/nvshmem.git"
@@ -508,8 +508,7 @@ ENV PATH="${VIRTUAL_ENV}/bin:/usr/local/nvidia/bin:${PATH}" \
     TORCH_NCCL_DUMP_ON_TIMEOUT=0 \
     VLLM_SKIP_P2P_CHECK=1 \
     VLLM_CACHE_ROOT=/tmp/vllm \
-    UCX_MEM_MMAP_HOOK_MODE=none \
-    NVSHMEM_DISABLE_CUDA_VMM=1
+    UCX_MEM_MMAP_HOOK_MODE=none
 
 USER 2000
 WORKDIR /home/vllm

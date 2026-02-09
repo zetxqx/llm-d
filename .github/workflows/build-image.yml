@@ -16,20 +16,20 @@ on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: 'Platforms to build (comma-separated: cuda,xpu,cpu)'
+        description: "Platforms to build (comma-separated: cuda,xpu,cpu)"
         required: false
-        default: 'cuda'
+        default: "cuda"
         type: string
       vllm_repo:
-        description: 'vLLM repository URL to (override Dockerfile)'
+        description: "vLLM repository URL to (override Dockerfile)"
         required: false
         type: string
       vllm_commit_sha:
-        description: 'vLLM commit SHA to checkout for source (override Dockerfile)'
+        description: "vLLM commit SHA to checkout for source (override Dockerfile)"
         required: false
         type: string
       vllm_precompiled_wheel_commit:
-        description: 'vLLM commit SHA for precompiled wheel lookup (defaults to vllm_commit_sha)'
+        description: "vLLM commit SHA for precompiled wheel lookup (defaults to vllm_commit_sha)"
         required: false
         type: string
 
@@ -68,12 +68,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Run pre-commit
         uses: j178/prek-action@v1
         with:
-          extra-args: ''
+          extra-args: ""
 
   detect-changes:
     runs-on: ubuntu-latest
@@ -187,10 +187,11 @@ jobs:
           platforms: ${{ matrix.platform }}
           target: builder
           push: false
-          cache-from: |
-            type=gha,mode=max,scope=cuda-dev-builder-${{ matrix.os }}-${{ matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
-          cache-to: |
-            type=gha,mode=max,scope=cuda-dev-builder-${{ matrix.os }}-${{ matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
+          # disabling cache from cache to temporarily to prevent building issues
+          # cache-from: |
+          #   type=gha,mode=max,scope=cuda-dev-builder-${{ matrix.os }}-${{ matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
+          # cache-to: |
+          #   type=gha,mode=max,scope=cuda-dev-builder-${{ matrix.os }}-${{ matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             CACHE_BUSTER=${{ steps.cache_buster_timestamp.outputs.cache_buster_timestamp }}
@@ -228,12 +229,13 @@ jobs:
             ${{ inputs.vllm_commit_sha != '' && format('VLLM_COMMIT_SHA={0}', inputs.vllm_commit_sha) || '' }}
             ${{ inputs.vllm_precompiled_wheel_commit != '' &&
               format('VLLM_PRECOMPILED_WHEEL_COMMIT={0}', inputs.vllm_precompiled_wheel_commit) || '' }}
-          cache-from: >-
-            type=gha,scope=cuda-dev-${{ matrix.os }}-${{
-            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
-          cache-to: >-
-            type=gha,mode=max,scope=cuda-dev-${{ matrix.os }}-${{
-            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
+          # disabling cache from cache to temporarily to prevent building issues
+          # cache-from: >-
+          #   type=gha,scope=cuda-dev-${{ matrix.os }}-${{
+          #   matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
+          # cache-to: >-
+          #   type=gha,mode=max,scope=cuda-dev-${{ matrix.os }}-${{
+          #   matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: >-
             type=image,name=${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev${{ matrix.image_suffix }},
@@ -439,9 +441,9 @@ jobs:
           image-ref: >-
             ${{ env.REGISTRY }}/${{ github.repository }}-cuda-dev${{ matrix.image_suffix }}@${{
               steps.manifest.outputs.digest }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH,MEDIUM"
           scanners: vuln
           timeout: 30m
           skip-dirs: /root/.cache/uv
@@ -454,7 +456,7 @@ jobs:
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       - name: Display vulnerability summary
         if: ${{ steps.should-run.outputs.os_succeeded == 'true' }}
@@ -519,8 +521,9 @@ jobs:
           provenance: true
           build-args: |
             CACHE_BUSTER=${{ steps.cache_buster_timestamp.outputs.cache_buster_timestamp }}
-          cache-from: type=gha,scope=xpu-dev
-          cache-to: type=gha,mode=max,scope=xpu-dev,oci-mediatypes=true,compression=zstd
+          # disabling cache from cache to temporarily to prevent building issues
+          # cache-from: type=gha,scope=xpu-dev
+          # cache-to: type=gha,mode=max,scope=xpu-dev,oci-mediatypes=true,compression=zstd
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-xpu-dev:${{ steps.set-tag.outputs.tag }}
             ${{ steps.set-tag.outputs.pr_tag != '' && format('{0}/{1}-xpu-dev:{2}', env.REGISTRY, github.repository, steps.set-tag.outputs.pr_tag) || '' }}
@@ -533,21 +536,20 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-xpu-dev:${{ steps.set-tag.outputs.tag }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          scanners: vuln              # skip secrets/config/license analyzers
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          scanners: vuln # skip secrets/config/license analyzers
           timeout: 30m
           skip-dirs: /root/.cache/uv
         env:
           TRIVY_USERNAME: ${{ secrets.GHCR_USER }}
           TRIVY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
 
-
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       - name: Display vulnerability summary
         run: |
@@ -607,10 +609,10 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: true
-          cache-from: type=gha,scope=cpu-dev
-          cache-to: type=gha,mode=max,scope=cpu-dev,oci-mediatypes=true,compression=zstd
-          build-args:
-            CACHE_BUSTER=${{ steps.cache_buster_timestamp.outputs.cache_buster_timestamp }}
+          # disabling cache from cache to temporarily to prevent building issues
+          # cache-from: type=gha,scope=cpu-dev
+          # cache-to: type=gha,mode=max,scope=cpu-dev,oci-mediatypes=true,compression=zstd
+          build-args: CACHE_BUSTER=${{ steps.cache_buster_timestamp.outputs.cache_buster_timestamp }}
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-cpu-dev:${{ steps.set-tag.outputs.tag }}
             ${{ steps.set-tag.outputs.pr_tag != '' && format('{0}/{1}-cpu-dev:{2}', env.REGISTRY, github.repository, steps.set-tag.outputs.pr_tag) || '' }}
@@ -623,10 +625,10 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-cpu-dev:${{ steps.set-tag.outputs.tag }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          scanners: vuln              # skip secrets/config/license analyzers
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          scanners: vuln # skip secrets/config/license analyzers
           timeout: 30m
           skip-dirs: /root/.cache/uv
         env:
@@ -636,7 +638,7 @@ jobs:
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       - name: Display vulnerability summary
         run: |

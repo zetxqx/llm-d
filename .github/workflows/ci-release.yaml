@@ -3,7 +3,7 @@ name: Release LLM-D Images
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   release:
     types: [published]
 
@@ -86,12 +86,13 @@ jobs:
             BUILD_BASE_IMAGE_SUFFIX=${{ matrix.os == 'ubuntu' && 'ubuntu20.04' || matrix.base_image_suffix }}
             FINAL_BASE_IMAGE_SUFFIX=${{ matrix.base_image_suffix }}
             CACHE_BUSTER=${{ github.ref_name }}-${{ github.run_id }}
-          cache-from: >-
-            type=gha,scope=cuda-${{ matrix.os }}-builder-${{
-            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
-          cache-to: >-
-            type=gha,mode=max,scope=cuda-${{ matrix.os }}-builder-${{
-            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
+          # disabling cache from cache to temporarily to prevent building issues
+          # cache-from: >-
+          #   type=gha,scope=cuda-${{ matrix.os }}-builder-${{
+          #   matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
+          # cache-to: >-
+          #   type=gha,mode=max,scope=cuda-${{ matrix.os }}-builder-${{
+          #   matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
           labels: ${{ steps.meta.outputs.labels }}
           github-token: ${{ secrets.GHCR_TOKEN }}
           secrets: |
@@ -118,12 +119,13 @@ jobs:
             BUILD_BASE_IMAGE_SUFFIX=${{ matrix.os == 'ubuntu' && 'ubuntu20.04' || matrix.base_image_suffix }}
             FINAL_BASE_IMAGE_SUFFIX=${{ matrix.base_image_suffix }}
             CACHE_BUSTER=${{ github.ref_name }}-${{ github.run_id }}
-          cache-from: >-
-            type=gha,scope=cuda-${{ matrix.os }}-${{
-            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
-          cache-to: >-
-            type=gha,mode=max,scope=cuda-${{ matrix.os }}-${{
-            matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
+          # disabling cache from cache to temporarily to prevent building issues
+          # cache-from: >-
+          #   type=gha,scope=cuda-${{ matrix.os }}-${{
+          #   matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}
+          # cache-to: >-
+          #   type=gha,mode=max,scope=cuda-${{ matrix.os }}-${{
+          #   matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }},oci-mediatypes=true,compression=zstd
           labels: ${{ steps.meta.outputs.labels }}
           outputs: >-
             type=image,name=${{ env.REGISTRY }}/${{ github.repository }}-cuda${{ matrix.image_suffix }},
@@ -320,9 +322,9 @@ jobs:
           image-ref: >-
             ${{ env.REGISTRY }}/${{ github.repository }}-cuda${{ matrix.image_suffix }}@${{
               steps.manifest.outputs.digest }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH,MEDIUM"
           scanners: vuln
           timeout: 30m
           skip-dirs: /root/.cache/uv
@@ -333,7 +335,7 @@ jobs:
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       - name: Display vulnerability summary
         run: |
@@ -374,8 +376,9 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: true
-          cache-from: type=gha,scope=cpu
-          cache-to: type=gha,mode=max,scope=cpu,oci-mediatypes=true,compression=zstd
+          # disabling cache from cache to temporarily to prevent building issues
+          # cache-from: type=gha,scope=cpu
+          # cache-to: type=gha,mode=max,scope=cpu,oci-mediatypes=true,compression=zstd
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-cpu:${{ env.TAG }}
             ${{ env.REGISTRY }}/${{ github.repository }}-cpu:latest
@@ -388,9 +391,9 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-cpu:${{ env.TAG }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH,MEDIUM"
           scanners: vuln
           timeout: 30m
           skip-dirs: /root/.cache/uv
@@ -401,7 +404,7 @@ jobs:
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       - name: Display vulnerability summary
         run: |
@@ -444,8 +447,8 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: true
-          cache-from: type=gha,scope=xpu
-          cache-to: type=gha,mode=max,scope=xpu,oci-mediatypes=true,compression=zstd
+          # cache-from: type=gha,scope=xpu
+          # cache-to: type=gha,mode=max,scope=xpu,oci-mediatypes=true,compression=zstd
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-xpu:${{ env.TAG }}
             ${{ env.REGISTRY }}/${{ github.repository }}-xpu:latest
@@ -458,9 +461,9 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-xpu:${{ env.TAG }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH,MEDIUM"
           scanners: vuln
           timeout: 30m
           skip-dirs: /root/.cache/uv
@@ -471,7 +474,7 @@ jobs:
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       - name: Display vulnerability summary
         run: |
