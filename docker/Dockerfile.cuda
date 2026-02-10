@@ -153,7 +153,7 @@ ENV PATH="${NVSHMEM_DIR}/bin:${VIRTUAL_ENV}/bin:${PATH}" \
     LIBRARY_PATH="\
 ${UCX_PREFIX}/lib:${UCX_PREFIX}/lib64:\
 ${NVSHMEM_DIR}/lib:${NVSHMEM_DIR}/lib64:\
-${CUDA_HOME}/lib64/stubs:${CUDA_HOME}/lib64:\
+:${CUDA_HOME}/lib64:\
 /usr/local/lib:/usr/local/lib64:\
 ${LIBRARY_PATH}" \
     CPATH="${NVSHMEM_DIR}/include:\
@@ -320,7 +320,7 @@ ENV LANG="C.UTF-8" \
 ENV LD_LIBRARY_PATH="\
 ${UCX_PREFIX}/lib:${UCX_PREFIX}/lib64:\
 /opt/vllm/lib64/python${PYTHON_VERSION}/site-packages/torch/lib:\
-/usr/local/nvidia/lib:/usr/local/nvidia/lib64:${CUDA_HOME}/lib64:${CUDA_HOME}/compat:\
+/usr/local/nvidia/lib:/usr/local/nvidia/lib64:${CUDA_HOME}/lib64:\
 /usr/local/lib:/usr/local/lib64:\
 ${NVSHMEM_DIR}/lib:${NVSHMEM_DIR}/lib64:\
 /usr/lib/x86_64-linux-gnu:/usr/lib/aarch64-linux-gnu/:\
