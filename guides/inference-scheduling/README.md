@@ -13,6 +13,7 @@ This example out of the box uses 16 GPUs (8 replicas x 2 GPUs each) of any suppo
 - **NVIDIA GPUs**: Any NVIDIA GPU (support determined by the inferencing image used)
 - **AMD GPUs**: Any AMD GPU (support determined by the inferencing image used)
 - **Intel XPU/GPUs**: Intel Data Center GPU Max 1550 or compatible Intel XPU device
+- **Intel Gaudi (HPU)**: Gaudi 1, Gaudi 2, or Gaudi 3 with DRA support
 - **TPUs**: Google Cloud TPUs (when using GKE TPU configuration)
 
 **Using fewer accelerators**: Fewer accelerators can be used by modifying the `values.yaml` corresponding to your deployment. For example, to use only 2 GPUs with the default NVIDIA GPU deployment, update `replicas: 2` in [ms-inference-scheduling/values.yaml](./ms-inference-scheduling/values.yaml#L17-L22).
@@ -94,11 +95,13 @@ You can also customize your gateway, for more information on how to do that see 
 
 #### Hardware Backends
 
-Currently in the `inference-scheduling` example we support configurations for `amd`, `xpu`, `tpu`, `cpu`, and `cuda` GPUs. By default we use modelserver values supporting `cuda` GPUs, but to deploy on one of the other hardware backends you may use:
+Currently in the `inference-scheduling` example we support configurations for `amd`, `xpu`, `tpu`, `cpu`, `hpu` (Intel Gaudi) and `cuda` GPUs. By default we use modelserver values supporting `cuda` GPUs, but to deploy on one of the other hardware backends you may use:
 
 ```bash
 helmfile apply -e amd  -n ${NAMESPACE} # targets istio as gateway provider with AMD GPU hardware
 helmfile apply -e xpu  -n ${NAMESPACE} # targets istio as gateway provider with XPU hardware
+# or
+helmfile apply -e hpu  -n ${NAMESPACE} # targets istio as gateway provider with Intel Gaudi (HPU) hardware
 # or
 helmfile apply -e gke_tpu  -n ${NAMESPACE} # targets GKE externally managed as gateway provider with TPU hardware
 # or
@@ -120,6 +123,8 @@ accelerator:
   type: intel-xe
   dra: true
 ```
+
+**Note for Intel Gaudi (HPU) deployments:** Intel Gaudi uses Dynamic Resource Allocation (DRA) support. Ensure you have the [Intel Resource Drivers for Kubernetes](https://github.com/intel/intel-resource-drivers-for-kubernetes) installed on your cluster. See [Accelerator documentation](../../docs/accelerators/README.md#dynamic-resource-allocation) for setup details.
 
 ##### CPU Inferencing
 
