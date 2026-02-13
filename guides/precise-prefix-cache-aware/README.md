@@ -594,7 +594,7 @@ The following data captures the performance of the last stage conducted at a fix
 
 - **Throughput**: Requests/sec **+159.5%** ; Output tokens/sec **+159.8%**
 - **Latency**: TTFT (mean) **-99.5%** ; E2E request latency (mean) **-39.9%**
-- **Per-token speed**: Time per output token (mean) **-10.4%** (faster)
+- **Per-token speed**: Inter-token latency (mean) **-10.4%** (faster)
 
 | Metric | k8s (Mean) | llmd (Mean) | Δ (llmd - k8s) | Δ% vs k8s |
 | :--- | :--- | :--- | :--- | :--- |
@@ -604,7 +604,6 @@ The following data captures the performance of the last stage conducted at a fix
 | Total tokens/sec | 48,780.02 | 126,727.46 | +77,947.44 | +159.8% |
 | Request latency (s) | 105.4133 | 63.3376 | -42.0757 | -39.9% |
 | TTFT (s) | 34.9145 | 0.1916 | -34.7229 | -99.5% |
-| Time/output token (ms) | 70.42 | 63.07 | -7.35 | -10.4% |
 | Inter-token latency (ms) | 70.42 | 63.07 | -7.35 | -10.4% |
 
 ## Cleanup
