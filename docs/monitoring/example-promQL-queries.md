@@ -1,7 +1,7 @@
 # Example PromQL Queries for LLM-D Monitoring
 
 This document provides PromQL queries for monitoring LLM-D deployments using Prometheus metrics.
-The provided [load generation script](./scripts/generate-load-llmd.sh) will populate error metrics for testing.
+The provided [load generation script](./scripts/generate-traffic-basic.sh) will populate error metrics for testing.
 
 ## Tier 1: Immediate Failure & Saturation Indicators
 
@@ -41,8 +41,8 @@ The provided [load generation script](./scripts/generate-load-llmd.sh) will popu
 | ----------- | ------------ |
 | **Request Distribution** (QPS per instance) | `sum by(pod) (rate(inference_objective_request_total{target_model!=""}[5m]))` |
 | **Token Distribution** | `sum by(pod) (rate(vllm:prompt_tokens_total[5m]) + rate(vllm:generation_tokens_total[5m]))` |
-| **Idle GPU Time** | `1 - avg by(pod) (rate(vllm:iteration_tokens_total_count[5m]) > 0)` |
-| **Routing Decision Latency** | `histogram_quantile(0.99, sum by(le) (rate(inference_extension_scheduler_plugin_duration_seconds_bucket[5m])))` |
+| **Idle GPU Time** | `1 - clamp_max(rate(vllm:iteration_tokens_total_count[5m]), 1)` |
+| **Routing Decision Latency** | `histogram_quantile(0.99, sum by(le) (rate(inference_extension_plugin_duration_seconds_bucket[5m])))` |
 
 ### Path C: Prefix Caching
 
@@ -99,7 +99,7 @@ The provided [load generation script](./scripts/generate-load-llmd.sh) will popu
 ### Error Metrics
 
 - Error metrics (`*_error_total`) only appear after the first error occurs
-- Use the provided [load generation script](./scripts/generate-load-llmd.sh) to populate error metrics for testing
+- Use the provided [load generation script](./scripts/generate-traffic-basic.sh) to populate error metrics for testing
 
 ## Missing Metrics (Require Additional Instrumentation)
 
@@ -107,8 +107,8 @@ The following metrics from community-gathered monitoring requirements are not cu
 
 ### Path C: Prefix Caching
 
-- **Cache Eviction Rate**: No metrics track when cache entries are evicted due to memory pressure
 - **Prefix Cache Memory Usage (Absolute)**: Only percentage utilization is available
+- **Cache Eviction Rate**: KV cache residency metrics are available when `--kv-cache-metrics-enabled` is set: `vllm:kv_block_lifetime_seconds`, `vllm:kv_block_idle_before_evict_seconds`, `vllm:kv_block_reuse_gap_seconds`
 
 ### Path D: P/D Disaggregation
 
@@ -116,5 +116,5 @@ The following metrics from community-gathered monitoring requirements are not cu
 
 ### Workarounds
 
-- **Cache Pressure Detection**: Monitor trends in `vllm:prefix_cache_hits` / `vllm:prefix_cache_queries` - declining hit rates may indicate cache evictions
+- **Cache Pressure Detection**: Monitor trends in `vllm:prefix_cache_hits_total` / `vllm:prefix_cache_queries_total` - declining hit rates may indicate cache evictions
 - **Transfer Bottlenecks**: Monitor overall latency spikes during P/D operations as an indirect indicator
