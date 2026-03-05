@@ -66,10 +66,12 @@ releases:
       - {{ printf "infra-%s" $rn | quote }}
       {{- end }}
     values:
-      {{- if ne .Environment.Name "standalone" }}
-      - gaie-inference-scheduling/values.yaml
-      {{- else }}
+      {{- if eq .Environment.Name "standalone" }}
       - standalone-inference-scheduling/values.yaml
+      {{- else if eq (env "INFERENCE_SERVER") "sglang" }}
+      - gaie-inference-scheduling/values_sglang.yaml
+      {{- else }}
+      - gaie-inference-scheduling/values.yaml
       {{- end }}
     # Apply provider name if on GKE
     {{- if or (eq .Environment.Name "gke") (eq .Environment.Name "gke_tpu") }}
@@ -117,6 +119,8 @@ releases:
       - ms-inference-scheduling/values_cpu.yaml
     {{- else if eq .Environment.Name "digitalocean" }}
       - ms-inference-scheduling/digitalocean-values.yaml
+    {{- else if eq (env "INFERENCE_SERVER") "sglang" }}
+      - ms-inference-scheduling/values_sglang.yaml
     {{- else }}
       - ms-inference-scheduling/values.yaml
     {{- end }}
