@@ -69,6 +69,7 @@ helmfile apply -e cpu -n ${NAMESPACE}
 <!-- TABS:END -->
 
 **_NOTE:_** By default, this guide creates 8 vLLM pods. For development and testing, the number can be reduced by adding `--set ms-inference-scheduling.decode.replicas=1` to the helmfile command. For example:
+
 ```bash
 helmfile apply -n ${NAMESPACE} --set ms-inference-scheduling.decode.replicas=1
 ```
