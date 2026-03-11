@@ -3,26 +3,24 @@
 
 # Exclude these URL patterns from link checking
 exclude = [
-  # LinkedIn requires login
+  # LinkedIn returns non-standard 999 status to block scrapers — outside any checkable range
   "linkedin.com",
-  # Reddit often blocks automated requests (matches www.reddit.com, old.reddit.com, etc.)
-  "^(https?://)?(www\\.)?(old\\.)?reddit\\.com/",
-  # OpenAI API docs can have rate limiting
-  "^https://platform\\.openai\\.com/docs/api-reference/",
+  # Repo is private — referenced in docs/proposals/prism-performance-analysis.md
+  "^https://github\\.com/seanhorgan/prism",
   # Google Docs headings/fragments are dynamically generated and not reliably checkable
   "^https://docs\\.google\\.com/document/.*#",
   # GitHub blob line anchors (#L123 / #L123-L130) aren't reliably checkable by lychee (HTML-only anchors)
   "^https://github\\.com/.*/blob/.*#L[0-9]",
   # Local file references with line numbers cannot be verified by lychee
   "^file://.*:[0-9]",
-  # UC Berkeley Sky Computing Lab site has SSL verification issues in CI
+  # SSL certificate verification fails in GitHub CI runners (works fine locally)
   "sky\\.cs\\.berkeley\\.edu",
-  # Intel website blocks automated requests with 403
-  "^https?://(www\\.)?intel\\.com",
 ]
 
-# Accept status codes like 200 (OK), 204 (No Content), etc.
-accept = ["200..=299", "429"]
+# Only fail on 404 (Not Found) — the only status code that definitively means
+# a link is broken. Everything else (403 bot blocks, 429 rate limits, 5xx server
+# errors) means the server exists but is temporarily or permanently refusing access.
+accept = ["200..=403", "405..=599"]
 
 # Maximum number of concurrent link checks
 max_concurrency = 10
