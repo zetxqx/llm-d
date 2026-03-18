@@ -55,7 +55,6 @@ decode:
         - "64"
         - "--kv-transfer-config"
         - '{"kv_connector":"NixlConnector", "kv_role":"kv_both", "kv_buffer_device":"cpu"}'
-        - "--disable-log-requests"
         - "--disable-uvicorn-access-log"
         - "--max-model-len"
         - "32000"

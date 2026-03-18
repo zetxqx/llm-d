@@ -825,20 +825,24 @@ jobs:
           username: ${{ secrets.GHCR_USER }}
           password: ${{ secrets.GHCR_TOKEN }}
 
+      - name: Checkout vLLM source
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ steps.vllm-version.outputs.repo }}
+          ref: ${{ steps.vllm-version.outputs.commit_sha }}
+          path: .cache/vllm-src
+
       - name: Build and push the image
         id: build-and-push
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./docker/Dockerfile.xpu
+          context: ./.cache/vllm-src
+          file: ./.cache/vllm-src/docker/Dockerfile.xpu
           platforms: linux/amd64
           push: true
           provenance: true
           # cache-from: type=gha,scope=xpu
           # cache-to: type=gha,mode=max,scope=xpu,oci-mediatypes=true,compression=zstd
-          build-args: |
-            VLLM_REPO=${{ steps.vllm-version.outputs.repo }}
-            VLLM_COMMIT_SHA=${{ steps.vllm-version.outputs.commit_sha }}
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository }}-xpu:${{ env.TAG }}
             ${{ env.REGISTRY }}/${{ github.repository }}-xpu:latest
