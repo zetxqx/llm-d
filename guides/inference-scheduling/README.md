@@ -269,6 +269,8 @@ The output will show the progress of the `inference-perf` benchmark as it runs
 
 ### Benchmarking Report
 
+The benchmark is running on 16 H100 GPUs, distributed across 8 model servers (2 H100s per server with TP=2).
+
 There is a report for each stage.
 <details>
 <summary><b><i>Click</i></b> here to view the report for `rate=60` from the above example</summary>
