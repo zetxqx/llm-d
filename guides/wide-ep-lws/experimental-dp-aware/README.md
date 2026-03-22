@@ -33,7 +33,7 @@ This guide demonstrates how to deploy DeepSeek-R1-0528 using vLLM's P/D disaggre
 
 * a 32xH200 cluster with InfiniBand networking
 * a 32xB200 cluster with InfiniBand networking
-* Istio 1.28.1 (required for multi-port support)
+* Istio 1.29.1 (required for multi-port support)
 
 In this example, we will demonstrate a deployment of `DeepSeek-R1-0528` with:
 
@@ -52,7 +52,7 @@ This guide requires 32 Nvidia H200 or B200 GPUs and InfiniBand or RoCE RDMA netw
   * The pods leveraging inter-node EP must be deployed in a cluster environment with full mesh network connectivity.
     * **_NOTE:_** The DeepEP backend used in WideEP requires All-to-All RDMA connectivity. Every NIC on a host must be able to communicate with every NIC on all other hosts. Networks restricted to communicating only between matching NIC IDs (rail-only connectivity) will fail.
   * You have deployed the [LeaderWorkerSet optional controller](../../prereq/infrastructure/README.md#optional-install-leaderworkerset-for-multi-host-inference)
-* Configure and deploy your [Gateway control plane](../../prereq/gateway-provider/README.md). Note that the Gateway must support multi-port (e.g. Istio 1.28.1)
+* Configure and deploy your [Gateway control plane](../../prereq/gateway-provider/README.md). Note that the Gateway must support multi-port (e.g. Istio 1.29.1)
 * Have the [Monitoring stack](../../../docs/monitoring/README.md) installed on your system.
 * Create a namespace for installation.
 
@@ -106,7 +106,7 @@ helm install llm-d-infpool \
   -f ./manifests/inferencepool.values.yaml \
   --set "provider.name=istio" \
   oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.3.1
+  --version v1.4.0
 ```
 
 ## Verifying the installation
@@ -116,7 +116,7 @@ helm install llm-d-infpool \
 ```bash
 helm list -n ${NAMESPACE}
 NAME            NAMESPACE       REVISION    UPDATED                                 STATUS      CHART                       APP VERSION
-llm-d-infpool   llm-d-wide-ep   1           2025-08-24 13:14:53.355639 -0700 PDT    deployed    inferencepool-v1.3.1        v0.3.0
+llm-d-infpool   llm-d-wide-ep   1           2025-08-24 13:14:53.355639 -0700 PDT    deployed    inferencepool-v1.4.0   v0.3.0
 ```
 
 * Out of the box with this example you should have the following resources (if using Istio):
@@ -167,4 +167,3 @@ For instructions on getting started making inference requests see [our docs](../
 ## Benchmarking
 
 This is a simple benchmarking setup to demonstrate the correctness of the implementation.
-

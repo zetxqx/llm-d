@@ -79,11 +79,13 @@ helmfile apply -e cpu -n ${NAMESPACE}
 #### Gateway Options
 
 **_NOTE:_** This uses Istio as the default gateway provider, see [Gateway Options](#gateway-options) for installing with a specific provider.
+**_WARNING:_** `kgateway` is deprecated in llm-d and will be removed in the next release. Prefer `agentgateway` for new self-installed inference deployments.
 
 To specify your gateway choice you can use the `-e <gateway option>` flag, ex:
 
 ```bash
-helmfile apply -e kgateway -n ${NAMESPACE}
+helmfile apply -e agentgateway -n ${NAMESPACE} # preferred agentgateway path
+helmfile apply -e kgateway -n ${NAMESPACE}     # deprecated migration path
 ```
 
 For DigitalOcean Kubernetes Service (DOKS):
@@ -164,7 +166,7 @@ sed -e "s/infra-inference-scheduling-inference-gateway/infra-my-custom-inference
 kubectl apply -f httproute-custom.yaml -n ${NAMESPACE}
 ```
 
-#### Install for "kgateway" or "istio"
+#### Install for "agentgateway", "kgateway" (deprecated), or "istio"
 
 ```bash
 kubectl apply -f httproute.yaml -n ${NAMESPACE}
@@ -189,8 +191,8 @@ kubectl apply -f httproute.yaml -n ${NAMESPACE}
 ```bash
 helm list -n ${NAMESPACE}
 NAME                        NAMESPACE                   REVISION  UPDATED                                 STATUS      CHART                       APP VERSION
-gaie-inference-scheduling   llm-d-inference-scheduler   1         2026-01-26 15:11:26.506854 +0200 IST    deployed    inferencepool-v1.3.1        v1.3.1
-infra-inference-scheduling  llm-d-inference-scheduler   1         2026-01-26 15:11:21.008163 +0200 IST    deployed    llm-d-infra-v1.3.6          v0.3.0
+gaie-inference-scheduling   llm-d-inference-scheduler   1         2026-01-26 15:11:26.506854 +0200 IST    deployed    inferencepool-v1.4.0   v1.4.0
+infra-inference-scheduling  llm-d-inference-scheduler   1         2026-01-26 15:11:21.008163 +0200 IST    deployed    llm-d-infra-v1.4.0          v0.4.0
 ms-inference-scheduling     llm-d-inference-scheduler   1         2026-01-26 15:11:39.385111 +0200 IST    deployed    llm-d-modelservice-v0.4.7   v0.4.0
 ```
 
@@ -650,7 +652,7 @@ helm uninstall ms-inference-scheduling -n ${NAMESPACE}
 
 Follow provider specific instructions for deleting HTTPRoute.
 
-#### Cleanup for "kgateway" or "istio"
+#### Cleanup for "agentgateway", "kgateway" (deprecated), or "istio"
 
 ```bash
 kubectl delete -f httproute.yaml -n ${NAMESPACE}

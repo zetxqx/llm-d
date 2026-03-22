@@ -189,8 +189,8 @@ Expected output:
 
 ```text
 NAME       NAMESPACE   REVISION   STATUS     CHART
-gaie-pd    llm-d-pd    1          deployed   inferencepool-v1.3.1
-infra-pd   llm-d-pd    1          deployed   llm-d-infra-v1.3.6
+gaie-pd    llm-d-pd    1          deployed   inferencepool-v1.4.0
+infra-pd   llm-d-pd    1          deployed   llm-d-infra-v1.4.0
 ms-pd      llm-d-pd    1          deployed   llm-d-modelservice-v0.4.7
 ```
 

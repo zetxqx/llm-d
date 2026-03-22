@@ -88,8 +88,11 @@ helmfile apply -e hpu -n ${NAMESPACE}
 To see specify your gateway choice you can use the `-e <gateway option>` flag, ex:
 
 ```bash
-helmfile apply -e kgateway -n ${NAMESPACE}
+helmfile apply -e agentgateway -n ${NAMESPACE} # preferred agentgateway path
+helmfile apply -e kgateway -n ${NAMESPACE}     # deprecated migration path
 ```
+
+**_WARNING:_** `kgateway` is deprecated in llm-d and will be removed in the next release. Prefer `agentgateway` for new self-installed inference deployments.
 
 To see what gateway options are supported refer to our [gateway provider prereq doc](../prereq/gateway-provider/README.md#supported-providers). Gateway configurations per provider are tracked in the [gateway-configurations directory](../prereq/gateway-provider/common-configurations/).
 
@@ -103,7 +106,7 @@ This guide uses RDMA via InfiniBand or RoCE for disaggregated serving kv-cache t
 
 Follow provider specific instructions for installing HTTPRoute.
 
-#### Install for "kgateway" or "istio"
+#### Install for "agentgateway", "kgateway" (deprecated), or "istio"
 
 ```bash
 kubectl apply -f httproute.yaml -n ${NAMESPACE}
@@ -122,8 +125,8 @@ kubectl apply -f httproute.gke.yaml -n ${NAMESPACE}
 ```bash
 helm list -n ${NAMESPACE}
 NAME        NAMESPACE   REVISION    UPDATED                                 STATUS      CHART                       APP VERSION
-gaie-pd     llm-d-pd    1           2025-08-24 12:54:51.231537 -0700 PDT    deployed    inferencepool-v1.3.1        v1.3.1
-infra-pd    llm-d-pd    1           2025-08-24 12:54:46.983361 -0700 PDT    deployed    llm-d-infra-v1.3.6          v0.3.0
+gaie-pd     llm-d-pd    1           2025-08-24 12:54:51.231537 -0700 PDT    deployed    inferencepool-v1.4.0        v1.4.0
+infra-pd    llm-d-pd    1           2025-08-24 12:54:46.983361 -0700 PDT    deployed    llm-d-infra-v1.4.0          v0.4.0
 ms-pd       llm-d-pd    1           2025-08-24 12:54:56.736873 -0700 PDT    deployed    llm-d-modelservice-v0.4.7   v0.4.0
 ```
 
@@ -443,7 +446,7 @@ helm uninstall infra-pd -n ${NAMESPACE}
 
 Follow provider specific instructions for deleting HTTPRoute.
 
-#### Cleanup for "kgateway" or "istio"
+#### Cleanup for "agentgateway", "kgateway" (deprecated), or "istio"
 
 ```bash
 kubectl delete -f httproute.yaml -n ${NAMESPACE}

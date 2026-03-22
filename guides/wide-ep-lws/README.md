@@ -79,6 +79,9 @@ kubectl apply -k ./manifests/modelserver/coreweave  -n ${NAMESPACE}
 
 Select the provider-specific Helm command using the tabs below.
 
+> [!WARNING]
+> `kgateway` is deprecated in llm-d and will be removed in the next release. Prefer `agentgateway` for new self-installed inference deployments. The current Gateway API Inference Extension chart uses `provider.name=none` for the `agentgateway` path; see the upstream [`inferencepool` chart values for v1.4.0](https://github.com/kubernetes-sigs/gateway-api-inference-extension/blob/v1.4.0/config/charts/inferencepool/values.yaml).
+
 <!-- TABS:START -->
 
 <!-- TAB:GKE:default -->
@@ -90,7 +93,7 @@ helm install llm-d-infpool \
   -f ./manifests/inferencepool.values.yaml \
   --set "provider.name=gke" \
   oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.3.1
+  --version v1.4.0
 ```
 
 <!-- TAB:Istio -->
@@ -102,18 +105,19 @@ helm install llm-d-infpool \
   -f ./manifests/inferencepool.values.yaml \
   --set "provider.name=istio" \
   oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.3.1
+  --version v1.4.0
 ```
 
-<!-- TAB:Kgateway -->
-#### Kgateway
+<!-- TAB:Agentgateway -->
+#### Agentgateway
 
 ```bash
 helm install llm-d-infpool \
   -n ${NAMESPACE} \
   -f ./manifests/inferencepool.values.yaml \
+  --set "provider.name=none" \
   oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.3.1
+  --version v1.4.0
 ```
 
 <!-- TABS:END -->
@@ -139,7 +143,7 @@ As with PD, the `wide-ep-lws` guide supports selective PD. For information on th
 ```bash
 helm list -n ${NAMESPACE}
 NAME            NAMESPACE       REVISION    UPDATED                                 STATUS      CHART                       APP VERSION
-llm-d-infpool   llm-d-wide-ep   1           2025-08-24 13:14:53.355639 -0700 PDT    deployed    inferencepool-v1.3.1        v0.3.0
+llm-d-infpool   llm-d-wide-ep   1           2025-08-24 13:14:53.355639 -0700 PDT    deployed    inferencepool-v1.4.0   v0.3.0
 ```
 
 * Out of the box with this example you should have the following resources (if using Istio):
@@ -239,7 +243,8 @@ To remove the deployment:
 # From examples/wide-ep-lws
 helm uninstall llm-d-infpool -n ${NAMESPACE}
 kubectl delete -k ./manifests/modelserver/<gke|coreweave> -n ${NAMESPACE}
-kubectl delete -k ../recipes/gateway/<gke-l7-regional-external-managed|istio|kgateway|kgateway-openshift> -n ${NAMESPACE}
+# Supported self-installed inference gateway recipe paths are agentgateway (preferred) and kgateway (deprecated migration path).
+kubectl delete -k ../recipes/gateway/<gke-l7-regional-external-managed|istio|agentgateway|agentgateway-openshift|kgateway|kgateway-openshift> -n ${NAMESPACE}
 ```
 
 ## Customization
