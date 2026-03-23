@@ -13,16 +13,15 @@ VLLM_COMMIT_SHA=95c0f928cdeeaa21c4906e73cee6a156e1b3b995 # maps to v0.17.1 tag
 # CUDA-only configurations for precompiled binaries
 VLLM_PREBUILT=0                # 0=editable install, 1=use full prebuilt wheel
 VLLM_USE_PRECOMPILED=1         # 1=use precompiled binaries either from VLLM_COMMIT_SHA or VLLM_PRECOMPILED_WHEEL_COMMIT, 0=compile from source
-VLLM_PRECOMPILED_WHEEL_COMMIT=1892993bc18e243e2c05841314c5e9c06a80c70d # which precompiled commit to use. If your commit exists on vllm-project/vllm main, this should match your `VLLM_COMMIT_SHA`.
+# If building vLLM from a precompiled commit in the vLLM wheel index (only commits off main),
+# which commit to use as the base for the copiled bits.
+VLLM_PRECOMPILED_WHEEL_COMMIT=95c0f928cdeeaa21c4906e73cee6a156e1b3b995
 
 ### Cuda Runtime versions
 CUDA_MAJOR=12
 CUDA_MINOR=9
 CUDA_PATCH=1
 
-# If building vLLM from a precompiled commit in the vLLM wheel index (only commits off main),
-# which commit to use as the base for the copiled bits.
-VLLM_PRECOMPILED_WHEEL_COMMIT=95c0f928cdeeaa21c4906e73cee6a156e1b3b995
 
 ### Offloading connector
 LLM_D_OFFLOADING_CONNECTOR_VERSION=0.17.1
