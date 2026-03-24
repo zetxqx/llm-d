@@ -341,7 +341,7 @@ jobs:
           echo "digest=${MANIFEST_DIGEST}" >> $GITHUB_OUTPUT
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: >-
             ${{ env.REGISTRY }}/${{ github.repository }}-cuda${{ matrix.image_suffix }}@${{
@@ -641,7 +641,7 @@ jobs:
           echo "digest=${MANIFEST_DIGEST}" >> $GITHUB_OUTPUT
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: >-
             ${{ env.REGISTRY }}/${{ github.repository }}-aws@${{
@@ -722,7 +722,7 @@ jobs:
           BUILDKIT_PROGRESS: "plain"
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-cpu:${{ env.TAG }}
           format: "sarif"
@@ -790,7 +790,7 @@ jobs:
           BUILDKIT_PROGRESS: "plain"
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-rocm:${{ env.TAG }}
           format: 'sarif'
@@ -874,7 +874,7 @@ jobs:
           BUILDKIT_PROGRESS: "plain"
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-xpu:${{ env.TAG }}
           format: "sarif"
@@ -934,7 +934,7 @@ jobs:
           VERSION="latest" make image-push
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository }}-hpu:${{ env.TAG }}
           format: 'sarif'
