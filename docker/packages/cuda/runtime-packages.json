@@ -1,13 +1,12 @@
 {
   "rhel_to_ubuntu": {
     "cuda-nvcc-${CUDA_MAJOR}-${CUDA_MINOR}": "cuda-nvcc-${CUDA_MAJOR}-${CUDA_MINOR}",
-    "cuda-cuobjdump-${CUDA_MAJOR}-${CUDA_MINOR}": "cuda-cuobjdump-${CUDA_MAJOR}-${CUDA_MINOR}",
     "cuda-nvrtc-${CUDA_MAJOR}-${CUDA_MINOR}": "cuda-nvrtc-${CUDA_MAJOR}-${CUDA_MINOR}",
+    "cuda-cudart-devel-${CUDA_MAJOR}-${CUDA_MINOR}": "cuda-cudart-dev-${CUDA_MAJOR}-${CUDA_MINOR}",
     "python${PYTHON_VERSION}": "python${PYTHON_VERSION}",
     "python${PYTHON_VERSION}-pip": "python${PYTHON_VERSION}-venv",
     "python${PYTHON_VERSION}-devel": "python${PYTHON_VERSION}-dev",
     "numactl-libs": "libnuma1",
-    "pciutils": "pciutils",
     "procps-ng": "procps",
     "git": "git",
     "libatomic": "libatomic1",
@@ -16,7 +15,6 @@
     "libxcb-devel":"libxcb1-dev"
   },
   "ubuntu_only": [
-    "gcc",
     "hwloc",
     "libhwloc15",
     "curl"
