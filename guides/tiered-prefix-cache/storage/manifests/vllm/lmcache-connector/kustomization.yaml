@@ -19,7 +19,33 @@ patches:
           name: LMCACHE_EXTRA_CONFIG
           value: "{\"use_odirect\":\"True\"}"
 
-  # LMCACHE_MAX_LOCAL_DISK_SIZE should be <= Backend storage (like Lustre) size
+# Update the model to Llama-3.3-70B-Instruct to match the benchmarking setup
+  - target:
+      kind: Deployment
+      name: llm-d-model-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/command
+        value:
+          - "vllm"
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value:
+          - "serve"
+          - "meta-llama/Llama-3.3-70B-Instruct"
+          - "--tensor-parallel-size"
+          - "4"                     # Benchmarking setup uses TP=4
+          - "--port"
+          - "8000"
+          - "--max-num-seq"
+          - "1024"
+          - "--kv-transfer-config"
+          - '{"kv_connector":"LMCacheConnectorV1","kv_role":"kv_both"}'
+          - "--enable_prefix_caching"
+          - "--gpu-memory-utilization"
+          - "0.8"
+
+  # (LMCACHE_MAX_LOCAL_DISK_SIZE)*(number of GPUs) should be <= Backend storage (like Lustre) size
   - target:
       kind: Deployment
       name: llm-d-model-server
@@ -28,7 +54,7 @@ patches:
         path: /spec/template/spec/containers/0/env/-
         value:
           name: LMCACHE_MAX_LOCAL_DISK_SIZE
-          value: "18000.0"
+          value: "1120.0"
 
   # Add PVC volume
   - target:
