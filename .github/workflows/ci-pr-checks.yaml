@@ -48,7 +48,7 @@ jobs:
           cat .github/lychee.toml
 
       - name: Run markdown link checker
-        uses: lycheeverse/lychee-action@v2.7.0
+        uses: lycheeverse/lychee-action@v2.8.0
         with:
           args: --verbose --no-progress --include-fragments --format markdown --config .github/lychee.toml '**/*.md'
           fail: true
