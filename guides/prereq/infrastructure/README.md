@@ -68,6 +68,12 @@ The LeaderWorkerSet (LWS) Kubernetes workload controller specializes in deployin
 
 Use the [LWS installation guide](https://lws.sigs.k8s.io/docs/installation/) to install 0.7.0 or newer when deploying an llm-d guide using LWS.
 
+#### (Optional) Install Kueue and Kueue Populator for Topology Aware Scheduling for multi-host inference
+
+[Kueue](https://github.com/kubernetes-sigs/kueue/tree/main) is a Kubernetes controller for job queueing. When combined with [Kueue-Populator](https://github.com/kubernetes-sigs/kueue/tree/main/cmd/experimental/kueue-populator), it can schedule a multi-host inference workload for optimal accelerator network performance. 
+
+Use the [TAS + LWS user guide](https://lws.sigs.k8s.io/docs/examples/tas/) to setup topology aware scheduling when deploying an llm-d guide using LWS.
+
 ## Installing on a well-lit infrastructure provider
 
 The following documentation describes llm-d tested setup for cluster infrastructure providers as well as specific deployment settings that will impact how model servers is expected to access accelerators.

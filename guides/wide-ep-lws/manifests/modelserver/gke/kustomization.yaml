@@ -139,3 +139,16 @@ patches:
           hostPath:
             path: /mnt/stateful_partition/kube-ephemeral-ssd/shared_disk/vllm-jit-cache/
             type: DirectoryOrCreate
+  - target: 
+      kind: LeaderWorkerSet
+    patch: |-
+      - op: add
+        path: /metadata/labels
+        value: 
+          kueue.x-k8s.io/queue-name: default
+      - op: add 
+        path: /spec/leaderWorkerTemplate/workerTemplate/metadata/annotations
+        value:
+          kueue.x-k8s.io/podset-required-topology: "cloud.google.com/gce-topology-block"
+          kueue.x-k8s.io/podset-group-name: "llm-d-wide-ep"
+

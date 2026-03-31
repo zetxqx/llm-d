@@ -27,6 +27,7 @@ This guide requires 32 Nvidia H200 or B200 GPUs and InfiniBand or RoCE RDMA netw
   * The pods leveraging inter-node EP must be deployed in a cluster environment with full mesh network connectivity.
     * **_NOTE:_** The DeepEP backend used in WideEP requires All-to-All RDMA connectivity. Every NIC on a host must be able to communicate with every NIC on all other hosts. Networks restricted to communicating only between matching NIC IDs (rail-only connectivity) will fail.
   * You have deployed the [LeaderWorkerSet optional controller](../prereq/infrastructure/README.md#optional-install-leaderworkerset-for-multi-host-inference)
+  * Optionally, you have deployed [Kueue and the Kueue Populator](../prereq/infrastructure/README.md#optional-install-kueue-and-kueue-populator-for-topology-aware-scheduling-for-multi-host-inference)
 * Configure and deploy your [Gateway control plane](../prereq/gateway-provider/README.md).
 * Have the [Monitoring stack](../../docs/monitoring/README.md) installed on your system.
 * Create a namespace for installation.
@@ -250,3 +251,7 @@ kubectl delete -k ../recipes/gateway/<gke-l7-regional-external-managed|istio|age
 ## Customization
 
 For information on customizing a guide and tips to build your own, see [our docs](../../docs/customizing-a-guide.md)
+
+## Topology Aware Scheduling (TAS)
+
+For information on how to use topology aware scheduling using Kueue, see [LWS + TAS user guide](https://lws.sigs.k8s.io/docs/examples/tas/). The GKE example already has the required labels.
