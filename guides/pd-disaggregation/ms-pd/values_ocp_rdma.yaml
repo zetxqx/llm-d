@@ -9,7 +9,7 @@ modelArtifacts:
   authSecretName: "llm-d-hf-token"
   labels:
     llm-d.ai/inference-serving: "true"
-    llm-d.ai/guide: "inference-scheduling"
+    llm-d.ai/guide: "pd-disaggregation"
     llm-d.ai/accelerator-variant: "gpu"
     llm-d.ai/accelerator-vendor: "nvidia"
     llm-d.ai/model: "Qwen3-32B"
