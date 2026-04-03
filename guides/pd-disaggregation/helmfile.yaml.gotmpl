@@ -62,7 +62,11 @@ releases:
     needs:
       - {{ printf "infra-%s" $rn | quote }}
     values:
+    {{- if eq (env "INFERENCE_SERVER") "sglang" }}
+      - gaie-pd/values_sglang.yaml
+    {{- else }}
       - gaie-pd/values.yaml
+    {{- end }}
     # Apply provider name if on GKE
     {{- if or (eq .Environment.Name "gke") (eq .Environment.Name "gke_tpu") (eq .Environment.Name "gke_pd_rdma") }}
       - provider:
@@ -112,6 +116,8 @@ releases:
       - ms-pd/values_tpu.yaml
     {{- else if eq .Environment.Name "gke_pd_rdma" }}
       - ms-pd/values_gke_rdma.yaml
+    {{- else if eq (env "INFERENCE_SERVER") "sglang" }}
+      - ms-pd/values_sglang.yaml
     {{- else }}
       - ms-pd/values.yaml
     {{- end }}

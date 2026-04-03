@@ -1,0 +1,202 @@
+multinode: false
+
+modelArtifacts:
+  uri: "hf://Qwen/Qwen3-14B"
+  size: 50Gi
+  authSecretName: "llm-d-hf-token"
+  name: "Qwen/Qwen3-14B"
+  labels:
+    llm-d.ai/inference-serving: "true"
+    llm-d.ai/guide: "pd-disaggregation"
+    llm-d.ai/hardware-variant: "gpu"
+    llm-d.ai/accelerator-vendor: "nvidia"
+    llm-d.ai/model: "Qwen3-14B"
+
+routing:
+  servicePort: 8000
+  proxy:
+    image: ghcr.io/llm-d/llm-d-routing-sidecar:v0.6.0
+    connector: sglang
+    secure: false
+
+decode:
+  parallelism:
+    tensor: 4
+  create: true
+  replicas: 1
+  monitoring:
+    podmonitor:
+      enabled: true
+      portName: "sglang" # decode service port (from routing.proxy.targetPort)
+      path: "/metrics"
+      interval: "30s"
+  containers:
+  - name: "sglang"
+    image: docker.io/lmsysorg/sglang:v0.5.6.post2
+    command: ["python3", "-m", "sglang.launch_server"]
+    args:
+      - "--model-path"
+      - "Qwen/Qwen3-14B"
+      - "--port"
+      - "8200"
+      - "--host"
+      - "0.0.0.0"
+      - "--disaggregation-mode"
+      - "decode"
+      - "--disaggregation-transfer-backend"
+      - "nixl"
+      - "--tensor-parallel-size"
+      - "4"
+      - "--log-level"
+      - "debug"
+      - "--enable-metrics"
+      - "--log-requests"
+      - "--context-length"
+      - "32000"
+    env:
+      - name: TRITON_CACHE_DIR
+        value: /.cache
+    ports:
+      - containerPort: 8200
+        name: sglang
+        protocol: TCP
+    resources:
+      limits:
+        memory: 64Gi
+        cpu: "16"
+        # note: GPU resources get controlled by parallelism + accelerators above
+        # rdma/ib: 1 # To use RDMA please uncomment this line.
+      requests:
+        memory: 64Gi
+        cpu: "16"
+        # note: GPU resources get controlled by parallelism + accelerators above
+        # rdma/ib: 1 # To use RDMA please uncomment this line.
+    mountModelVolume: true
+    volumeMounts:
+    - name: metrics-volume
+      mountPath: /.config
+    - name: shm
+      mountPath: /dev/shm
+    - name: torch-compile-cache
+      mountPath: /.cache
+    startupProbe:
+      httpGet:
+        path: /v1/models
+        port: sglang
+      initialDelaySeconds: 15
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 60
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: sglang
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /v1/models
+        port: sglang
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 3
+  volumes:
+  - name: metrics-volume
+    emptyDir: {}
+  - name: shm
+    emptyDir:
+      medium: Memory
+      sizeLimit: "16Gi"
+  - name: torch-compile-cache
+    emptyDir: {}
+
+prefill:
+  parallelism:
+    tensor: 1
+  create: true
+  replicas: 4
+  monitoring:
+    podmonitor:
+      enabled: true
+      portName: "sglang" # prefill service port (from routing.servicePort)
+      path: "/metrics"
+      interval: "30s"
+  containers:
+  - name: "sglang"
+    image: docker.io/lmsysorg/sglang:v0.5.6.post2
+    command: ["python3", "-m", "sglang.launch_server"]
+    args:
+      - "--model-path"
+      - "Qwen/Qwen3-14B"
+      - "--port"
+      - "8000"
+      - "--host"
+      - "0.0.0.0"
+      - "--disaggregation-mode"
+      - "prefill"
+      - "--disaggregation-transfer-backend"
+      - "nixl"
+      - "--log-level"
+      - "debug"
+      - "--enable-metrics"
+      - "--log-requests"
+      - "--context-length"
+      - "32000"
+    env:
+      - name: TRITON_CACHE_DIR
+        value: /.cache
+    ports:
+      - containerPort: 8000
+        name: sglang
+        protocol: TCP
+    resources:
+      limits:
+        memory: 64Gi
+        cpu: "8"
+        # note: GPU resources get controlled by parallelism + accelerators above
+        # rdma/ib: 1 # To use RDMA please uncomment this line.
+      requests:
+        memory: 64Gi
+        cpu: "8"
+        # note: GPU resources get controlled by parallelism + accelerators above
+        # rdma/ib: 1 # To use RDMA please uncomment this line.
+    mountModelVolume: true
+    volumeMounts:
+    - name: metrics-volume
+      mountPath: /.config
+    - name: shm
+      mountPath: /dev/shm
+    - name: torch-compile-cache
+      mountPath: /.cache
+    startupProbe:
+      httpGet:
+        path: /v1/models
+        port: sglang
+      initialDelaySeconds: 15
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 60
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: sglang
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /v1/models
+        port: sglang
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 3
+  volumes:
+  - name: metrics-volume
+    emptyDir: {}
+  - name: shm
+    emptyDir:
+      medium: Memory
+      sizeLimit: "16Gi"
+  - name: torch-compile-cache
+    emptyDir: {}
