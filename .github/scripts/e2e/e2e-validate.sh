@@ -38,74 +38,51 @@ if [[ "${VERBOSE}" == "true" ]]; then
   set -x
 fi
 
-# ── Helper for unique pod suffix ────────────────────────────────────────────
-gen_id() { echo $(( RANDOM % 10000 + 1 )); }
+# ── Persistent curl pod ─────────────────────────────────────────────────────
+# Use a single long-running curl pod for all requests instead of creating a new
+# pod per request. This avoids repeated pod scheduling, image pulls, and DNS
+# resolution — which previously caused intermittent "Could not resolve host"
+# failures (curl exit 6) under load.
+CURL_POD_NAME="curl-e2e-${RANDOM}-$$"
+CURL_POD_TIMEOUT_SECONDS="${CURL_POD_TIMEOUT_SECONDS:-120}"
 
-# ── Reliable curl-pod runner ───────────────────────────────────────────────
-# Replaces `kubectl run --rm -i` which has a race condition: the container can
-# finish before kubectl establishes the attach, losing all output.  The pod is
-# also auto-deleted (--rm), so there is no way to recover the response.
-#
-# This helper uses create → wait → logs → delete, which is deterministic.
-#
-# Usage: run_curl_pod <pod-name> <args…>
-# Sets:  CURL_OUTPUT  — captured stdout from the pod
-#        CURL_EXIT    — container exit code (0 = success)
-CURL_POD_TIMEOUT_SECONDS="${CURL_POD_TIMEOUT_SECONDS:-300}"  # max time to wait for a curl pod to complete (env-configurable)
+setup_curl_pod() {
+  # Delete any leftover pod with the same name (idempotent)
+  kubectl delete pod -n "$NAMESPACE" "$CURL_POD_NAME" \
+    --ignore-not-found >/dev/null 2>&1 || true
 
-run_curl_pod() {
-  local pod_name="$1"; shift
-  CURL_OUTPUT=""
-  CURL_EXIT=0
-
-  # Create the pod (returns immediately; pod runs in the background).
-  # Allow stderr through so RBAC / quota / image-pull errors are visible in CI logs.
-  kubectl run "$pod_name" \
+  echo "Creating persistent curl pod ${CURL_POD_NAME}..."
+  kubectl run "$CURL_POD_NAME" \
     --namespace "$NAMESPACE" \
     --image=curlimages/curl \
     --restart=Never \
-    -- "$@" >/dev/null
+    -- sleep 3600 >/dev/null
 
-  # Poll until the pod reaches a terminal phase (Succeeded / Failed)
-  local deadline=$((SECONDS + CURL_POD_TIMEOUT_SECONDS))
-  local phase=""
-  while [[ $SECONDS -lt $deadline ]]; do
-    phase=$(kubectl get pod -n "$NAMESPACE" "$pod_name" \
-      -o jsonpath='{.status.phase}' 2>/dev/null) || true
-    case "$phase" in
-      Succeeded|Failed) break ;;
-      *) sleep 2 ;;
-    esac
-  done
-
-  # Detect timeout: pod never reached a terminal phase
-  if [[ "$phase" != "Succeeded" && "$phase" != "Failed" ]]; then
-    echo "Error: curl pod $pod_name timed out after ${CURL_POD_TIMEOUT_SECONDS}s (last phase: ${phase:-Unknown})" >&2
-    kubectl describe pod -n "$NAMESPACE" "$pod_name" >&2 2>/dev/null || true
-    CURL_OUTPUT=""
-    CURL_EXIT=1
-    kubectl delete pod -n "$NAMESPACE" "$pod_name" \
-      --ignore-not-found >/dev/null 2>&1 || true
-    return
+  # Wait for the pod to be ready
+  if ! kubectl wait --for=condition=Ready \
+       pod/"$CURL_POD_NAME" -n "$NAMESPACE" \
+       --timeout="${CURL_POD_TIMEOUT_SECONDS}s"; then
+    echo "Error: curl pod failed to become ready" >&2
+    kubectl describe pod -n "$NAMESPACE" "$CURL_POD_NAME" >&2 2>/dev/null || true
+    exit 1
   fi
+  echo "Persistent curl pod is ready."
+}
 
-  # Capture logs. If none are available (e.g. pod never started), fall back to
-  # pod description so CI logs contain something actionable.
-  CURL_OUTPUT=$(kubectl logs -n "$NAMESPACE" "$pod_name" 2>/dev/null) || true
-  if [[ -z "$CURL_OUTPUT" ]]; then
-    echo "Warning: no logs from curl pod $pod_name — dumping pod description:" >&2
-    kubectl describe pod -n "$NAMESPACE" "$pod_name" >&2 2>/dev/null || true
-  fi
-
-  # Retrieve the container exit code
-  CURL_EXIT=$(kubectl get pod -n "$NAMESPACE" "$pod_name" \
-    -o jsonpath='{.status.containerStatuses[0].state.terminated.exitCode}' \
-    2>/dev/null) || true
-  CURL_EXIT="${CURL_EXIT:-1}"
-
-  # Clean up
-  kubectl delete pod -n "$NAMESPACE" "$pod_name" \
+cleanup_curl_pod() {
+  kubectl delete pod -n "$NAMESPACE" "$CURL_POD_NAME" \
     --ignore-not-found >/dev/null 2>&1 || true
+}
+trap cleanup_curl_pod EXIT
+
+# ── Run curl via kubectl exec on the persistent pod ─────────────────────────
+# Usage: run_curl <args…>
+# Sets:  CURL_OUTPUT  — captured stdout
+#        CURL_EXIT    — curl exit code (0 = success)
+run_curl() {
+  CURL_OUTPUT=""
+  CURL_EXIT=0
+  CURL_OUTPUT=$(kubectl exec -n "$NAMESPACE" "$CURL_POD_NAME" -- "$@" 2>&1) || CURL_EXIT=$?
 }
 
 # ── Discover Gateway address ────────────────────────────────────────────────
@@ -117,6 +94,9 @@ if [[ -z "$HOST" ]]; then
 fi
 PORT=80
 SVC_HOST="${HOST}:${PORT}"
+
+# ── Create persistent curl pod ──────────────────────────────────────────────
+setup_curl_pod
 
 # ── Determine MODEL_ID ──────────────────────────────────────────────────────
 # Priority: command-line > env var > auto-discovery
@@ -134,9 +114,7 @@ else
 
   for attempt in $(seq 1 $MAX_RETRIES); do
     echo "Attempt $attempt of $MAX_RETRIES to discover model ID..."
-    ID=$(gen_id)
-    run_curl_pod "curl-discover-${ID}" \
-      curl -sS --max-time 15 "http://${SVC_HOST}/v1/models"
+    run_curl curl -sS --max-time 15 "http://${SVC_HOST}/v1/models"
     response="$CURL_OUTPUT"
     ret="$CURL_EXIT"
 
@@ -187,16 +165,11 @@ for i in {1..10}; do
     "model":"'"$MODEL_ID"'",
     "messages":[{"role":"user","content":"Hello!  Who are you?"}]
   }'
-  ID=$(gen_id)
-  if $VERBOSE; then cat <<CMD
-  - Running: run_curl_pod curl-${ID} (POST /v1/chat/completions)
-CMD
-  fi
-  run_curl_pod "curl-$ID" \
-    sh -c "curl -sS -X POST 'http://${SVC_HOST}/v1/chat/completions' \
-         -H 'accept: application/json' \
-         -H 'Content-Type: application/json' \
-         -d '$chat_payload'"
+  run_curl curl -sS --max-time 120 --retry 2 --retry-delay 5 \
+    -X POST "http://${SVC_HOST}/v1/chat/completions" \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d "$chat_payload"
   output="$CURL_OUTPUT"
   ret="$CURL_EXIT"
   echo "$output"
@@ -210,16 +183,11 @@ CMD
     "model":"'"$MODEL_ID"'",
     "prompt":"You are a helpful AI assistant."
   }'
-  ID=$(gen_id)
-  if $VERBOSE; then cat <<CMD
-  - Running: run_curl_pod curl-${ID} (POST /v1/completions)
-CMD
-  fi
-  run_curl_pod "curl-$ID" \
-    sh -c "curl -sS -X POST 'http://${SVC_HOST}/v1/completions' \
-         -H 'accept: application/json' \
-         -H 'Content-Type: application/json' \
-         -d '$payload'"
+  run_curl curl -sS --max-time 120 --retry 2 --retry-delay 5 \
+    -X POST "http://${SVC_HOST}/v1/completions" \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d "$payload"
   output="$CURL_OUTPUT"
   ret="$CURL_EXIT"
   echo "$output"
