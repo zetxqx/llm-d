@@ -27,7 +27,7 @@ Each SIG has:
 
 ### SIG Meetings
 
-- Regular meetings (typically weekly) for technical discussions
+- Regular meetings (typically weekly/bi-weekly) for technical discussions
 
 ## Relationship to Project Governance
 
@@ -50,7 +50,7 @@ SIGs operate within the broader llm-d project governance framework defined in [P
 | **[SIG Installation](#sig-installation)** | Kubernetes integration, deployment tooling, and platform operations | • [Meeting Recordings and Docs](https://drive.google.com/drive/folders/1H-0Y8fXepzrYpcaUOBfuphn1Cl-gU0xr)<br>• [llm-d-modelservice Repository](https://github.com/llm-d-incubation/llm-d-modelservice)<br>• [llm-d-infra Repository](https://github.com/llm-d-incubation/llm-d-infra) |
 | **[SIG Autoscaling](#sig-autoscaling)** | Traffic-aware autoscaling, resource management, and capacity planning | • [Meeting Recordings and Docs](https://drive.google.com/drive/folders/1iDlTgpFPOrSQn7dWR3uCQLtqhz86HTAi)<br>• [workload-variant-autoscaler Repository](https://github.com/llm-d-incubation/workload-variant-autoscaler) |
 | **[SIG Observability](#sig-observability)** | Monitoring, logging, metrics, and operational visibility | • [Meeting Recordings and Docs](https://drive.google.com/drive/folders/1H-TVTCKYVxUn4fER7xuTPmscNttZCutN)<br>• [llm-d Observability Documentation](https://github.com/llm-d/llm-d/tree/main/docs/monitoring) |
-| **[SIG RL](#sig-rl)** | Improve SOTA performance for RL workloads | • Meeting Recordings and Docs - TODO |
+| **[SIG RL](#sig-rl)** | Improve SOTA performance for RL workloads | • [Meeting Recordings and Docs](https://drive.google.com/drive/folders/1k9u56_HO5E1uGGgmp0T0y8VhMfzc1P11) |
 
 ## SIG Detailed Descriptions
 
@@ -216,16 +216,12 @@ SIGs operate within the broader llm-d project governance framework defined in [P
 
 **Key Areas**:
 
-- Metrics collection and visualization
-- Distributed tracing and logging
-- Performance monitoring and alerting
-- Operational dashboards and reporting
-- Integration with monitoring ecosystems (Prometheus, Grafana, etc.)
+- TODO
 
 **💬 Communication**:
 
 - **Slack Channel**: [#sig-rl](https://llm-d.slack.com/archives/C0AGTS0UF5L)
-- **Meeting Recordings and Docs**: Public Google Drive TODO
+- **Meeting Recordings and Docs**: [Public Google Drive](https://drive.google.com/drive/folders/1k9u56_HO5E1uGGgmp0T0y8VhMfzc1P11)
 
 
 ## Getting Involved
@@ -251,7 +247,7 @@ SIGs operate within the broader llm-d project governance framework defined in [P
 1. **Identify need**: Demonstrate community interest and technical necessity
 2. **Draft charter**: Define scope, goals, and initial leadership
 3. **Proposal process**: Submit proposal following [project contribution guidelines](CONTRIBUTING.md)
-4. **Community review**: Present at weekly project standup and gather feedback
+4. **Community review**: Present at bi-weekly project standup and gather feedback
 5. **Approval**: Obtain approval from project maintainers
 
 ### SIG Lifecycle Management
@@ -274,6 +270,6 @@ SIGs may evolve, merge, or be archived based on project needs and community enga
 
 This document is maintained by the project maintainers and updated as SIGs evolve. For questions or suggestions about SIG structure, please reach out via:
 
-- Weekly project standup (Wednesdays 12:30 PM ET)
+- Bi-Weekly project standup (Every other Wednesday 12:30 PM ET)
 - [llm-d Slack channel](https://llm-d.slack.com/)
 - GitHub issues in the [llm-d/llm-d](https://github.com/llm-d/llm-d) repository
