@@ -31,7 +31,7 @@ flowchart TD
 *   **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after data production but before scheduling.
 *   **Scheduler**: Assigns the request to target endpoints.
 *   **PreRequest**: Hook called after `SchedulingResult` is generated but before routing to the model server.
-*   **ResponseHeaderProcessor**: Hook called after response headers are successfully received.
+*   **ResponseHeaderProcessor**: A hook called after response headers are successfully received. 
 *   **ResponseBodyProcessor**: The primary hook for processing response data. It handles both streaming and non-streaming responses: for streaming responses, it is called for each data chunk, with `EndOfStream` (EOS) set to true on the final chunk; for non-streaming responses, it is called exactly once with `EndOfStream` set to true.
 
 ### Extension Points
