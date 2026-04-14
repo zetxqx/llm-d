@@ -87,7 +87,7 @@ flowchart TD
     * **DataProducer**: A pluggable extension that allows customizing request pre-processing and producing per-request state needed for scheduling, such as tokenization, prefix-cache matches, predicted processing latency etc..
     * **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after data production but before scheduling.
 * **Post-Scheduling**: 
-    * **PreRequest**: Executes after `SchedulingResult` is generated but before routing to the model server.
+    * **PreRequest**: Executes after `SchedulingResult` is generated but before passing the request back to the proxy to forward it to the model server.
     * **ResponseHeaderProcessor**: Triggered after response headers are successfully received. 
     * **ResponseBodyProcessor**: The primary interface for processing response data. It handles both streaming and non-streaming responses. For streaming responses, it processes each data chunk, with `EndOfStream` (EOS) set to true on the final chunk. For non-streaming responses, it runs exactly once with `EndOfStream` set to true.
 
