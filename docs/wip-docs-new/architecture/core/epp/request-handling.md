@@ -81,7 +81,7 @@ flowchart TD
 
 #### Core Components
 
-*   **Parser**: Responsible for parsing the request and response payloads to InferenceRequest, a structured internal representation of the incoming request.
+*   **Parser**: Responsible for parsing the incoming request to structured internal representation consumable by the scheduler, and parsing the response to extract usage data if reported by the model server.
 
 * **Pre-Scheduling**: 
     * **DataProducer**: A pluggable extension that allows customizing request pre-processing and producing per-request state needed for scheduling, such as tokenization, prefix-cache matches, predicted processing latency etc..
