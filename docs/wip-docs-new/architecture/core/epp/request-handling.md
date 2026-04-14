@@ -27,7 +27,7 @@ flowchart TD
 
 *   **Parser**: Responsible for parsing the request and response payloads to InferenceRequest, a structured internal representation of the incoming request.
 *   **FlowControl**: The main gatekeeper that calls `EnqueueAndWait` to queue requests and wait for capacity, enforcing priority and fairness.
-*   **DataProducer**: Produces data needed for scheduling decision.
+*   **DataProducer**: A pluggable extension that allows customizing request pre-processing and producing per-request state needed for scheduling, such as tokenization, prefix-cache matches, predicted processing latency etc..
 *   **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after data production but before scheduling.
 *   **Scheduler**: Assigns the request to target endpoints.
 *   **PreRequest**: Hook called after `SchedulingResult` is generated but before routing to the model server.
