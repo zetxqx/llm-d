@@ -1,77 +1,113 @@
-# EPP Request Handling and Control
+# EPP Request Handling
 
-The EPP Request Handling and Control component manages the lifecycle of an inference request before and after the scheduling phase. It handles parsing the request payload, producing data for scheduling decisions, admission control, and processing the response from the model server.
+
+## Functionality
+
+The EPP Request Handling component manages the lifecycle of an inference request before and after the scheduling phase. It handles parsing the request payload, preparing and managing state for the [Scheduler](scheduling.md), interacting with [Flow Control](flow-control.md), and processing the response from the model server. It is responsible for managing the state of the request throughout its full lifecycle.
+
+## Design
 
 ### Architecture Overview
 
-The request handling flow follows a structured sequence of extension points:
-
 ```mermaid
 flowchart TD
-    Req[Incoming Request] --> Parse[Parser.ParseRequest]
-    Parse -->|InferenceRequest| FC[FlowControl.EnqueueAndWait]
-    FC --> Prep[DataProducer.PrepareRequestData]
-    FC -->|Rejected/Evicted| Reject[Reject Request]
-    Prep --> Admit[Admitter.AdmitRequest]
-    Admit --> S[Scheduler.Schedule]
-    Admit -->|Denied| Reject
-    S -->|SchedulingResult| PreReq[PreRequest.PreRequest]
-    PreReq --> Route[Route to Model Server]
-    Route --> RespHead[ResponseHeaderProcessor.ResponseHeader]
-    RespHead --> ParseResp[Parser.ParseResponse]
-    ParseResp --> RespBody[ResponseBodyProcessor.ResponseBody]
-    RespBody --> Client[Return to Client]
+    %% Custom Style Definitions
+    classDef parsing fill:lightskyblue,stroke:dodgerblue,stroke-width:2px,color:black
+    classDef flowcontrol fill:plum,stroke:purple,stroke-width:2px,color:black
+    classDef statemgmt fill:orange,stroke:darkorange,stroke-width:2px,color:black
+    classDef postsched fill:cyan,stroke:darkcyan,stroke-width:2px,color:black
+    classDef rejection fill:tomato,stroke:red,stroke-width:2px,color:white
+    classDef scheduler fill:lightgreen,stroke:forestgreen,stroke-width:3px,color:black,font-weight:bold
+
+    %% Entry/Exit Points
+    Req([Incoming Request])
+    Client([Return to Client])
+    Reject[Reject Request]:::rejection
+
+    subgraph SystemPipeline ["EPP"]
+        direction TB
+
+        %% 1. Request/Response Parsing
+        subgraph SubParsing ["RequestHandling Parsing"]
+            Parse[Parser.ParseRequest]:::parsing
+            ParseResp[Parser.ParseResponse]:::parsing
+        end
+
+        %% 2. Flow Control
+        FC[FlowControl]:::flowcontrol
+
+        %% 3. Request Handling
+        subgraph SubHandling ["RequestHandling Control"]
+            direction TB
+            subgraph SubPre ["Pre-Schedule Handling"]
+                Prep[DataProducer.PrepareRequestData]:::statemgmt
+                Admit[Admitter.AdmitRequest]:::statemgmt
+            end
+
+            subgraph SubPostSched ["Post-Scheduling Handling"]
+                PreReq[PreRequest.PreRequest]:::postsched
+                RespHead[ResponseHeaderProcessor.ResponseHeader]:::postsched
+                RespBody[ResponseBodyProcessor.ResponseBody]:::postsched
+            end
+        end
+
+        %% 4. Scheduler
+        Sched[Scheduler.Schedule]:::scheduler    
+    end
+    Forward[Selected endpoints]
+
+    %% Connections
+    Req --> Parse
+    Parse -->|"InferenceRequest"| FC
+    
+    %% Rejection Paths
+    FC --> Prep
+    FC -->|"Rejected/Evicted"| Reject
+    
+    Prep --> Admit
+    Admit -->|"Admit"| Sched
+    Admit -->|"Denied"| Reject
+    
+    %% Success Paths
+    Sched -->|"SchedulingResult"| PreReq
+    
+    PreReq --> Forward
+    Forward --> RespHead
+    RespHead --> ParseResp
+    ParseResp --> RespBody
+    RespBody --> Client
 ```
+
 
 #### Core Components
 
 *   **Parser**: Responsible for parsing the request and response payloads to InferenceRequest, a structured internal representation of the incoming request.
-*   **FlowControl**: The main gatekeeper that calls `EnqueueAndWait` to queue requests and wait for capacity, enforcing priority and fairness.
-*   **DataProducer**: A pluggable extension that allows customizing request pre-processing and producing per-request state needed for scheduling, such as tokenization, prefix-cache matches, predicted processing latency etc..
-*   **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after data production but before scheduling.
-*   **Scheduler**: Assigns the request to target endpoints.
-*   **PreRequest**: Hook called after `SchedulingResult` is generated but before routing to the model server.
-*   **ResponseHeaderProcessor**: A hook called after response headers are successfully received. 
-*   **ResponseBodyProcessor**: The primary hook for processing response data. It handles both streaming and non-streaming responses. For streaming responses, it is called for each data chunk, with `EndOfStream` (EOS) set to true on the final chunk. For non-streaming responses, it is called exactly once with `EndOfStream` set to true.
 
-### Extension Points
-
-The EPP framework provides extension points grouped into different packages under `pkg/epp/framework/interface`:
-
-#### Request Handling (`requesthandling`)
-
-*   **`Parser`**: Responsible for interpreting request and response payloads. Plugins implement this to support different API protocols (e.g., OpenAI, vLLM gRPC).
-
-#### Flow Control Layer
-
-The Flow Control layer (orchestrated by `FlowControl.EnqueueAndWait`) is a core mechanism that manages request queuing and dispatching. While not a plugin interface itself, it is highly configurable and uses pluggable policies.
-
-*   **Responsibilities**: Protects model servers from overload, enforces strict priority and tenant fairness, and enables late-binding scheduling by holding requests centrally until backends have capacity.
-*   **Pluggable Policies**: Supports pluggable **Fairness Policies** (e.g., Round Robin), **Ordering Policies** (e.g., FCFS), and **Saturation Detectors**.
-*   **More Details**: See the [Flow Control Guide](placeholder-link) for a complete overview.
-
-#### Request Control (`requestcontrol`)
-
-These plugins allow customizing the request lifecycle and scheduling decisions:
-
-*   **`DataProducer`**: Executes before scheduling to gather or predict data (e.g., latency, cache state) needed by the scheduler.
-*   **`Admitter`**: Makes admission decisions based on current pool state and request metadata (e.g., rejecting sheddable requests under load).
-*   **`PreRequest`**: Runs after a scheduling decision is made but before the request is forwarded to the selected endpoint.
-*   **`ResponseHeaderProcessor`**: Invoked when response headers are received from the model server.
-*   **`ResponseBodyProcessor`**: Invoked for each chunk of the response body (or once for non-streaming), allowing processing and extraction of usage metrics.
+* **Pre-Scheduling**: 
+    * **DataProducer**: A pluggable extension that allows customizing request pre-processing and producing per-request state needed for scheduling, such as tokenization, prefix-cache matches, predicted processing latency etc..
+    * **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after data production but before scheduling.
+* **Post-Scheduling**: 
+    * **PreRequest**: Executes after `SchedulingResult` is generated but before routing to the model server.
+    * **ResponseHeaderProcessor**: Triggered after response headers are successfully received. 
+    * **ResponseBodyProcessor**: The primary interface for processing response data. It handles both streaming and non-streaming responses. For streaming responses, it processes each data chunk, with `EndOfStream` (EOS) set to true on the final chunk. For non-streaming responses, it runs exactly once with `EndOfStream` set to true.
 
 ---
 
 ### Concrete Plugins
 
 #### Parsers
-Located in `pkg/epp/framework/plugins/requesthandling/parsers`.
-*   **[`openai-parser`](placeholder-link)**: The default parser supporting the OpenAI API. It parses request payloads to extract model name and prompts, and response payloads to extract usage data (tokens).
-*   **[`vllmgrpc-parser`](placeholder-link)**: A parser designed to handle requests specifically for the vLLM gRPC API.
-*   **[`passthrough-parser`](placeholder-link)**: A model-agnostic parser that supports any request format by passing the request body through without interpretation. *Drawback: Prevents payload-aware scheduling scorers.*
+*   **[`openai-parser`](placeholder-link)**: The default parser supporting the OpenAI API. It parses request payloads to extract model name and prompts, and response payloads to extract usage data (tokens). It supports the following endpoints:
+    *   `/conversations`
+    *   `/responses`
+    *   `/chat/completions`
+    *   `/completions`
+    *   `/embeddings`
+*   **[`vllmgrpc-parser`](placeholder-link)**: A parser designed to handle requests specifically for the vLLM gRPC API. It supports:
+    *   `Generate`
+    *   `Embed`
+*   **[`passthrough-parser`](placeholder-link)**: A model-agnostic parser that supports any request format by passing the request body through without interpretation.
 
 #### Request Control Plugins
-Located in `pkg/epp/framework/plugins/requestcontrol`.
 
 ##### Admitter Plugins
 *   **[`latency-slo-admitter`](placeholder-link)**: Rejects sheddable requests (priority < 0) when no endpoint can meet latency SLO constraints.
