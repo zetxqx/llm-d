@@ -1,6 +1,6 @@
 # EPP Request Handling and Control
 
-The EPP Request Handling and Control component manages the lifecycle of an LLM request before and after the scheduling phase. It handles parsing the request payload, producing data for scheduling decisions, admission control, and processing the response from the model server.
+The EPP Request Handling and Control component manages the lifecycle of an inference request before and after the scheduling phase. It handles parsing the request payload, producing data for scheduling decisions, admission control, and processing the response from the model server.
 
 ### Architecture Overview
 
@@ -9,37 +9,56 @@ The request handling flow follows a structured sequence of extension points:
 ```mermaid
 flowchart TD
     Req[Incoming Request] --> Parse[Parser.ParseRequest]
-    Parse --> Prep[PrepareDataPlugin.PrepareRequestData]
-    Prep --> Admit[AdmissionPlugin.AdmitRequest]
-    Admit -->|Admitted| S[Scheduler.Schedule]
-    Admit -->|Denied| Reject[Reject Request]
-    S --> PreReq[PreRequest.PreRequest]
-    PreReq --> Forward[Forward to Model Server]
-    Forward --> RespHead[ResponseHeader.ResponseHeader]
+    Parse -->|InferenceRequest| FC[FlowControl.EnqueueAndWait]
+    FC --> Prep[DataProducer.PrepareRequestData]
+    FC -->|Rejected/Evicted| Reject[Reject Request]
+    Prep --> Admit[Admitter.AdmitRequest]
+    Admit --> S[Scheduler.Schedule]
+    Admit -->|Denied| Reject
+    S -->|SchedulingResult| PreReq[PreRequest.PreRequest]
+    PreReq --> Route[Route to Model Server]
+    Route --> RespHead[ResponseHeaderProcessor.ResponseHeader]
     RespHead --> ParseResp[Parser.ParseResponse]
-    ParseResp --> RespBody[ResponseBody.ResponseBody]
+    ParseResp --> RespBody[ResponseBodyProcessor.ResponseBody]
     RespBody --> Client[Return to Client]
 ```
 
 #### Core Components
 
-*   **Parser**: Responsible for parsing the request and response payloads. This allows EPP to understand the request details (like model name, prompts) and extract usage information (e.g., token usage) from the response.
-*   **PrepareDataPlugin**: Produces data needed for scheduling, such as latency predictions or cache state, before the scheduling decision is made.
-*   **AdmissionPlugin**: Decides whether to admit a request based on criteria like latency SLOs.
-*   **PreRequest**: Hook called after scheduling but before the request is forwarded to the selected endpoint.
-*   **ResponseHeader**: Hook called by the director after response headers are successfully received, indicating the beginning of response handling by the model server.
-*   **ResponseBody**: The primary hook for processing response data. It is called for every data chunk in a streaming response, or exactly once for non-streaming responses.
+*   **Parser**: Responsible for parsing the request and response payloads to internal InferenceRequest.
+*   **FlowControl**: The main gatekeeper that calls `EnqueueAndWait` to queue requests and wait for capacity, enforcing priority and fairness.
+*   **DataProducer**: Produces data needed for scheduling decision.
+*   **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after data production but before scheduling.
+*   **Scheduler**: Assigns the request to target endpoints.
+*   **PreRequest**: Hook called after `SchedulingResult` is generated but before routing to the model server.
+*   **ResponseHeaderProcessor**: Hook called after response headers are successfully received.
+*   **ResponseBodyProcessor**: The primary hook for processing response data. It handles both streaming and non-streaming responses: for streaming responses, it is called for each data chunk, with `EndOfStream` (EOS) set to true on the final chunk; for non-streaming responses, it is called exactly once with `EndOfStream` set to true.
 
 ### Extension Points
 
-Implemented via plugin interfaces in `pkg/epp/framework/interface`:
+The EPP framework provides extension points grouped into different packages under `pkg/epp/framework/interface`:
 
-1.  **`Parser`**: Parses requests and responses. It extracts usage data from the response (e.g., for reporting or analysis). Supported by plugins in `pkg/epp/framework/plugins/requesthandling/parsers`.
-2.  **`PrepareDataPlugin`**: Produces data for scheduling.
-3.  **`AdmissionPlugin`**: Controls admission of requests.
-4.  **`PreRequest`**: Runs before forwarding.
-5.  **`ResponseHeader`**: Runs on receiving headers.
-6.  **`ResponseBody`**: Runs on receiving body chunks.
+#### Request Handling (`requesthandling`)
+
+*   **`Parser`**: Responsible for interpreting request and response payloads. Plugins implement this to support different API protocols (e.g., OpenAI, vLLM gRPC).
+
+#### Flow Control Layer
+
+The Flow Control layer (orchestrated by `FlowControl.EnqueueAndWait`) is a core mechanism that manages request queuing and dispatching. While not a plugin interface itself, it is highly configurable and uses pluggable policies.
+
+*   **Responsibilities**: Protects model servers from overload, enforces strict priority and tenant fairness, and enables late-binding scheduling by holding requests centrally until backends have capacity.
+*   **Pluggable Policies**: Supports pluggable **Fairness Policies** (e.g., Round Robin), **Ordering Policies** (e.g., FCFS), and **Saturation Detectors**.
+*   **More Details**: See the [Flow Control Guide](placeholder-link) for a complete overview.
+
+#### Request Control (`requestcontrol`)
+
+These plugins allow customizing the request lifecycle and scheduling decisions:
+
+*   **`DataProducer`**: Executes before scheduling to gather or predict data (e.g., latency, cache state) needed by the scheduler.
+*   **`Admitter`**: Makes admission decisions based on current pool state and request metadata (e.g., rejecting sheddable requests under load).
+*   **`PreRequest`**: Runs after a scheduling decision is made but before the request is forwarded to the selected endpoint.
+*   **`ResponseHeaderProcessor`**: Invoked when response headers are received from the model server.
+*   **`ResponseBodyProcessor`**: Invoked for each chunk of the response body (or once for non-streaming), allowing processing and extraction of usage metrics.
 
 ---
 
@@ -54,14 +73,11 @@ Located in `pkg/epp/framework/plugins/requesthandling/parsers`.
 #### Request Control Plugins
 Located in `pkg/epp/framework/plugins/requestcontrol`.
 
-##### Admission Plugins
-*   **[`latency-slo-admitter`](placeholder-link)**: Rejects sheddable requests (priority < 0) when no endpoint can meet latency SLO constraints. It admits if at least one endpoint has valid predictions meeting SLOs, is idle, or is "cold" (<2% KV cache). Non-sheddable requests always bypass admission.
+##### Admitter Plugins
+*   **[`latency-slo-admitter`](placeholder-link)**: Rejects sheddable requests (priority < 0) when no endpoint can meet latency SLO constraints.
 
 ##### Data Producers
 *   **[`predicted-latency-producer`](placeholder-link)**: Trains XGBoost models via a sidecar and generates per-endpoint TTFT/TPOT predictions. It calculates SLO headroom, collects training data, and tracks per-endpoint running request queues.
-*   **[`inflight-load-producer`](placeholder-link)**: Tracks the number of in-flight requests and estimated tokens for each endpoint. It increments counts in `PreRequest` and decrements them in `ResponseBody` on end-of-stream.
+*   **[`inflight-load-producer`](placeholder-link)**: Tracks the number of in-flight requests and estimated tokens for each endpoint. It increments counts in `PreRequest` and decrements them in `ResponseBodyProcessor` on end-of-stream.
 *   **[`approx-prefix-cache-producer`](placeholder-link)**: Prepares data for approximate prefix cache aware scheduling by hashing prompts in blocks and matching them against an indexer of cached prefixes on servers.
-
-##### Reporters
-*   **[`request-attribute-reporter`](placeholder-link)**: Reports calculated values (e.g., token usage extracted from response) back to the downstream proxy via `ext_proc` dynamic metadata, using CEL expressions for calculations.
 
