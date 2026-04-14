@@ -25,7 +25,7 @@ flowchart TD
 
 #### Core Components
 
-*   **Parser**: Responsible for parsing the request and response payloads to internal InferenceRequest.
+*   **Parser**: Responsible for parsing the request and response payloads to InferenceRequest, a structured internal representation of the incoming request.
 *   **FlowControl**: The main gatekeeper that calls `EnqueueAndWait` to queue requests and wait for capacity, enforcing priority and fairness.
 *   **DataProducer**: Produces data needed for scheduling decision.
 *   **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after data production but before scheduling.
