@@ -11,85 +11,47 @@ The EPP Request Handling component manages the lifecycle of an inference request
 
 ```mermaid
 flowchart TD
-    %% Custom Style Definitions
-    classDef parsing fill:lightskyblue,stroke:dodgerblue,stroke-width:2px,color:black
-    classDef flowcontrol fill:plum,stroke:purple,stroke-width:2px,color:black
-    classDef statemgmt fill:orange,stroke:darkorange,stroke-width:2px,color:black
-    classDef postsched fill:cyan,stroke:darkcyan,stroke-width:2px,color:black
-    classDef rejection fill:tomato,stroke:red,stroke-width:2px,color:white
-    classDef scheduler fill:lightgreen,stroke:forestgreen,stroke-width:3px,color:black,font-weight:bold
+    %% Style Definitions
+    classDef highlight fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef accent fill:#fff8e1,stroke:#ffb300,stroke-width:2px;
+    classDef danger fill:#ffebee,stroke:#c62828,stroke-width:2px;
+    classDef flowcontrol fill:#fff3e0,stroke:#ff9800,color:#000
 
-    %% Entry/Exit Points
+    %% Nodes
     Req([Incoming Request])
     Client([Return to Client])
-    Reject[Reject Request]:::rejection
+    Reject[Reject Request]:::danger
 
-    subgraph SystemPipeline ["EPP"]
+   
+
+    subgraph EPP ["EPP Request Handling"]
         direction TB
-
-        %% 1. Request/Response Parsing
-        subgraph SubParsing ["RequestHandling Parsing"]
-            Parse[Parser.ParseRequest]:::parsing
-            ParseResp[Parser.ParseResponse]:::parsing
-        end
-
-        %% 2. Flow Control
+        Parse[Parser]:::highlight
+        Prep[DataProducer]:::highlight
         FC[FlowControl]:::flowcontrol
-
-        %% 3. Request Handling
-        subgraph SubHandling ["RequestHandling Control"]
-            direction TB
-            subgraph SubPre ["Pre-Schedule Handling"]
-                Prep[DataProducer.PrepareRequestData]:::statemgmt
-                Admit[Admitter.AdmitRequest]:::statemgmt
-            end
-
-            subgraph SubPostSched ["Post-Scheduling Handling"]
-                PreReq[PreRequest.PreRequest]:::postsched
-                RespHead[ResponseHeaderProcessor.ResponseHeader]:::postsched
-                RespBody[ResponseBodyProcessor.ResponseBody]:::postsched
-            end
-        end
-
-        %% 4. Scheduler
-        Sched[Scheduler.Schedule]:::scheduler    
+        Admit[Admitter]:::highlight
     end
-    Forward[Selected endpoints]
+
+    Sched[Scheduler]:::accent
 
     %% Connections
     Req --> Parse
-    Parse -->|"InferenceRequest"| FC
-    
-    %% Rejection Paths
+    Parse -->|InferenceRequest| FC
     FC --> Prep
-    FC -->|"Rejected/Evicted"| Reject
-    
+    FC -->|"Rejected"| Reject
     Prep --> Admit
     Admit -->|"Admit"| Sched
-    Admit -->|"Denied"| Reject
-    
-    %% Success Paths
-    Sched -->|"SchedulingResult"| PreReq
-    
-    PreReq --> Forward
-    Forward --> RespHead
-    RespHead --> ParseResp
-    ParseResp --> RespBody
-    RespBody --> Client
+    Admit -->|"Deny"| Reject
+    Sched --> Endpoint[Selected Endpoint]
+    Endpoint --> Client
 ```
 
 
 #### Core Components
 
 *   **Parser**: Responsible for parsing the incoming request to structured internal representation consumable by the scheduler, and parsing the response to extract usage data if reported by the model server.
-
-* **Pre-Scheduling**: 
-    * **DataProducer**: A pluggable extension that allows customizing request pre-processing and producing per-request state needed for scheduling, such as tokenization, prefix-cache matches, predicted processing latency etc..
-    * **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after data production but before scheduling.
-* **Post-Scheduling**: 
-    * **PreRequest**: Executes after `SchedulingResult` is generated but before passing the request back to the proxy to forward it to the model server.
-    * **ResponseHeaderProcessor**: Triggered after response headers are successfully received. 
-    * **ResponseBodyProcessor**: The primary interface for processing response data. It handles both streaming and non-streaming responses. For streaming responses, it processes each data chunk, with `EndOfStream` (EOS) set to true on the final chunk. For non-streaming responses, it runs exactly once with `EndOfStream` set to true.
+*   **DataProducer**: A pluggable extension that allows customizing request pre-processing and producing per-request state needed for scheduling, such as tokenization, prefix-cache matches, predicted processing latency etc..
+*   **Admitter**: Decides whether to admit a request based on criteria like latency SLOs. Runs after dataProducer but before scheduling. Requests failing admission are rejected, while admitted requests proceed to the scheduling phase.
 
 ---
 
@@ -107,12 +69,10 @@ flowchart TD
     *   `Embed`
 *   **[`passthrough-parser`](placeholder-link)**: A model-agnostic parser that supports any request format by passing the request body through without interpretation.
 
-#### Request Control Plugins
-
-##### Admitter Plugins
+#### Admitter Plugins
 *   **[`latency-slo-admitter`](placeholder-link)**: Rejects sheddable requests (priority < 0) when no endpoint can meet latency SLO constraints.
 
-##### Data Producers
+#### Data Producers
 *   **[`predicted-latency-producer`](placeholder-link)**: Trains XGBoost models via a sidecar and generates per-endpoint TTFT/TPOT predictions. It calculates SLO headroom, collects training data, and tracks per-endpoint running request queues.
 *   **[`inflight-load-producer`](placeholder-link)**: Tracks the number of in-flight requests and estimated tokens for each endpoint. It increments counts in `PreRequest` and decrements them in `ResponseBodyProcessor` on end-of-stream.
 *   **[`approx-prefix-cache-producer`](placeholder-link)**: Prepares data for approximate prefix cache aware scheduling by hashing prompts in blocks and matching them against an indexer of cached prefixes on servers.
