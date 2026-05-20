@@ -145,6 +145,14 @@ jobs:
         printf "%s" "${PROMETHEUS_CA_CERT}" > "${WVA_TLS_OVERLAY_DIR}/ca.crt"
         kubectl apply -k "${WVA_TLS_OVERLAY_DIR}" -n "${WVA_DEPLOY_NS}"
 
+        # Override WVA controller image to the nightly build from this run
+        WVA_TAG="${{ needs.build-wva-image.outputs.image_tag || github.event.inputs.image_tag }}"
+        if [ -n "$WVA_TAG" ]; then
+          export WVA_TAG
+          yq -i '.images = [{"name": "controller", "newName": "ghcr.io/llm-d/llm-d-workload-variant-autoscaler", "newTag": strenv(WVA_TAG)}]' \
+            guides/workload-autoscaling/wva-config/base/kustomization.yaml
+        fi
+
         # Kustomization validation dry run
         kubectl kustomize guides/workload-autoscaling/wva-config/platform/ocp >/dev/null
 
