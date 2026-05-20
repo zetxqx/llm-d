@@ -43,7 +43,6 @@ jobs:
         export GUIDE_NAME="precise-prefix-cache-aware"
         export INFRA_PROVIDER="gke"
         kubectl apply -n ${NAMESPACE} -k guides/${GUIDE_NAME}/modelserver/gpu/vllm/${INFRA_PROVIDER}
-        helm plugin install guides/${GUIDE_NAME}/scheduler/patches/uds-tokenizer
         helm install ${GUIDE_NAME} \
           oci://registry.k8s.io/gateway-api-inference-extension/charts/standalone \
           -f guides/recipes/scheduler/base.values.yaml \
