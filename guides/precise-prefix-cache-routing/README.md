@@ -60,34 +60,18 @@ Two scorers make up the routing decision alongside the load-aware stack:
   ```bash
     export GAIE_VERSION=v1.5.0
     export GUIDE_NAME="precise-prefix-cache-routing"
-    export NAMESPACE=llm-d-precise
+    export NAMESPACE="llm-d-${GUIDE_NAME}"
   ```
 - Install the Gateway API Inference Extension CRDs:
 
   ```bash
     kubectl apply -k "https://github.com/kubernetes-sigs/gateway-api-inference-extension/config/crd?ref=${GAIE_VERSION}"
   ```
-
 - Create a target namespace for the installation
   ```bash
     kubectl create namespace ${NAMESPACE}
   ```
-
-- Set the following environment variables:
-```bash
-export GAIE_VERSION=v1.5.0
-export GUIDE_NAME="precise-prefix-cache-routing"
-export NAMESPACE="llm-d-${GUIDE_NAME}"
-```
-- Install the Gateway API Inference Extension CRDs:
-```bash
-kubectl apply -k "https://github.com/kubernetes-sigs/gateway-api-inference-extension/config/crd?ref=${GAIE_VERSION}"
-```
-- Create a target namespace for the installation
-```bash
-kubectl create namespace ${NAMESPACE}
-```
-
+  
 ## Installation Instructions
 
 ### 1. Prepare HF Token
@@ -105,6 +89,7 @@ kubectl -n ${NAMESPACE} create secret generic llm-d-hf-token --from-literal=HF_T
 This deploys the llm-d Router in the simple [Standalone Mode](placeholder-link):
 
 ```bash
+export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
 helm install ${GUIDE_NAME} \
   oci://registry.k8s.io/gateway-api-inference-extension/charts/standalone \
   -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
