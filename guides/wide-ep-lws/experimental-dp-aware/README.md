@@ -109,8 +109,8 @@ helm install llm-d-infpool \
   -n ${NAMESPACE} \
   -f ./manifests/inferencepool.values.yaml \
   --set "provider.name=istio" \
-  oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencepool \
-  --version v1.5.0
+  oci://ghcr.io/llm-d/charts/llm-d-router-gateway-dev \
+  --version ${ROUTER_CHART_VERSION}
 ```
 
 ## Verifying the installation
