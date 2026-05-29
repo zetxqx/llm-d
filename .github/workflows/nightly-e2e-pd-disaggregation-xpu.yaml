@@ -26,8 +26,8 @@ jobs:
     with:
       guide_name: pd-disaggregation
       namespace: llm-d-nightly-pd-xpu
-      scheduler_release_name: pd-disaggregation
-      scheduler_values_files: |
+      router_release_name: pd-disaggregation
+      router_values_files: |
         guides/recipes/router/base.values.yaml
         guides/pd-disaggregation/router/pd-disaggregation.values.yaml
       pod_wait_timeout: '10m'

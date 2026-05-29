@@ -26,8 +26,8 @@ jobs:
     with:
       guide_name: optimized-baseline
       namespace: llm-d-nightly-ob-xpu
-      scheduler_release_name: optimized-baseline
-      scheduler_values_files: |
+      router_release_name: optimized-baseline
+      router_values_files: |
         guides/recipes/router/base.values.yaml
         guides/optimized-baseline/router/optimized-baseline.values.yaml
       pod_wait_timeout: '10m'
