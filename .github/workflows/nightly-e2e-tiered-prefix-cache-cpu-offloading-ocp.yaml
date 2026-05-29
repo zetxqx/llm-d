@@ -61,6 +61,7 @@ jobs:
 
         kubectl apply -k guides/tiered-prefix-cache/cpu/modelserver/gpu/vllm/offloading-connector/base -n "$NAMESPACE"
 
+        export ROUTER_CHART_VERSION=v0
         helm install tiered-prefix-cache \
         oci://ghcr.io/llm-d/charts/llm-d-router-standalone-dev \
         -f guides/recipes/router/base.values.yaml \
