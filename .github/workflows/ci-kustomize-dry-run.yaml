@@ -276,14 +276,13 @@ jobs:
         run: .github/scripts/install-gke-crds.sh
 
       - name: Dry-run router (active-active default)
-        # ubuntu-latest ships helm v3, which accepts a path for --post-renderer.
-        # (helm v4 users instead run `helm plugin install .../uds-tokenizer`
-        # once and pass `--post-renderer uds-tokenizer`; see README.)
+        # The chart auto-injects the vllm-render sidecar via
+        # `router.tokenizer.enabled: true`.
         run: |
           CHART_VERSION=v0
           echo ""
           echo "========================================"
-          echo "precise-prefix-cache-routing: router"
+          echo "precise-prefix-cache-routing: router (vllm-render)"
           echo "========================================"
           echo "--- helm template ---"
           if ! helm template precise-prefix-cache-routing \
@@ -296,9 +295,9 @@ jobs:
           fi
           echo "--- kubectl apply --dry-run=server ---"
           if kubectl apply --dry-run=server -f /tmp/rendered.yaml; then
-            echo "PASS: precise-prefix-cache-routing / router"
+            echo "PASS: precise-prefix-cache-routing / router (vllm-render)"
           else
-            echo "FAIL: precise-prefix-cache-routing / router"
+            echo "FAIL: precise-prefix-cache-routing / router (vllm-render)"
             exit 1
           fi
 

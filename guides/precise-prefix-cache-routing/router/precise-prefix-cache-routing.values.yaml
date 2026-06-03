@@ -1,6 +1,10 @@
 ## precise-prefix-cache-routing guide overrides for the router.
 ## Layer on top of: recipes/router/base.values.yaml
 ##
+## A `vllm launch render` sidecar exposes /v1/completions/render on
+## localhost:8000; the EPP `token-producer` plugin tokenizes prompts via
+## that HTTP endpoint.
+##
 ## Pod-discovery mode with active-active HA (replicas: 2). Each replica dials
 ## every vLLM pod's per-pod ZMQ socket; both indexes converge identically.
 ## Scale to a single replica with --set router.epp.replicas=1.
@@ -8,7 +12,8 @@
 router:
   tokenizer:
     enabled: true
-    # Required by llm-d-router chart v0 when tokenizer is enabled; must match model server + plugins below.
+    # Required by llm-d-router chart v0 when tokenizer is enabled; 
+    # must match the deployed model server and the token-producer modelName below
     modelName: Qwen/Qwen3-32B
 
   epp:
@@ -33,27 +38,18 @@ router:
         apiVersion: llm-d.ai/v1alpha1
         kind: EndpointPickerConfig
         plugins:
-          - type: tokenizer
+          - type: token-producer
             parameters:
-              modelName: Qwen/Qwen3-32B
-              udsTokenizerConfig:
-                socketFile: /tmp/tokenizer/tokenizer-uds.socket
+              modelName: Qwen/Qwen3-32B # Must match router.tokenizer.modelName above
+              vllm:
+                url: "http://localhost:8000"
           - type: endpoint-notification-source
-          - type: metrics-data-source
-          - type: core-metrics-extractor
-          - type: single-profile-handler
-          - type: decode-filter
           - type: precise-prefix-cache-scorer
             parameters:
               tokenProcessorConfig:
-                blockSize: 64           # must match vLLM --block-size
+                blockSize: 64
               speculativeIndexing: true
               indexerConfig:
-                tokenizersPoolConfig:
-                  modelName: Qwen/Qwen3-32B
-                  workersCount: 24
-                  uds:
-                    socketFile: /tmp/tokenizer/tokenizer-uds.socket
                 kvBlockIndexConfig:
                   enableMetrics: true
               kvEventsConfig:
@@ -66,18 +62,14 @@ router:
           - type: queue-scorer
           - type: no-hit-lru-scorer
           - type: max-score-picker
-        dataLayer:
+        dataLayer: # metrics-data-source + core-metrics-extractor injected by default
           sources:
-            - pluginRef: metrics-data-source
-              extractors:
-                - pluginRef: core-metrics-extractor
             - pluginRef: endpoint-notification-source
               extractors:
                 - pluginRef: precise-prefix-cache-scorer
         schedulingProfiles:
           - name: default
             plugins:
-              - pluginRef: decode-filter
               - pluginRef: kv-cache-utilization-scorer
                 weight: 2.0
               - pluginRef: queue-scorer

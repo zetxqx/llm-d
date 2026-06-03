@@ -2,8 +2,8 @@ name: Nightly - Precise Prefix Cache E2E (OpenShift)
 
 # Nightly regression test for the precise-prefix-cache-routing guide on OpenShift.
 # Deploys the guide via custom_deploy_script (kustomize + standalone chart with
-# UDS tokenizer post-renderer) and validates with e2e-validate.sh against the
-# scheduler EPP service. Mirrors the optimized-baseline CKS/GKE migration in
+# the vllm-render tokenizer sidecar) and validates with e2e-validate.sh against
+# the router EPP service. Mirrors the optimized-baseline CKS/GKE migration in
 # llm-d/llm-d#1268; the OCP helmfile reusable workflow doesn't expose a
 # `gateway_host` input yet, so pre_deploy_script seeds GATEWAY_HOST via
 # GITHUB_ENV.

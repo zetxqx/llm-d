@@ -1,9 +1,9 @@
 name: Nightly - Precise Prefix Cache E2E (CKS)
 
 # Nightly regression test for the precise-prefix-cache-routing guide on
-# CoreWeave (CKS). Deploys via kustomize + the standalone chart with the UDS
-# tokenizer post-renderer; validates with e2e-validate.sh against the
-# scheduler EPP service (gateway_host).
+# CoreWeave (CKS). Deploys via kustomize + the standalone chart with the
+# vllm-render tokenizer sidecar; validates with e2e-validate.sh against the
+# router EPP service (gateway_host).
 
 on:
   schedule:

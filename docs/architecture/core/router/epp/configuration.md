@@ -189,6 +189,7 @@ If unspecified, `openai-parser` is used by default.
 #### Admitters & Data Producers
 
 Admitters and Data Producers are specialized plugins that execute during the initial request processing phase:
+
 - **Admitters** perform early checks to accept or reject requests before they enter the queue.
 - **Data Producers** gather per request contextual information (like predicted latency or prefix cache status) required by downstream components.
 
@@ -222,7 +223,7 @@ See [Flow Control](flow-control.md) for more architectural details on how the EP
 
 The `flowControl` section configures the EPP's Flow Control layer, which acts as a pool defense mechanism by buffering requests before they reach backend model servers. Flow Control implements a 3-tier dispatch hierarchy: **Priority → Fairness → Ordering**. For a visual breakdown of how this looks in practice, see the [Queuing Topology diagram in the Flow Control reference](flow-control.md#queuing-topology--the-3-tier-dispatch).
 
-When flow control is enabled (via the `FlowControl` feature gate), incoming requests are queued in memory and dispatched according to configured priority bands, fairness policies, and ordering policies. When the pool is saturated (as determined by the [saturation detector](#saturationdetector)), requests are held in the queue until capacity frees up.
+When flow control is enabled (via the `FlowControl` feature gate), incoming requests are queued in memory and dispatched according to configured priority bands, fairness policies, and ordering policies. When the pool is saturated (as determined by the [saturation detector](#saturation-detector)), requests are held in the queue until capacity frees up.
 
 The following example demonstrates a complete `EndpointPickerConfig` with flow control enabled, showing how to configure the `featureGates`, `plugins`, `saturationDetector`, and `flowControl` sections to work together.
 
@@ -267,7 +268,7 @@ flowControl:
 # ... other sections (schedulingProfiles, dataLayer, etc.) ...
 ```
 
-##### Global Fields
+#### Global Fields
 
 - `maxBytes`: Global capacity limit across all priority levels. Supports Kubernetes resource quantity format (e.g., `10Gi`, `512Mi`) or plain integers (bytes). If `0` or omitted, no global limit is enforced (unlimited).
 - `maxRequests`: Optional global maximum request count limit. If `0` or omitted, no global limit is enforced (unlimited).
@@ -275,7 +276,7 @@ flowControl:
 - `defaultPriorityBand`: A template used to dynamically provision priority bands that are not explicitly configured in `priorityBands`.
 - `priorityBands`: A list of explicit configurations for specific priority levels.
 
-##### Priority Band Fields
+#### Priority Band Fields
 
 These fields apply to both `defaultPriorityBand` and entries in `priorityBands`:
 
@@ -287,7 +288,7 @@ These fields apply to both `defaultPriorityBand` and entries in `priorityBands`:
 
 For a full list of available Fairness and Ordering policies, see the [Flow Control reference](flow-control.md#concrete-plugins).
 
-##### Saturation Detector
+#### Saturation Detector
 
 > [!NOTE]
 > While `saturationDetector` is presented here conceptually as part of Flow Control, it is a **top-level field** in the YAML schema, at the same level as `flowControl`.
@@ -301,7 +302,7 @@ saturationDetector:
   pluginRef: utilization-detector # Default
 ```
 
-###### Fields
+##### Fields
 
 - `pluginRef`: References a plugin instance defined in the global `plugins` section. Defaults to `utilization-detector` if omitted or empty. *Note: If a `utilization-detector` is not explicitly defined in your `plugins` array, the gateway will automatically instantiate one under the hood using standard default parameters.*
 
@@ -331,12 +332,12 @@ schedulingProfiles:
   - pluginRef: max-score-picker # Default picker (auto-injected if omitted)
 ```
 
-##### Scheduling Profile Fields
+#### Scheduling Profile Fields
 
 - `name`: The unique name of the scheduling profile.
 - `plugins`: A list of plugins that make up the scheduling pipeline for this profile.
 
-##### Profile Plugin Fields
+#### Profile Plugin Fields
 
 - `pluginRef`: References a plugin by its name (or type if name was omitted) defined in the top-level `plugins` section.
 - `weight`: Optional float weight applied if the referenced plugin is a Scorer. If omitted for a scorer, it defaults to `1.0`.
@@ -355,7 +356,7 @@ The system applies a multi-tiered defaulting logic for scheduling profiles:
 
 </details>
 
-##### Profile Execution Rules
+#### Profile Execution Rules
 
 While the YAML configuration presents a flat list of plugins within a profile, the framework processes them with specific rules:
 
@@ -364,7 +365,7 @@ While the YAML configuration presents a flat list of plugins within a profile, t
 - **Multiple Pickers**: A scheduling profile **cannot** have more than one picker. Referencing more than one picker in a profile's `plugins` list will cause a runtime error during profile initialization.
 - **Scorer Weights**: If the `weight` field is omitted for a scorer, it defaults to `1.0`. Scores from multiple scorers are accumulated after multiplying by their respective weights.
 
-##### Profile Handlers and Use Cases
+#### Profile Handlers and Use Cases
 
 - **Multiple Profiles**: While a single profile is sufficient for simple serving, advanced use cases like **disaggregated prefill** require two or more profiles to handle different types of requests differently.
 - **Profile Handler**: When multiple profiles are defined, you must instantiate and configure a **Profile Handler** plugin in the top-level `plugins` section. The Profile Handler determines which `SchedulingProfile` to use for each incoming request.
@@ -442,7 +443,7 @@ dataLayer:
     - pluginRef: core-metrics-extractor # References a plugin in the 'plugins' section
 ```
 
-##### Fields
+#### Fields
 
 - `sources`: A list of data sources to be polled or monitored.
   - `pluginRef`: References a plugin instance defined in the global `plugins` section that implements the `DataSource` interface.
@@ -450,7 +451,7 @@ dataLayer:
     - `pluginRef`: References a plugin instance defined in the global `plugins` section that implements the `Extractor` interface.
 
 > [!NOTE]
-> If the `dataLayer` section is omitted, the system automatically instantiates default plugins (the `metrics-data-source` and `core-metrics-extractor`) to enable standard metrics collection and extraction for scheduling decisions.
+> The `metrics-data-source` and `core-metrics-extractor` are injected **by default**, so standard metrics collection works without configuring `dataLayer` at all. Injection is additive — even when you supply your own `dataLayer`, the default metrics source is appended with your sources. Unless you set `injectDefaults: false` or  `dataLayer.sources` already contains a `metrics-data-source` source
 
 ## High Availability
 
