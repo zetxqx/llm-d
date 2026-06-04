@@ -51,8 +51,6 @@ workload:                         # yaml configuration for harness workload(s)
           duration: 100
         - rate: 35
           duration: 100
-        - rate: 40
-          duration: 100
   api:
     type: chat
     streaming: true
@@ -68,7 +66,7 @@ workload:                         # yaml configuration for harness workload(s)
       shared_prefix:
         multimodal:
           image:
-          count: { type: fixed, min: 3, max: 3, mean: 3 }  # items per request
+          count: { type: fixed, min: 4, max: 4, mean: 4 }  # items per request
           insertion_point: 0.0
           resolutions:
             - resolution: "720p"

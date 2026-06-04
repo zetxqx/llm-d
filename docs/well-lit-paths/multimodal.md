@@ -53,7 +53,7 @@ EPP uses two highly customizable **Token Estimation Strategies**:
 
 ##### A. Dimension-Based Approximation (e.g., Qwen-VL)
 Estimate tokens based on image width and height:
-$$\text{Tokens} = \frac{\text{Image Width} \times \text{Image Height}}{\text{Factor}} + 2$$
+$$\text{Tokens} = \frac{\text{Image Width} \times \text{Image Height}}{\text{Factor}}$$
 
 * The `Factor` parameter is configurable per-EPP:
   * For **Qwen 2.5 VL**: `factor = 784` (which is $28 \times 28$)
