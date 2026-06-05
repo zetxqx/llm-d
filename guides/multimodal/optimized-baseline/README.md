@@ -96,8 +96,8 @@ helm install ${GUIDE_NAME} \
 Apply the Kustomize overlays for your specific backend (defaulting to NVIDIA GPU / vLLM):
 
 ```bash
-export INFRA_PROVIDER=base # base | gke
-kubectl apply -n ${NAMESPACE} -k guides/${GUIDE_NAME}/modelserver/gpu/vllm/${INFRA_PROVIDER}/
+export INFRA_PROVIDER=gke # base | gke
+kubectl apply -n ${NAMESPACE} -k guides/multimodal/${GUIDE_NAME}/modelserver/gpu/vllm/${INFRA_PROVIDER}/
 ```
 
 ### 3. (Optional) Enable monitoring
@@ -176,7 +176,7 @@ curl -X POST http://${IP}/v1/chat/completions \
 To tear down and clean up all deployed resources:
 ```bash
 helm uninstall ${GUIDE_NAME} -n ${NAMESPACE}
-kubectl delete -n ${NAMESPACE} -k guides/${GUIDE_NAME}/modelserver/amd/vllm/
+kubectl delete -n ${NAMESPACE} -k guides/multimodal/${GUIDE_NAME}/modelserver/gpu/vllm/${INFRA_PROVIDER}/
 kubectl delete namespace ${NAMESPACE}
 ```
 

@@ -19,17 +19,17 @@ router:
         - type: kv-cache-utilization-scorer
         - type: prefix-cache-scorer
         - type: no-hit-lru-scorer
-        - type: approx-prefix-cache-producer
+        - type: token-producer
           parameters:
-            autoTune: true
-            multiModalTokenEstimator:
+            estimate:
               image:
                 mode: dynamic
                 defaultResolution:
                   width: 1280
                   height: 720
                 dynamic:
-                  factor: 1024    
+                  factor: 1024
+        - type: approx-prefix-cache-producer
         schedulingProfiles:
         - name: default
           plugins:
