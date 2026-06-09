@@ -29,7 +29,8 @@ on:
         default: 'llm-d/llm-d'
 
 permissions:
-  contents: read
+  contents: write
+  actions: read
 
 concurrency:
   group: nightly-e2e-predicted-latency-cks
@@ -69,3 +70,12 @@ jobs:
       pr_number: ${{ github.event.inputs.pr_number }}
       pr_repo: ${{ github.event.inputs.pr_repo }}
     secrets: inherit
+
+  update-badge:
+    needs: [nightly]
+    if: always()
+    uses: llm-d/llm-d-infra/.github/workflows/reusable-update-badge.yaml@main
+    with:
+      badge_name: predicted-latency-cks
+      badge_label: "CKS"
+      result: ${{ needs.nightly.result }}

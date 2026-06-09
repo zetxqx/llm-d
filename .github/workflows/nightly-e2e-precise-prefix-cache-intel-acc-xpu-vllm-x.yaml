@@ -13,7 +13,8 @@ on:
         default: 'false'
 
 permissions:
-  contents: read
+  contents: write
+  actions: read
 
 concurrency:
   group: nightly-e2e-precise-prefix-cache-xpu
@@ -34,3 +35,12 @@ jobs:
       llm_d_ref: ${{ github.ref }}
       skip_cleanup: ${{ github.event.inputs.skip_cleanup == 'true' }}
     secrets: inherit
+
+  update-badge:
+    needs: [nightly]
+    if: always()
+    uses: llm-d/llm-d-infra/.github/workflows/reusable-update-badge.yaml@main
+    with:
+      badge_name: precise-prefix-cache-xpu
+      badge_label: "XPU"
+      result: ${{ needs.nightly.result }}
