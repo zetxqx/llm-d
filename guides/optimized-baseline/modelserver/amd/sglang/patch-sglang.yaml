@@ -15,6 +15,7 @@ spec:
             - "--port=8000"
             - "--log-level=info"
             - "--enable-metrics"
+            - "--tensor-parallel-size=2"
             - "--uvicorn-access-log-exclude-prefixes=/metrics"
             # Uncomment for distributed tracing
             # - "--enable-trace"
