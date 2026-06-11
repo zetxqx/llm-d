@@ -20,5 +20,5 @@ Process large-scale batch inference jobs via an OpenAI-compatible API, enabling 
 
 - [Batch Gateway Deployment Guide](../../../guides/batch-gateway) — full deployment instructions, configuration options, and troubleshooting.
 - [Batch Gateway Architecture](../../architecture/advanced/batch/batch-gateway.md) — components, data flow, and processing pipeline.
-- [Batch Gateway Repository](https://github.com/llm-d-incubation/batch-gateway) — source code, Helm chart, platform-specific deployment guides, and demo scripts.
+- [Batch Gateway Repository](https://github.com/llm-d/llm-d-batch-gateway) — source code, Helm chart, platform-specific deployment guides, and demo scripts.
 - [Asynchronous Processing](../../../guides/asynchronous-processing) — complementary queue-based async inference for individual requests.

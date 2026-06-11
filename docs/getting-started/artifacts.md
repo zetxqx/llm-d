@@ -143,7 +143,7 @@ Install instructions live under [`guides/recipes/gateway/`](https://github.com/l
 | [llm-d/llm-d-kv-cache](https://github.com/llm-d/llm-d-kv-cache) | Go, Python, CPP | KV-cache block locality indexer, FS offloading |
 | [llm-d/llm-d-workload-variant-autoscaler](https://github.com/llm-d/llm-d-workload-variant-autoscaler) | Go | SLO-aware workload autoscaler |
 | [llm-d-incubation/llm-d-async](https://github.com/llm-d-incubation/llm-d-async) | Go | Asynchronous request processor for latency insensitive traffic |
-| [llm-d-incubation/batch-gateway](https://github.com/llm-d-incubation/batch-gateway) | Go | OpenAI-compatible API for submitting, tracking, and managing batch inference jobs.
+| [llm-d/llm-d-batch-gateway](https://github.com/llm-d/llm-d-batch-gateway) | Go | OpenAI-compatible API for submitting, tracking, and managing batch inference jobs.
 
 ### Supporting Libraries
 
