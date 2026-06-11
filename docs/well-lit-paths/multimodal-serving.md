@@ -1,4 +1,4 @@
-# Multimodal
+# Multimodal Workload Serving
 
 Traditional HTTP requests are fast, uniform, and cheap. Standard round-robin request scheduling strategies balance this load well.
 
@@ -11,18 +11,16 @@ The **llm-d Router** extends text-based prefix scheduling across both aggregated
 The router intelligently directs incoming requests to the specific backend worker that already hold the corresponding pre-computed encoder cache and key-value (KV) blocks in memory. 
 Whether operating in a unified topology or a decoupled pencode-prefill-decode landscape, this targeted routing maximizes hardware efficiency and eliminates redundant processing.
 
-> [!NOTE]
-> This guide builds upon the text-based [Optimized Baseline](optimized-baseline.md) and demonstrates one approach to prefix- and load-aware routing for multimodal workloads. The llm-d Router supports other options as well, including session affinity and active request based routing, which make no assumptions about the router's ability to parse the request or probe the servers. See [configuration](../architecture/core/router/epp/configuration.md) for more details on the available scorers, or [precise prefix cache routing](precise-prefix-cache-routing.md) for KV-event-driven scoring.
 
 ---
 
 ## Deploy
 
 ### Multimodal Aggregated Guide
-See the [multimodal optimized baseline guide](../../guides/multimodal/optimized-baseline) for aggregated guide manifests and step-by-step deployment.
+See the [multimodal optimized baseline guide](../../guides/multimodal-serving/optimized-baseline) for aggregated guide manifests and step-by-step deployment.
 
 ### Multimodal Disaggregated Guide
-See the [multimodal e-disaggregation guide](../../guides/multimodal/e-disaggregation) for disaggregated guide manifests and step-by-step deployment.
+See the [multimodal e-disaggregation guide](../../guides/multimodal-serving/e-disaggregation) for disaggregated guide manifests and step-by-step deployment.
 
 ---
 

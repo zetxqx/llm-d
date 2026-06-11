@@ -22,6 +22,10 @@ Well-lit paths are curated, end-to-end guides for common LLM inference patterns 
 - **[Flow Control](flow-control.md)**: Intelligent request queuing for multi-tenant deployments and managing traffic spikes.
 - **[Workload Autoscaling](workload-autoscaling.md)**: From simple Kubernetes autoscaling supplemented by EPP load metrics to advanced, SLO-aware capacity optimization for heterogeneous pools via the Workload Variant Autoscaler.
 
+### Multimodal Serving
+
+* [Optimized Baseline](./multimodal-serving/optimized-baseline/README.md) - Deploy vLLM with multimodal prefix-cache and load-aware routing enabled by the llm-d EPP.
+
 ### Experimental
 
 - **[Asynchronous Processing](asynchronous-processing.md)**: Intelligently processing latency-tolerant requests sourced from message queues via a lightweight agent to leverage "slack" capacity without the complexity of a full batch gateway.
