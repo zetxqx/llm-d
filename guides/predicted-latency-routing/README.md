@@ -115,7 +115,11 @@ export INFRA_PROVIDER=base # base | gke
 kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/predicted-latency-routing/modelserver/gpu/vllm/${INFRA_PROVIDER}/
 ```
 
-For other backends (AMD GPU, Intel XPU, Gaudi, TPU, CPU) or model servers (e.g. SGLang), see [optimized-baseline → Deploy the Model Server](../optimized-baseline/README.md#2-deploy-the-model-server).
+For other backends (AMD GPU, Intel XPU, Gaudi, TPU, CPU), see [optimized-baseline → Deploy the Model Server](../optimized-baseline/README.md#2-deploy-the-model-server). For example, for sglang deployments:
+
+```bash
+kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/optimized-baseline/modelserver/gpu/sglang/${INFRA_PROVIDER}/
+```
 
 ### 3. Enable monitoring (optional)
 
@@ -272,6 +276,8 @@ To remove the deployed components:
 ```bash
 helm uninstall ${GUIDE_NAME} -n ${NAMESPACE}
 kubectl delete  -n ${NAMESPACE} -k ${REPO_ROOT}/guides/predicted-latency-routing/modelserver/gpu/vllm/${INFRA_PROVIDER}
+# for sglang deployments
+kubectl delete  -n ${NAMESPACE} -k ${REPO_ROOT}/guides/optimized-baseline/modelserver/gpu/sglang/${INFRA_PROVIDER} --ignore-not-found
 kubectl delete namespace ${NAMESPACE}
 ```
 
