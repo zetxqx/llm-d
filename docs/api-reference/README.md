@@ -26,6 +26,10 @@ These schemas define the internal configuration for project components and are t
 
 * [EPP HTTP APIs Reference](epp-http-apis.md): HTTP APIs (OpenAI, Anthropic, vLLM) whose request bodies the EPP parses for scheduling, prefix-cache aware routing, and plugin decisions.
 
+## Supported gRPC APIs
+
+* [EPP gRPC APIs Reference](epp-grpc-apis.md): gRPC APIs (vLLM gRPC engine) whose payloads the EPP parses via parser plugins, with configuration and request examples.
+
 ## See Also
 
 * [Glossary](glossary.md): Definitions of key terms and concepts used across this project.
