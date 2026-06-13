@@ -12,6 +12,8 @@ This document lists the HTTP APIs the [Endpoint Picker (EPP)](../architecture/co
 | `/v1/embeddings` | OpenAI Embeddings API | ✅ |
 | `/v1/messages` | Anthropic Messages API | ✅ |
 | `/inference/v1/generate` | vLLM Generate API | ✅ |
+| `/v1/completions/render` | vLLM Render API (Completions) | ✅ |
+| `/v1/chat/completions/render` | vLLM Render API (Chat Completions) | ✅ |
 
 ---
 
@@ -384,3 +386,119 @@ Response:
   ]
 }
 ```
+
+### vLLM `/v1/completions/render` and `/v1/chat/completions/render`
+
+These endpoints require the model server to be vLLM. Each accepts the same request body as its OpenAI parent (`/v1/completions` and `/v1/chat/completions` respectively) and returns a single `GenerateRequest` payload that can be sent to [`/inference/v1/generate`](#vllm-inferencev1generate).
+
+Request:
+
+```bash
+curl -X POST http://${IP}/v1/completions/render \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "model": "'"${MODEL_NAME}"'",
+        "prompt": "Hello",
+        "max_tokens": 10
+    }' | jq
+```
+
+<details>
+<summary>Response (GenerateRequest)</summary>
+
+```json
+[
+  {
+    "request_id": "cmpl-8d305513a93482b7",
+    "token_ids": [
+      9707
+    ],
+    "features": null,
+    "sampling_params": {
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repetition_penalty": 1.0,
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "top_k": 20,
+      "min_p": 0.0,
+      "stop": [],
+      "stop_token_ids": [],
+      "max_tokens": 10,
+      "output_kind": 2,
+      "skip_clone": true,
+      "bad_words": [],
+      "skip_reading_prefix_cache": false
+    },
+    "model": "Qwen/Qwen3-VL-32B-Instruct",
+    "stream": false,
+    "stream_options": null,
+    "cache_salt": null,
+    "priority": 0,
+    "kv_transfer_params": null
+  }
+]
+```
+
+</details>
+
+The chat variant accepts the `/v1/chat/completions` body and applies the model's chat template before tokenizing, so `token_ids` reflects the rendered conversation.
+
+Request:
+
+```bash
+curl -X POST http://${IP}/v1/chat/completions/render \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "model": "'"${MODEL_NAME}"'",
+        "messages": [
+            {"role": "user", "content": "Hello"}
+        ],
+        "max_tokens": 10
+    }' | jq
+```
+
+<details>
+<summary>Response (GenerateRequest)</summary>
+
+```json
+{
+  "request_id": "chatcmpl-85c06cf5ea1706ae",
+  "token_ids": [
+    151644,
+    872,
+    198,
+    9707,
+    151645,
+    198,
+    151644,
+    77091,
+    198
+  ],
+  "features": null,
+  "sampling_params": {
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "repetition_penalty": 1.0,
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "min_p": 0.0,
+    "stop": [],
+    "stop_token_ids": [],
+    "max_tokens": 10,
+    "output_kind": 2,
+    "skip_clone": true,
+    "bad_words": [],
+    "skip_reading_prefix_cache": false
+  },
+  "model": "Qwen/Qwen3-VL-32B-Instruct",
+  "stream": false,
+  "stream_options": null,
+  "cache_salt": null,
+  "priority": 0,
+  "kv_transfer_params": null
+}
+```
+
+</details>
