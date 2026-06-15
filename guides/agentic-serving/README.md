@@ -33,8 +33,12 @@ direction and further reading.
 
 ## Deployments
 
-> 🚧 Under construction — guidance on selecting and combining layers for a given workload and
-> SLO target lands with the deployment options.
+The layers above compose into deployments spanning a range of capabilities and operational
+costs - from a routing-and-offloading baseline up to disaggregated serving, added incrementally
+as a workload's scale and latency targets grow. Concrete workloads with benchmarked options are
+provided as sub-guides below.
+
+- [Agentic Code Generation](agentic-code-generation.md)
 
 ## Benchmarking
 
