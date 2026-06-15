@@ -119,7 +119,7 @@ The release name `${GUIDE_NAME}` is mandatory for standard deployments — the i
 
 To use a Kubernetes Gateway managed proxy instead of the standalone Envoy sidecar, do **not** apply the standalone chart above. Instead:
 
-1. **Deploy a Kubernetes Gateway**. See [the gateway guides](../prereq/gateways) for step-by-step deployment of a Gateway named `llm-d-inference-gateway`.
+1. **Deploy a Kubernetes Gateway**. See [the gateway guides](../../docs/resources/gateway) for step-by-step deployment of a Gateway named `llm-d-inference-gateway`.
 
 2. **Deploy the llm-d Router and HTTPRoute** via the `llm-d-router-gateway` chart with `httpRoute.create=true`:
 
