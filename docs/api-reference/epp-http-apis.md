@@ -4,16 +4,16 @@ This document lists the HTTP APIs the [Endpoint Picker (EPP)](../architecture/co
 
 ## Supported HTTP APIs
 
-| Endpoint | Source | Supported |
-| --- | --- | --- |
-| `/v1/completions` | OpenAI Completions API | ✅ |
-| `/v1/chat/completions` | OpenAI Chat Completions API | ✅ |
-| `/v1/responses` | OpenAI Responses API | ✅ |
-| `/v1/embeddings` | OpenAI Embeddings API | ✅ |
-| `/v1/messages` | Anthropic Messages API | ✅ |
-| `/inference/v1/generate` | vLLM Generate API | ✅ |
-| `/v1/completions/render` | vLLM Render API (Completions) | ✅ |
-| `/v1/chat/completions/render` | vLLM Render API (Chat Completions) | ✅ |
+| Endpoint | Source |
+| --- | --- |
+| `/v1/completions` | OpenAI Completions API |
+| `/v1/chat/completions` | OpenAI Chat Completions API |
+| `/v1/responses` | OpenAI Responses API |
+| `/v1/embeddings` | OpenAI Embeddings API |
+| `/v1/messages` | Anthropic Messages API |
+| `/inference/v1/generate` | vLLM Generate API |
+| `/v1/completions/render` | vLLM Render API (Completions) |
+| `/v1/chat/completions/render` | vLLM Render API (Chat Completions) |
 
 ---
 

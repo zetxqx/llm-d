@@ -6,10 +6,10 @@ Unlike the HTTP APIs, gRPC parsing is not enabled by default: the matching parse
 
 ## Supported gRPC APIs
 
-| gRPC Method | Source | Parser Plugin | Supported |
-| --- | --- | --- | --- |
-| `vllm.grpc.engine.VllmEngine/Generate` | vLLM gRPC engine API | `vllmgrpc-parser` | ✅ |
-| `vllm.grpc.engine.VllmEngine/Embed` | vLLM gRPC engine API | `vllmgrpc-parser` | ✅ |
+| gRPC Method | Source | Parser Plugin |
+| --- | --- | --- |
+| `vllm.grpc.engine.VllmEngine/Generate` | vLLM gRPC engine API | `vllmgrpc-parser` |
+| `vllm.grpc.engine.VllmEngine/Embed` | vLLM gRPC engine API | `vllmgrpc-parser` |
 
 The gRPC API is currently token-out only for `Generate`: responses carry token IDs (`chunk.token_ids`, `complete.output_ids`) rather than decoded text, and clients are responsible for detokenization.
 
