@@ -1,31 +1,14 @@
 # Well-Lit Paths
 
-Well-lit paths are curated, end-to-end guides for common LLM inference patterns and optimizations. These guides are intended to be a starting point for your own configuration and deployment of model servers. Our manifests provide basic reusable building blocks for vLLM deployments and llm-d router configuration within these guides but are not intended to support the full range of all possible configurations.
+Well-lit paths are curated, end-to-end guides for common LLM inference patterns, platform operations, and workload-specific optimizations.
 
-> **Serving a specific workload?** See **[Workloads](../workloads/README.md)** — guides (e.g. agentic and multimodal serving) that compose these paths into a cohesive deployment for a use case.
+These guides are organized into three foundational architectural groupings:
 
-### Intelligent Routing
+### [Core Capability Building Blocks](capabilities/README.md)
+Individual functional features, sophisticated routing algorithms, and physical inference execution paths.
 
-- **[Optimized Baseline](optimized-baseline.md)**: Strategies for handling the unique challenges of LLM request scheduling, moving beyond traditional round-robin approaches.
-- **[Predicted Latency-Based Routing](predicted-latency.md)**: Using online-trained machine learning models to predict latency and optimize scheduling.
+### [Workloads](workloads/README.md)
+Cohesive, production-grade deployment guides that compose our capability building blocks into one horizontal stack tuned for a use case.
 
-### Advanced KV-Cache Management
-
-- **[Precise Prefix Cache Routing](precise-prefix-cache-routing.md)**: Near-real-time routing based on exact cache state published by model servers.
-- **[Tiered Prefix Cache](tiered-prefix-cache.md)**: Efficiently managing KV caches by offloading to CPU RAM, NVMe, or network storage to improve prefix-cache re-use.
-
-### Serving Large Models
-
-- **[Prefill/Decode Disaggregation](pd-disaggregation.md)**: Separating prefill (compute-bound) and decode (memory-bandwidth-bound) phases for optimized performance.
-- **[Wide Expert-Parallelism](wide-expert-parallelism.md)**: Scaling KV cache space for massive MoE models like DeepSeek-R1 using DP/EP deployment patterns.
-
-### Operational Excellence
-
-- **[Flow Control](flow-control.md)**: Intelligent request queuing for multi-tenant deployments and managing traffic spikes.
-- **[Workload Autoscaling](workload-autoscaling.md)**: From simple Kubernetes autoscaling supplemented by EPP load metrics to advanced, SLO-aware capacity optimization for heterogeneous pools via the Workload Variant Autoscaler.
-- **[Batch Gateway](batch-gateway.md)**: Managing large-scale batch inference coexisting with interactive workloads via an OpenAI-compatible Batch API.
-
-### Experimental
-
-- **[Asynchronous Processing](asynchronous-processing.md)**: Intelligently processing latency-tolerant requests sourced from message queues via a lightweight agent to leverage "slack" capacity without the complexity of a full batch gateway.
-- **[No-Kubernetes Deployment](no-kubernetes-deployment.md)**: Running the llm-d routing stack on bare metal, HPC schedulers, or Ray — workers are discovered from a YAML file on disk via the `file-discovery` plugin instead of an `InferencePool`.
+### [Operational Excellence](operations/README.md)
+Platform governance traits, capacity optimization, traffic control, and non-Kubernetes environmental adaptations.
