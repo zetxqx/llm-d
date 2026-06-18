@@ -15,6 +15,7 @@ spec:
             - "--port=8000"
             - "--enable-metrics"
             - "--tensor-parallel-size=2"
+            - "--mem-fraction-static=0.9"
             # Uncomment for distributed tracing
             # - "--enable-trace"
             # - "--otlp-traces-endpoint=http://otel-collector:4317"
