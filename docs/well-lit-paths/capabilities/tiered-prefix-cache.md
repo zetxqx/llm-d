@@ -53,7 +53,7 @@ This increases the **KV-working set size**, growing the **receptive-field** (the
 
 ## Deploy
 
-See the [KV Cache Management guide](../../guides/tiered-prefix-cache) for manifests and step-by-step deployment.
+See the [KV Cache Management guide](../../../guides/tiered-prefix-cache) for manifests and step-by-step deployment.
 
 ## Architecture
 
@@ -66,7 +66,7 @@ vLLM pods are configured with `OffloadingConnector` and increased CPU memory req
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)">
-    <img src="../assets/cpu-offloading.svg" alt="CPU KV Cache Offloading">
+    <img src="../../assets/cpu-offloading.svg" alt="CPU KV Cache Offloading">
   </picture>
 </p>
 
@@ -77,6 +77,6 @@ vLLM pods mount a ReadWriteMany PVC backed by shared storage (Lustre, CephFS, or
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)">
-    <img src="../assets/fs-offloading.svg" alt="Storage KV Cache Offloading">
+    <img src="../../assets/fs-offloading.svg" alt="Storage KV Cache Offloading">
   </picture>
 </p>
