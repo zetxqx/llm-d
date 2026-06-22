@@ -56,11 +56,10 @@ This guide includes configurations for the following accelerators:
 - Set the following environment variables:
 
   ```bash
-    export GAIE_VERSION=v1.5.0
-    export ROUTER_CHART_VERSION=v0
+    export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
+    source ${REPO_ROOT}/guides/env.sh
     export GUIDE_NAME="optimized-baseline"
     export NAMESPACE=llm-d-optimized-baseline
-    export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
   ```
 
 - Install the Gateway API Inference Extension CRDs:
@@ -97,7 +96,7 @@ This deploys the llm-d Router in [Standalone Mode](../../docs/architecture/core/
 ```bash
 # Assuming base-directory is the root of the llm-d repo
 helm install ${GUIDE_NAME} \
-    oci://ghcr.io/llm-d/charts/llm-d-router-standalone-dev \
+    ${ROUTER_STANDALONE_CHART} \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
     -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \
     -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
@@ -114,7 +113,7 @@ To use a Kubernetes Gateway managed proxy rather than the standalone version, fo
 ```bash
 export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
 helm install ${GUIDE_NAME} \
-    oci://ghcr.io/llm-d/charts/llm-d-router-gateway-dev  \
+    ${ROUTER_GATEWAY_CHART}  \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
     -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \
     --set provider.name=${PROVIDER_NAME} \
@@ -130,11 +129,16 @@ helm install ${GUIDE_NAME} \
 Apply the Kustomize overlays for your specific backend:
 
 ```bash
-export ACCELERATOR_TYPE=gpu # options: gpu, amd, xpu, tpu/v6, tpu/v7, cpu
+export ACCELERATOR_TYPE=gpu # options: gpu, amd, xpu, hpu, tpu/v6, tpu/v7, cpu
 export INFRA_PROVIDER=base # base | gke
 export MODEL_SERVER=vllm # options: vllm, sglang
+export INFRA_PROVIDER=base # base | gke (GPU only, omit for other accelerators)
 kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/${ACCELERATOR_TYPE}/${MODEL_SERVER}/${INFRA_PROVIDER}/
 ```
+
+> [!NOTE]
+> The `INFRA_PROVIDER` suffix (`base` or `gke`) only applies to GPU. For other accelerators, use the path directly:
+> `kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/${ACCELERATOR_TYPE}/${MODEL_SERVER}/`
 
 <details>
 <summary><h4>Other Models</h4></summary>

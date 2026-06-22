@@ -61,6 +61,7 @@ This guide requires 32 Nvidia H200 or B200 GPUs and InfiniBand or RoCE RDMA netw
 
   ```bash
   export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
+  source ${REPO_ROOT}/guides/env.sh
   export NAMESPACE=llm-d-wide-ep # or any other namespace (shorter names recommended)
   kubectl create namespace ${NAMESPACE}
   ```
@@ -81,9 +82,8 @@ This deploys the llm-d Router with an Envoy sidecar, it doesn't set up a Kuberne
 
 ```bash
 export GUIDE_NAME="wide-ep-lws"
-export ROUTER_CHART_VERSION=v0
 helm install ${GUIDE_NAME} \
-    oci://ghcr.io/llm-d/charts/llm-d-router-standalone-dev \
+    ${ROUTER_STANDALONE_CHART} \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
     -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \
     -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
@@ -100,7 +100,7 @@ To use a Kubernetes Gateway managed proxy rather than the standalone version, fo
 ```bash
 export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
 helm install ${GUIDE_NAME} \
-    oci://ghcr.io/llm-d/charts/llm-d-router-gateway-dev \
+    ${ROUTER_GATEWAY_CHART} \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
     -f ${REPO_ROOT}/guides/recipes/router/features/httproute-flags.yaml \
     -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \

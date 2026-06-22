@@ -78,12 +78,11 @@ Flow Control is a software-level scheduling feature at the EPP layer and is enti
 * Set the following environment variables:
 
   ```bash
-  export GAIE_VERSION=v1.5.0
-  export ROUTER_CHART_VERSION=v0
+  export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
+  source ${REPO_ROOT}/guides/env.sh
   export GUIDE_NAME="flow-control"
   export NAMESPACE="llm-d-flow-control"
   export MODEL_NAME="Qwen/Qwen3-32B"
-  export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
   ```
 
 * Install the required CRDs (GAIE InferencePool + llm-d.ai InferenceObjective):
@@ -120,7 +119,7 @@ This deploys the router with an Envoy sidecar, it doesn't set up a Kubernetes Ga
 
 ```bash
 helm install ${GUIDE_NAME} \
-    oci://ghcr.io/llm-d/charts/llm-d-router-standalone-dev \
+    ${ROUTER_STANDALONE_CHART} \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
     -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \
     -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
@@ -137,7 +136,7 @@ To use a Kubernetes Gateway managed proxy rather than the standalone version, fo
 ```bash
 export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
 helm install ${GUIDE_NAME} \
-    oci://ghcr.io/llm-d/charts/llm-d-router-gateway-dev  \
+    ${ROUTER_GATEWAY_CHART}  \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
     -f ${REPO_ROOT}/guides/recipes/router/features/httproute-flags.yaml \
     -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \

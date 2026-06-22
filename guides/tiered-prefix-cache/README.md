@@ -65,10 +65,9 @@ The tiers each path supports differ — see the table above. For example, the vL
 * Set the following environment variables:
 
   ```bash
-  export GAIE_VERSION=v1.5.0
-  export ROUTER_CHART_VERSION=v0
-  export NAMESPACE=llm-d-tiered-prefix-cache
   export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
+  source ${REPO_ROOT}/guides/env.sh
+  export NAMESPACE=llm-d-tiered-prefix-cache
   ```
 
 * Install the Gateway API Inference Extension CRDs:
@@ -104,7 +103,7 @@ The tiers each path supports differ — see the table above. For example, the vL
 
 ```bash
 helm install tiered-prefix-cache \
-    oci://ghcr.io/llm-d/charts/llm-d-router-standalone-dev \
+    ${ROUTER_STANDALONE_CHART} \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
     -f ${REPO_ROOT}/guides/tiered-prefix-cache/router/tiered-prefix-cache-cpu.values.yaml \
     -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
@@ -119,7 +118,7 @@ helm install tiered-prefix-cache \
 ```bash
 export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
 helm install tiered-prefix-cache \
-    oci://ghcr.io/llm-d/charts/llm-d-router-gateway-dev \
+    ${ROUTER_GATEWAY_CHART} \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
     -f ${REPO_ROOT}/guides/tiered-prefix-cache/router/tiered-prefix-cache-cpu.values.yaml \
     --set provider.name=${PROVIDER_NAME} \
