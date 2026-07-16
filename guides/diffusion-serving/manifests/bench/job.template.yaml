@@ -1,0 +1,98 @@
+# In-cluster benchmark Job template — rendered with envsubst by run_arm.sh.
+#
+# Variables: $JOB_NAME $BASE_URL $RATE $NUM_PROMPTS $ARRIVAL_SEED $POD_IPS
+#            $MAX_CONCURRENCY $WORKLOAD_B64 (base64 of the request-config JSON)
+#
+# Two containers share an emptyDir at /results:
+#   bench          — the upstream vllm-omni diffusion benchmark client (mounted
+#                    from the bench-scripts ConfigMap, always in sync with the
+#                    local vllm-omni checkout), wrapped by run_bench.py which
+#                    seeds the global RNG so Poisson arrival times are
+#                    reproducible per repetition.
+#   metrics-poller — scrapes each model pod's :8000/metrics every 2 s for the
+#                    vllm_omni:num_requests_{running,waiting} gauges; exits
+#                    when the bench drops /results/done.
+# Results are harvested from container logs between marker lines (no PVC, no
+# kubectl cp on completed pods).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${JOB_NAME}
+  labels:
+    app.kubernetes.io/part-of: diffusion-serving-guide
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: diffusion-serving-guide
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: bench
+          image: python:3.12-slim
+          workingDir: /bench
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              pip install --quiet aiohttp numpy requests pillow tqdm
+              echo "${WORKLOAD_B64}" | base64 -d > /tmp/workload.json
+              python run_bench.py --seed-arrivals ${ARRIVAL_SEED} -- \
+                --base-url ${BASE_URL} \
+                --endpoint /v1/images/generations \
+                --dataset random --task t2i \
+                --model Qwen/Qwen-Image \
+                --random-request-config "$(cat /tmp/workload.json)" \
+                --num-prompts ${NUM_PROMPTS} \
+                --request-rate ${RATE} \
+                --max-concurrency ${MAX_CONCURRENCY} \
+                --warmup-requests 2 --warmup-num-inference-steps 20 \
+                --disable-tqdm \
+                --output-file /results/out.json
+              echo '=====RESULT_JSON====='
+              cat /results/out.json
+              echo
+              echo '=====END====='
+              touch /results/done
+          volumeMounts:
+            - name: bench-scripts
+              mountPath: /bench
+            - name: results
+              mountPath: /results
+          resources:
+            requests:
+              cpu: "1"
+              memory: 1Gi
+            limits:
+              cpu: "4"
+              memory: 4Gi
+        - name: metrics-poller
+          image: python:3.12-slim
+          command: ["python", "/bench/collect_metrics.py"]
+          env:
+            - name: POD_IPS
+              value: "${POD_IPS}"
+            - name: DONE_FILE
+              value: /results/done
+            - name: INTERVAL_S
+              value: "2"
+          volumeMounts:
+            - name: bench-scripts
+              mountPath: /bench
+            - name: results
+              mountPath: /results
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: bench-scripts
+          configMap:
+            name: bench-scripts
+        - name: results
+          emptyDir: {}

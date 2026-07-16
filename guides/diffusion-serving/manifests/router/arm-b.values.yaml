@@ -1,0 +1,54 @@
+## Arm B (cost-aware): openai-parser + diffusion-cost-scorer + max-score-picker.
+##
+## The diffusion-load-producer tracks outstanding declared cost
+## (num_inference_steps x width x height x n / 1024^2 "cost units") per
+## endpoint, and the diffusion-cost-scorer prefers the endpoint with the least
+## outstanding cost. At batch=1 FIFO serving, outstanding declared cost is an
+## exact predictor of queue wait time.
+## Layer on top of: llm-d/guides/recipes/router/base.values.yaml
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    image:
+      registry: us-central1-docker.pkg.dev/bobzetian-gke-dev/bobinference
+      repository: llm-d-router-endpoint-picker
+      tag: declared-cost-v1
+      pullPolicy: Always
+
+    pluginsConfigFile: "diffusion-omni.yaml"
+    pluginsCustomConfig:
+      diffusion-omni.yaml: |
+        apiVersion: inference.networking.x-k8s.io/v1alpha1
+        kind: EndpointPickerConfig
+        plugins:
+        - name: openaiParser
+          type: openai-parser
+        - name: maxScore
+          type: max-score-picker
+        - name: diffusionCost
+          type: diffusion-cost-scorer
+        - type: diffusion-load-producer
+          parameters:
+            # Fallbacks only — the benchmark client always sends explicit
+            # size + num_inference_steps, so these never apply during runs.
+            defaultNumInferenceSteps: 50
+            defaultSize: "1328x1328"
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: maxScore
+          - pluginRef: diffusionCost
+            weight: 5
+        requestHandler:
+          parsers:
+          - pluginRef: openaiParser
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "optimized-baseline-omni-qwen-image"

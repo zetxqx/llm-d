@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Thin diff over the llm-d recipes: reuse the recipe base (decode Deployment +
+# ServiceAccount) and the vLLM-Omni image component from guides/recipes in this
+# repo.
+resources:
+  - ../../../../../recipes/modelserver/base/single-host/default
+
+namePrefix: optimized-baseline-omni-qwen-image-nvidia-gpu-vllm-
+
+components:
+  - ../../../../../recipes/modelserver/components/images/gpu-vllm-omni
+
+# Qwen-Image support requires a newer vLLM-Omni than the Z-Image stack's v0.22.0.
+# v0.24.0 matches the known-good standalone k8s/vllm-omni-qwen-image-batching.yaml.
+images:
+  - name: ghcr.io/revit13/vllm-openai
+    newName: vllm/vllm-omni
+    newTag: v0.24.0
+
+labels:
+  - pairs:
+      llm-d.ai/model: Qwen-Image
+      # Distinct guide value -> this pool never collides with the Z-Image
+      # diffusion stack's selector (llm-d.ai/guide: optimized-baseline).
+      # Must match router/qwen-image.values.yaml matchLabels.
+      llm-d.ai/guide: optimized-baseline-omni-qwen-image
+      llm-d.ai/accelerator-variant: gpu
+      llm-d.ai/accelerator-vendor: nvidia
+    includeSelectors: true
+    includeTemplates: true
+
+patches:
+  - path: patch-vllm-omni-qwen-image.yaml

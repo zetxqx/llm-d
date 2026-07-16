@@ -1,0 +1,26 @@
+# Arm A baseline: a plain Kubernetes Service over the Qwen-Image pool.
+#
+# No router, no EPP — kube-proxy (default iptables mode) picks a uniformly
+# random ready pod per new TCP connection. Note: this is random, NOT
+# round-robin (round-robin requires kube-proxy's IPVS mode). This is exactly
+# what a user gets out of the box without llm-d, which makes it the honest
+# baseline for the cost-aware arm.
+#
+# Note on connection reuse: the bench client (aiohttp) holds one connection
+# per in-flight request, and diffusion requests run for seconds — so each
+# new in-flight request lands on a random pod, while back-to-back sequential
+# requests may reuse a warm connection to the same pod. Both effects are part
+# of the "no router" experience being measured.
+apiVersion: v1
+kind: Service
+metadata:
+  name: qwen-baseline
+  labels:
+    app.kubernetes.io/part-of: diffusion-serving-guide
+spec:
+  selector:
+    llm-d.ai/guide: optimized-baseline-omni-qwen-image
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

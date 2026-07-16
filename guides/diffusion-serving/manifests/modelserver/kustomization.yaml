@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Benchmark overlay on the Qwen-Image pool (qwen-image/gke in this guide):
+#   1. replicas — the router needs >1 endpoint to make routing decisions.
+#      Keep in sync with REPLICAS in scripts/env.sh. All pods land on the
+#      H100 spot pool (bobbm-spoth100); make sure that many spot H100s are
+#      schedulable before starting a sweep.
+#   2. --log-stats  — populates the vllm_omni:num_requests_running/waiting
+#      Prometheus gauges on each pod's :8000/metrics, which the bench Job's
+#      metrics-poller sidecar scrapes for the queue-depth timeseries plots.
+resources:
+  - qwen-image/gke
+
+patches:
+  - target:
+      kind: Deployment
+      name: optimized-baseline-omni-qwen-image-nvidia-gpu-vllm-decode
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --log-stats
+      # Follow-up sweep (NOT part of the batch=1 benchmark): uncomment to
+      # enable step-wise continuous batching, which lets same-resolution
+      # requests co-batch — the regime where resolution-affinity routing
+      # would add a batching benefit on top of cost-aware routing.
+      # - op: add
+      #   path: /spec/template/spec/containers/0/args/-
+      #   value: --step-execution
+      # - op: add
+      #   path: /spec/template/spec/containers/0/args/-
+      #   value: --max-num-seqs=4

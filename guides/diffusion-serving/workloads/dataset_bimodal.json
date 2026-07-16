@@ -1,0 +1,4 @@
+[
+  {"width": 512,  "height": 512,  "num_inference_steps": 20, "weight": 0.85},
+  {"width": 1536, "height": 1536, "num_inference_steps": 50, "weight": 0.15}
+]

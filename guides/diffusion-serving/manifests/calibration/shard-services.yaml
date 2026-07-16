@@ -1,0 +1,35 @@
+# Per-pod "shard" Services used by calibration (scripts/calibrate.sh measures
+# per-bucket service times against one pod directly, bypassing the router).
+#
+# Deployment pods have random names, so we pin each Service to one pod via a
+# bench.costaware/shard label applied by scripts/label_shards.sh. Re-run that
+# script after ANY pod replacement (spot preemption!).
+apiVersion: v1
+kind: Service
+metadata:
+  name: qwen-decode-shard-0
+  labels:
+    app.kubernetes.io/part-of: diffusion-serving-guide
+spec:
+  selector:
+    llm-d.ai/guide: optimized-baseline-omni-qwen-image
+    bench.costaware/shard: "0"
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qwen-decode-shard-1
+  labels:
+    app.kubernetes.io/part-of: diffusion-serving-guide
+spec:
+  selector:
+    llm-d.ai/guide: optimized-baseline-omni-qwen-image
+    bench.costaware/shard: "1"
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
