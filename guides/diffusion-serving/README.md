@@ -160,10 +160,6 @@ Dataset C:
 | 0.4454 | 26.8 → 17.0 | **37%** | 8.9 → 5.3 | 40% |
 | 0.6363 | 21.1 → 21.3 | **-1%** | 8.7 → 7.7 | 11% |
 
-![p99 latency vs offered rate, dataset C](results/quick-3rep-dataset-c/figures/1_p99_latency.png)
-
-![mean latency vs offered rate, dataset C](results/quick-3rep-dataset-c/figures/2_mean_latency.png)
-
 Bimodal:
 
 | offered rate (req/s) | p99 baseline → cost-aware (s) | p99 reduction | mean baseline → cost-aware (s) | mean reduction |
@@ -171,10 +167,6 @@ Bimodal:
 | 0.2545 | 35.6 → 19.8 | **44%** | 5.9 → 3.9 | 35% |
 | 0.4454 | 30.0 → 20.4 | **32%** | 7.5 → 4.9 | 35% |
 | 0.6363 | 41.3 → 21.7 | **47%** | 9.6 → 5.5 | 43% |
-
-![p99 latency vs offered rate, bimodal](results/bimodal-quick-1/figures/1_p99_latency.png)
-
-![mean latency vs offered rate, bimodal](results/bimodal-quick-1/figures/2_mean_latency.png)
 
 At 100% of capacity on Dataset C the p99s converge: at saturation every pod is always busy, so there is no routing freedom left — the mean is still 11% better. On the bimodal mix cost-aware routing also sustains 16% more goodput at the highest rate (0.601 vs 0.517 req/s), because random routing wastes capacity when whole pods idle behind a whale pileup.
 
