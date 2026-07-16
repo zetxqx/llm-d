@@ -1,0 +1,21 @@
+{
+  "duration": 130.3550341189839,
+  "completed_requests": 80,
+  "failed_requests": 0,
+  "throughput_qps": 0.6137085578680342,
+  "latency_mean": 7.7154938226158265,
+  "latency_median": 5.72743104910478,
+  "latency_p99": 21.306943884692153,
+  "latency_p95": 17.898979391693132,
+  "latency_p50": 5.72743104910478,
+  "peak_memory_mb_max": 0,
+  "peak_memory_mb_mean": 0,
+  "peak_memory_mb_median": 0,
+  "stage_durations_mean": {},
+  "stage_durations_p50": {},
+  "stage_durations_p99": {},
+  "endpoint": "/v1/images/generations",
+  "model": "Qwen/Qwen-Image",
+  "dataset": "random",
+  "task": "t2i"
+}

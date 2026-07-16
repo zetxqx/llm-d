@@ -3,7 +3,7 @@
 # diffusion-load-producer, from the local llm-d-inference-scheduler checkout
 # (branch feat/diffusion-declared-cost).
 #
-# IMPORTANT: the deployed images-gen-v2 tag predates the cost plugins — arm B
+# IMPORTANT: the deployed images-gen-v2 tag predates the cost plugins — the cost-aware arm
 # does not work without this build. The Makefile builds from the working tree,
 # so uncommitted changes ship too; commit first for a traceable image.
 set -euo pipefail

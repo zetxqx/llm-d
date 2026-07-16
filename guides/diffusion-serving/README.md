@@ -39,51 +39,35 @@ the situation where tail latency collapses first.
 
 ## Choosing a workload
 
-The routing gap grows with the *variance* of per-request service time
-(CV² = squared coefficient of variation), so three workloads ship with
-different jobs (CV² computed from measured H100 service times):
+The gap between the two routing policies grows with how much per-request cost varies within the traffic, so two workloads ship with the guide:
 
-| file | mix | service-time CV² | use it for |
-|---|---|---|---|
-| `dataset_c.json` | 15/25/45/15 across 512²→1536² | 0.71 | the headline run — the upstream dashboard's official mixed workload |
-| `dataset_bimodal.json` | 85% 512²×20st + 15% 1536²×50st | 2.12 | the strongest separation — thumbnails + whales, the worst case for cost-blind routing |
-| `dataset_a.json` | 100% 512²×20st | 0 | negative control — with zero cost variance both arms should be identical; if they differ, something other than routing is leaking in |
+| file | mix | use it for |
+|---|---|---|
+| `dataset_c.json` | 15/25/45/15 across 512²→1536² | the headline run — the upstream dashboard's official mixed workload |
+| `dataset_bimodal.json` | 85% 512²×20st + 15% 1536²×50st | the strongest separation — thumbnails + whales, the worst case for cost-blind routing |
 
-Why the bimodal mix is the worst case: a 512² request takes ~1.7 s to serve,
-but one 1536²×50st whale ahead of it in the queue costs ~20 s of waiting —
-a single collision multiplies its latency by 10×. Random routing collides
-constantly; cost-aware routing steers shorts away from whale-loaded pods. The mix keeps ~22 whales per 150-prompt run (stable
-statistics) and roughly Dataset C's mean service time, so the same
-calibration and rate grid apply — a difference in results between the two
-workloads is a pure variance effect. Pass the workload as the second
-argument: `scripts/run_all.sh full workloads/dataset_bimodal.json` — every
-invocation gets its own run directory under `results/`, so runs with
-different workloads (or repeats of the same one) never collide.
+Why the bimodal mix is the worst case: a 512² request takes ~1.7 s to serve, but one 1536²×50st whale ahead of it in the queue costs ~20 s of waiting — a single collision multiplies its latency by 10×. Random routing collides constantly; cost-aware routing steers shorts away from whale-loaded pods. The mix keeps ~22 whales per 150-prompt run (stable statistics) and roughly Dataset C's mean service time, so the same calibration and rate grid apply. Pass the workload as the second argument: `scripts/run_all.sh full workloads/dataset_bimodal.json` — every invocation gets its own run directory under `results/`, so runs with different workloads (or repeats of the same one) never collide.
 
 ## The two arms
 
-Both arms serve the same `Qwen/Qwen-Image` pool (3 replicas by default —
-see `REPLICAS` in `scripts/env.sh` — 1×H100 each,
-`vllm serve Qwen/Qwen-Image --omni`, **batch=1** — no `--step-execution`).
+Both arms serve the same `Qwen/Qwen-Image` pool (3 replicas by default — see `REPLICAS` in `scripts/env.sh` — 1×H100 each, `vllm serve Qwen/Qwen-Image --omni`, **batch=1** — no `--step-execution`).
 
 | arm | routing | what it shows |
 |---|---|---|
-| **A** baseline | one plain Kubernetes Service over the pool (no router). kube-proxy in its default iptables mode picks a uniformly *random* ready pod per new connection — not round-robin (that would need IPVS mode) | the out-of-the-box experience |
-| **B** cost-aware | llm-d EPP: `openai-parser` + `diffusion-load-producer` + `diffusion-cost-scorer` (least outstanding declared cost) | the policy under test |
+| **baseline** | one plain Kubernetes Service over the pool (no router). kube-proxy in its default iptables mode picks a uniformly *random* ready pod per new connection — not round-robin (that would need IPVS mode) | the out-of-the-box experience |
+| **diffusion-cost-aware** | llm-d EPP: `openai-parser` + `diffusion-load-producer` + `diffusion-cost-scorer` (least outstanding declared cost) | the policy under test |
 
 ```
                        ┌───────────────────────────────┐
-  bench Job ──────────►│ arm A: k8s Service            │──► pod 0 (H100)
+  bench Job ──────────►│ baseline: k8s Service         │──► pod 0 (H100)
   (Dataset C,          │   (random per connection)     │
    Poisson arrivals,   ├───────────────────────────────┤──► pod 1 (H100)
-   in-cluster)         │ arm B: llm-d EPP              │
+   in-cluster)         │ cost-aware: llm-d EPP         │
                        │   diffusion-cost-scorer       │──► pod 2 (H100)
                        └───────────────────────────────┘
 ```
 
-Arm B's numbers include the EPP/ext-proc hop that arm A doesn't pay, so a
-measured arm B win is net of the router's own overhead — if anything the
-comparison understates B.
+The cost-aware numbers include the EPP/ext-proc hop that the baseline doesn't pay, so a measured cost-aware win is net of the router's own overhead — if anything the comparison understates it.
 
 ## Headline metrics
 
@@ -94,8 +78,8 @@ look for are:
   is where cost-blind routing hurts — short requests stuck behind whales.
 - **Mean latency vs offered rate**: the average user experience.
 - **Per-pod backlog evenness** (`vllm_omni:num_requests_running+waiting`
-  timeseries): arm A shows one pod piling up work while the other idles;
-  arm B should keep the two lines close.
+  timeseries): the baseline shows one pod piling up work while the other
+  idles; cost-aware routing should keep the lines close.
 
 The load generator is vLLM-Omni's own
 `benchmarks/diffusion/diffusion_benchmark_serving.py` (latency percentiles
@@ -118,7 +102,7 @@ and throughput come straight from its output JSON).
 
 - The guide is self-contained in the llm-d repo (`guides/diffusion-serving`); the model-pool manifests are under `manifests/modelserver/`. Two external checkouts are passed in via env vars where needed: `VLLM_OMNI_DIR` (a [vllm-omni](https://github.com/vllm-project/vllm-omni) checkout, source of the benchmark client, needed by `calibrate.sh` and `run_arm.sh`) and `SCHED_DIR` (a `llm-d-inference-scheduler` checkout, needed by `build_epp_image.sh` only).
 - A GKE cluster with the Gateway API Inference Extension CRDs, namespace `llm-d-omni`, and enough schedulable H100s in the spot pool for `REPLICAS` pods (`bobbm-spoth100` — edit the nodeSelector in `manifests/modelserver/qwen-image/base/` for your cluster).
-- An EPP image built from `llm-d-inference-scheduler` branch `feat/diffusion-declared-cost`. **The older `images-gen-v2` tag does not contain the cost plugins** — arm B will crash-loop on it. Build with `scripts/build_epp_image.sh`.
+- An EPP image built from `llm-d-inference-scheduler` branch `feat/diffusion-declared-cost`. **The older `images-gen-v2` tag does not contain the cost plugins** — the cost-aware arm will crash-loop on it. Build with `scripts/build_epp_image.sh`.
 - `kubectl`, `helm`, `envsubst`, `python3` locally; cluster egress to PyPI
   (the bench Job `pip install`s at startup).
 
@@ -133,9 +117,9 @@ SCHED_DIR=/path/to/llm-d-inference-scheduler scripts/build_epp_image.sh
 # 1. deploy the Qwen-Image pool (REPLICAS pods + --log-stats for the gauges)
 scripts/deploy_pool.sh
 
-# 2. sanity: /health must answer 200 through the arm B EPP (the bench gates
-#    on it; arm A's plain Service hits the pods' /health directly)
-scripts/switch_arm.sh b
+# 2. sanity: /health must answer 200 through the EPP (the bench gates on it;
+#    the baseline's plain Service hits the pods' /health directly)
+scripts/switch_arm.sh cost-aware
 kubectl run curl-check --rm -it --image=curlimages/curl -n llm-d-omni --restart=Never -- \
   curl -s -o /dev/null -w '%{http_code}\n' http://llm-d-omni-qwen-image-epp/health
 
@@ -159,39 +143,48 @@ The pieces can also be run individually:
 
 ```bash
 scripts/calibrate.sh                    # per-bucket service times -> capacity
-RESULTS_DIR=results/myrun scripts/run_arm.sh a quick   # one arm, one preset
-RESULTS_DIR=results/myrun scripts/run_arm.sh b quick   # gate: EPP logs show cost units
+RESULTS_DIR=results/myrun scripts/run_arm.sh baseline quick     # one arm, one preset
+RESULTS_DIR=results/myrun scripts/run_arm.sh cost-aware quick   # gate: EPP logs show cost units
 .venv/bin/python analysis/generate_report.py results/myrun   # figures + REPORT.md
 ```
 
 The report lands in `results/<run>/REPORT.md`, figures in
 `results/<run>/figures/`.
 
-## Expected results (hypotheses, to be confirmed by the run)
+## Results
 
-- **Arm B vs A:** similar at very low load; from mid load on, arm B should
-  show a visibly lower p99 and mean latency at every offered rate, with the
-  gap widening as load approaches capacity. The queue-depth panels should
-  show arm A occasionally stacking several large requests on one pod while
-  the other drains.
+Measured on 3×H100 (quick preset: 80 prompts per point, offered rates at 40/70/100% of the calibrated ~0.64 req/s capacity). Calibrated per-bucket service times: 512² = 1.72 s, 768² = 2.06 s, 1024² = 4.15 s, 1536² = 13.83 s. Raw per-point JSON/CSV, full reports and figures are committed under [`results/quick-3rep-dataset-c/`](results/quick-3rep-dataset-c/REPORT.md) and [`results/bimodal-quick-1/`](results/bimodal-quick-1/REPORT.md).
 
-## Interpreting failures
+Dataset C:
 
-- Arm B EPP crash-loops → the deployed image lacks the cost plugins; rebuild
-  (`scripts/build_epp_image.sh`) and check `scripts/verify_epp_image.sh`.
-- `qwen-decode-shard-N has 0 endpoints` during calibration → pods were
-  replaced (spot); `scripts/label_shards.sh` re-pins them.
-- Bench exits immediately with a health error → `/health` is not passing
-  through the router; check step 2 of the quickstart.
+| offered rate (req/s) | p99 baseline → cost-aware (s) | p99 reduction | mean baseline → cost-aware (s) | mean reduction |
+|---|---|---|---|---|
+| 0.2545 | 19.1 → 14.7 | **23%** | 5.3 → 4.4 | 18% |
+| 0.4454 | 26.8 → 17.0 | **37%** | 8.9 → 5.3 | 40% |
+| 0.6363 | 21.1 → 21.3 | **-1%** | 8.7 → 7.7 | 11% |
+
+Bimodal:
+
+| offered rate (req/s) | p99 baseline → cost-aware (s) | p99 reduction | mean baseline → cost-aware (s) | mean reduction |
+|---|---|---|---|---|
+| 0.2545 | 35.6 → 19.8 | **44%** | 5.9 → 3.9 | 35% |
+| 0.4454 | 30.0 → 20.4 | **32%** | 7.5 → 4.9 | 35% |
+| 0.6363 | 41.3 → 21.7 | **47%** | 9.6 → 5.5 | 43% |
+
+![p99 latency vs offered rate, bimodal](results/bimodal-quick-1/figures/1_p99_latency.png)
+
+![per-pod backlog, bimodal](results/bimodal-quick-1/figures/3_queue_depth.png)
+
+At 100% of capacity on Dataset C the p99s converge: at saturation every pod is always busy, so there is no routing freedom left — the mean is still 11% better. On the bimodal mix cost-aware routing also sustains 16% more goodput at the highest rate (0.601 vs 0.517 req/s), because random routing wastes capacity when whole pods idle behind a whale pileup.
 
 ## Layout
 
 ```
 workloads/        request mixes: dataset_c (headline), dataset_bimodal
-                  (strongest separation), dataset_a (negative control)
+                  (strongest separation)
 manifests/
-  baseline/       arm A: plain k8s Service over the pool (no router)
-  router/         arm B: llm-d router values with the cost-aware plugins
+  baseline/       baseline arm: plain k8s Service over the pool (no router)
+  router/         cost-aware arm: llm-d router values with the cost plugins
   modelserver/    benchmark overlay: replicas + --log-stats (+ commented step-execution)
     qwen-image/   Qwen-Image t2i pool (base + gke), thin diff over guides/recipes
   calibration/    per-pod shard Services (calibrate.sh measures one pod directly)
@@ -199,7 +192,7 @@ manifests/
 scripts/          build/verify EPP image, deploy, switch arms, calibrate, sweep
                   (run_all.sh = calibrate + both arms + report in one command)
 analysis/         plot_results.py (figures), generate_report.py (REPORT.md)
-results/          (gitignored) shared calibration at the root; one
-                  subdirectory per run (raw JSON/CSV + report + figures),
-                  results/latest -> newest run
+results/          one subdirectory per run (raw JSON/CSV + report + figures);
+                  the two runs behind the Results section are committed, new
+                  runs stay local (gitignored), results/latest -> newest run
 ```

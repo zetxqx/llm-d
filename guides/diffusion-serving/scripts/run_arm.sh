@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sweep driver: run one arm across a rate grid and harvest results.
 #
-#   ./run_arm.sh <a|b> <quick|full> [workload.json]
+#   ./run_arm.sh <baseline|cost-aware> <quick|full> [workload.json]
 #
 # quick:  rates {0.4, 0.7, 1.0} x capacity, 1 rep,  80 prompts  (~15 min/arm)
 # full:   rates {0.3, 0.5, 0.7, 0.85, 1.0, 1.2} x capacity, 3 reps, 150 prompts
@@ -19,8 +19,8 @@ source "$(dirname "$0")/env.sh"
 
 RESULTS_DIR="${RESULTS_DIR:-$BENCH_DIR/results/adhoc}"
 
-arm="${1:?usage: run_arm.sh <a|b> <quick|full> [workload.json]}"
-preset="${2:?usage: run_arm.sh <a|b> <quick|full> [workload.json]}"
+arm="${1:?usage: run_arm.sh <baseline|cost-aware> <quick|full> [workload.json]}"
+preset="${2:?usage: run_arm.sh <baseline|cost-aware> <quick|full> [workload.json]}"
 workload="${3:-$BENCH_DIR/workloads/dataset_c.json}"
 
 [[ -f "$BENCH_DIR/results/capacity.env" ]] && source "$BENCH_DIR/results/capacity.env"
@@ -32,8 +32,8 @@ case "$preset" in
 esac
 
 case "$arm" in
-  a) base_url="$BASELINE_SVC_URL" ;;
-  b) base_url="$EPP_SVC_URL" ;;
+  baseline)   base_url="$BASELINE_SVC_URL" ;;
+  cost-aware) base_url="$EPP_SVC_URL" ;;
   *) echo "unknown arm: $arm" >&2; exit 1 ;;
 esac
 

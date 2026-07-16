@@ -25,18 +25,18 @@ def fmt(x, nd=2):
 
 
 def latency_comparison(data):
-    """Markdown table of p99/mean per rate for arms a and b, with reductions."""
-    if not {"a", "b"} <= set(data):
+    """Markdown table of p99/mean per rate for both arms, with reductions."""
+    if not {"baseline", "cost-aware"} <= set(data):
         return None
-    a99 = dict(zip(*plot_results.series(data, "a", "latency_p99")[:2]))
-    b99 = dict(zip(*plot_results.series(data, "b", "latency_p99")[:2]))
-    amean = dict(zip(*plot_results.series(data, "a", "latency_mean")[:2]))
-    bmean = dict(zip(*plot_results.series(data, "b", "latency_mean")[:2]))
+    a99 = dict(zip(*plot_results.series(data, "baseline", "latency_p99")[:2]))
+    b99 = dict(zip(*plot_results.series(data, "cost-aware", "latency_p99")[:2]))
+    amean = dict(zip(*plot_results.series(data, "baseline", "latency_mean")[:2]))
+    bmean = dict(zip(*plot_results.series(data, "cost-aware", "latency_mean")[:2]))
     common = sorted(set(a99) & set(b99))
     if not common:
         return None
     lines = [
-        "| offered rate (req/s) | p99 A → B (s) | p99 reduction | mean A → B (s) | mean reduction |",
+        "| offered rate (req/s) | p99 baseline → cost-aware (s) | p99 reduction | mean baseline → cost-aware (s) | mean reduction |",
         "|---|---|---|---|---|",
     ]
     for r in common:
@@ -108,7 +108,7 @@ def main() -> None:
         "|---|---|",
     ]
     for arm in sorted(data):
-        md.append(f"| {arm.upper()} | {plot_results.ARM_LABEL.get(arm, arm)} |")
+        md.append(f"| {arm} | {plot_results.ARM_LABEL.get(arm, arm)} |")
 
     if calib:
         md += [
@@ -148,7 +148,7 @@ def main() -> None:
     ]
 
     for arm in sorted(data):
-        md += [f"## Arm {arm.upper()} — {plot_results.ARM_LABEL.get(arm, arm)}", "", arm_table(data, arm), ""]
+        md += [f"## {plot_results.ARM_LABEL.get(arm, arm)}", "", arm_table(data, arm), ""]
 
     md += [
         "![per-pod backlog](figures/3_queue_depth.png)",

@@ -1,4 +1,4 @@
-## Arm B (cost-aware): openai-parser + diffusion-cost-scorer + max-score-picker.
+## cost-aware arm: openai-parser + diffusion-cost-scorer + max-score-picker.
 ##
 ## The diffusion-load-producer tracks outstanding declared cost
 ## (num_inference_steps x width x height x n / 1024^2 "cost units") per

@@ -46,7 +46,7 @@ source "$BENCH_DIR/results/capacity.env"
 echo ">>> capacity: $CAPACITY_RPS req/s (from results/capacity.env)"
 
 # 2. Sweep both arms.
-for arm in a b; do
+for arm in baseline cost-aware; do
   echo ""
   echo "============================================================"
   echo ">>> arm $arm ($preset)"

@@ -1,4 +1,4 @@
-# Arm A baseline: a plain Kubernetes Service over the Qwen-Image pool.
+# Baseline arm: a plain Kubernetes Service over the Qwen-Image pool.
 #
 # No router, no EPP — kube-proxy (default iptables mode) picks a uniformly
 # random ready pod per new TCP connection. Note: this is random, NOT

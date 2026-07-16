@@ -33,10 +33,10 @@ MUTED = "#898781"
 GRID = "#e1e0d9"
 BASELINE = "#c3c2b7"
 # Arms = categorical identity, fixed slot order (blue, aqua).
-ARM_COLOR = {"a": "#2a78d6", "b": "#1baf7a"}
+ARM_COLOR = {"baseline": "#2a78d6", "cost-aware": "#1baf7a"}
 ARM_LABEL = {
-    "a": "A · baseline (k8s Service)",
-    "b": "B · cost-aware scorer",
+    "baseline": "baseline (k8s Service)",
+    "cost-aware": "diffusion-cost-aware (llm-d EPP)",
 }
 # Pods in the small multiples = one hue, stepped shades (blue 250/450/650).
 POD_SHADES = ["#86b6ef", "#2a78d6", "#104281"]
@@ -110,7 +110,7 @@ def direct_labels(ax, ends):
             fy = prev + 0.05
         prev = fy
         ax.annotate(
-            ARM_LABEL[arm].split(" · ")[0],
+            ARM_LABEL[arm].split(" (")[0],
             (x, y),
             xytext=(1.01, fy),
             textcoords=ax.transAxes,
@@ -135,7 +135,7 @@ def _plot_latency(data, outdir: Path, key, fname, title, subtitle, ylabel, log=F
     if log:
         ax.set_yscale("log")
     ends = []
-    for arm in [a for a in ("a", "b") if a in data]:
+    for arm in [a for a in ("baseline", "cost-aware") if a in data]:
         rates, med, lo, hi = series(data, arm, key)
         if not len(rates):
             continue
@@ -182,7 +182,7 @@ def plot_mean(data, outdir: Path, pool: str = "H100 pool"):
 
 
 def plot_queues(data, results_dir: Path, outdir: Path):
-    arms = [a for a in ("a", "b") if a in data]
+    arms = [a for a in ("baseline", "cost-aware") if a in data]
     if not arms:
         return
     common = set.intersection(*(set(data[a]) for a in arms))

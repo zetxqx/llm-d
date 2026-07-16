@@ -37,10 +37,10 @@ The two arms:
 
 | arm | routing |
 |---|---|
-| A (baseline) | plain k8s Service over the pool, no router, random pod per connection |
-| B (cost-aware) | llm-d EPP: openai-parser + diffusion-load-producer + diffusion-cost-scorer |
+| baseline | plain k8s Service over the pool, no router, random pod per connection |
+| diffusion-cost-aware | llm-d EPP: openai-parser + diffusion-load-producer + diffusion-cost-scorer |
 
-Arm B's numbers include the EPP/ext-proc hop that arm A does not pay, so a measured arm B win is net of the router's own overhead.
+The cost-aware numbers include the EPP/ext-proc hop that the baseline does not pay, so a measured cost-aware win is net of the router's own overhead.
 
 ## Benchmark workload
 
@@ -62,7 +62,7 @@ python run_bench.py --seed-arrivals ${REP} -- \
 
 Two workloads:
 
-**Dataset C** — the official mixed-resolution mix from the [vLLM-Omni Qwen-Image performance dashboard](https://github.com/vllm-project/vllm-omni/blob/1b318d11d17804c54c6ffa482efdd7abcb03657c/benchmarks/diffusion/performance_dashboard/qwen_image_serving_performance.md) (service-time CV^2 = 0.71):
+**Dataset C** — the official mixed-resolution mix from the [vLLM-Omni Qwen-Image performance dashboard](https://github.com/vllm-project/vllm-omni/blob/1b318d11d17804c54c6ffa482efdd7abcb03657c/benchmarks/diffusion/performance_dashboard/qwen_image_serving_performance.md):
 
 | bucket | steps | weight | declared cost (units) |
 |---|---|---|---|
@@ -82,7 +82,7 @@ Exact request-config passed to the bench client (`workloads/dataset_c.json`):
 ]
 ```
 
-**Bimodal** — 85% 512x512 @ 20 steps + 15% 1536x1536 @ 50 steps (CV^2 = 2.12), the worst case for cost-blind routing: a 512^2 request takes ~1.7 s to serve, but one 1536^2 x 50-step whale ahead of it in the queue costs ~20 s of waiting. Exact request-config (`workloads/dataset_bimodal.json`):
+**Bimodal** — 85% 512x512 @ 20 steps + 15% 1536x1536 @ 50 steps, the worst case for cost-blind routing: a 512^2 request takes ~1.7 s to serve, but one 1536^2 x 50-step whale ahead of it in the queue costs ~20 s of waiting. Exact request-config (`workloads/dataset_bimodal.json`):
 
 ```json
 [
@@ -102,32 +102,32 @@ The following data compares the two routing policies across increasing offered r
 | Metric | Routing | 0.25 req/s | 0.45 req/s | 0.64 req/s |
 |---|---|---|---|---|
 | Request Throughput (req/s) | Cost-aware | 0.272 | 0.460 | 0.614 |
-| | Random | 0.266 | 0.425 | 0.604 |
+| | Baseline | 0.266 | 0.425 | 0.604 |
 | Mean Latency (s) | Cost-aware | 4.4 | 5.3 | 7.7 |
-| | Random | 5.3 | 8.9 | 8.7 |
+| | Baseline | 5.3 | 8.9 | 8.7 |
 | P95 Latency (s) | Cost-aware | 14.0 | 14.2 | 17.9 |
-| | Random | 15.0 | 24.1 | 20.2 |
+| | Baseline | 15.0 | 24.1 | 20.2 |
 | P99 Latency (s) | Cost-aware | 14.7 | 17.0 | 21.3 |
-| | Random | 19.1 | 26.8 | 21.1 |
+| | Baseline | 19.1 | 26.8 | 21.1 |
 
 ### Bimodal (thumbnails + whales, worst case for cost-blind routing)
 
 | Metric | Routing | 0.25 req/s | 0.45 req/s | 0.64 req/s |
 |---|---|---|---|---|
 | Request Throughput (req/s) | Cost-aware | 0.267 | 0.438 | 0.601 |
-| | Random | 0.254 | 0.414 | 0.517 |
+| | Baseline | 0.254 | 0.414 | 0.517 |
 | Mean Latency (s) | Cost-aware | 3.9 | 4.9 | 5.5 |
-| | Random | 5.9 | 7.5 | 9.6 |
+| | Baseline | 5.9 | 7.5 | 9.6 |
 | P95 Latency (s) | Cost-aware | 19.7 | 19.7 | 20.1 |
-| | Random | 19.8 | 21.7 | 25.7 |
+| | Baseline | 19.8 | 21.7 | 25.7 |
 | P99 Latency (s) | Cost-aware | 19.8 | 20.4 | 21.7 |
-| | Random | 35.6 | 30.0 | 41.3 |
+| | Baseline | 35.6 | 30.0 | 41.3 |
 
 ## Technical Conclusion
 
 1. Tail latency (P99)
 
-Observation: Cost-aware routing cuts P99 latency by 23-37% on Dataset C below capacity, and by 32-47% on the bimodal workload at every rate. The gap grows with the variance of per-request cost: the bimodal mix (CV^2 = 2.12) shows the largest separation, Dataset C (CV^2 = 0.71) a solid one. At exactly 100% of capacity on Dataset C the P99s converge (21.1 s vs 21.3 s) because at saturation every pod is always busy and there is no routing freedom left; the mean is still 11% better.
+Observation: Cost-aware routing cuts P99 latency by 23-37% on Dataset C below capacity, and by 32-47% on the bimodal workload at every rate. The gap grows with the variance of per-request cost: the bimodal mix shows the largest separation, Dataset C a solid one. At exactly 100% of capacity on Dataset C the P99s converge (21.1 s vs 21.3 s) because at saturation every pod is always busy and there is no routing freedom left; the mean is still 11% better.
 
 2. Mean latency
 
@@ -142,9 +142,6 @@ Note: This is a micro-benchmark (quick preset, 80 prompts, 1 repetition per poin
 ### Why declared cost wins
 
 Random routing treats a queued 512^2 thumbnail the same as a queued 1536^2 render, so short requests randomly get stuck behind long ones — the largest requests in Dataset C carry ~15x the cost of the smallest, and a single collision multiplies a short request's latency by ~10x. The cost-aware scorer reads the cost directly from the request body (`steps x megapixels x n`) and routes each request to the pod with the least outstanding declared work. There is no estimation involved: at batch=1 FIFO serving, outstanding declared cost is the queue wait time, up to the step-caching upper bound. This is a structural advantage diffusion serving has over LLM serving, where output length — the dominant cost term — is unknown at admission time.
-
-A negative control (Dataset A, 100% 512^2 x 20 steps, zero cost variance) is part of the harness: with no variance both arms should be identical, confirming that nothing other than routing differs between the arms.
-
 ## Appendix
 
 This micro-benchmark validates the diffusion cost-aware routing plugins proposed in [llm-d-router#1935](https://github.com/llm-d/llm-d-router/issues/1935) and implemented in [llm-d-router#2053](https://github.com/llm-d/llm-d-router/pull/2053).
@@ -155,7 +152,7 @@ Traceability — everything used in the runs:
 |---|---|
 | Load generator | [diffusion_benchmark_serving.py @ 1b318d1](https://github.com/vllm-project/vllm-omni/blob/1b318d11d17804c54c6ffa482efdd7abcb03657c/benchmarks/diffusion/diffusion_benchmark_serving.py) + [backends.py](https://github.com/vllm-project/vllm-omni/blob/1b318d11d17804c54c6ffa482efdd7abcb03657c/benchmarks/diffusion/backends.py) |
 | Dataset C definition | [Qwen-Image performance dashboard](https://github.com/vllm-project/vllm-omni/blob/1b318d11d17804c54c6ffa482efdd7abcb03657c/benchmarks/diffusion/performance_dashboard/qwen_image_serving_performance.md); exact JSON embedded above |
-| Bimodal / negative-control datasets | exact JSON embedded above (derived for this benchmark, not upstream) |
+| Bimodal dataset | exact JSON embedded above (derived for this benchmark, not upstream) |
 | EPP under test | branch [feat/diffusion-declared-cost](https://github.com/zetxqx/llm-d-inference-scheduler/tree/feat/diffusion-declared-cost): [diffusion-load-producer](https://github.com/zetxqx/llm-d-inference-scheduler/tree/feat/diffusion-declared-cost/pkg/epp/framework/plugins/requestcontrol/dataproducer/diffusionload), [diffusion-cost-scorer](https://github.com/zetxqx/llm-d-inference-scheduler/tree/feat/diffusion-declared-cost/pkg/epp/framework/plugins/scheduling/scorer/diffusioncost) |
 | /v1/images/generations parser | merged upstream in [llm-d-router#1936](https://github.com/llm-d/llm-d-router/pull/1936) |
 | Model | [Qwen/Qwen-Image on Hugging Face](https://huggingface.co/Qwen/Qwen-Image), served by [vLLM-Omni](https://github.com/vllm-project/vllm-omni) |
