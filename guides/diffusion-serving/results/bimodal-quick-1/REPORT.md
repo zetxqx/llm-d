@@ -1,6 +1,6 @@
 # Cost-aware routing benchmark — report
 
-Generated 2026-07-16 19:20 UTC. Workload: **dataset_bimodal.json** (mixed-resolution t2i, see `workloads/`). Pool: 3×H100 running `Qwen/Qwen-Image`, batch=1. Run: `preset=quick workload=dataset_bimodal.json replicas=3 started=2026-07-15T00:20:45+00:00`.
+Generated 2026-07-16 21:07 UTC. Workload: **dataset_bimodal.json** (mixed-resolution t2i, see `workloads/`). Pool: 3×H100 running `Qwen/Qwen-Image`, batch=1. Run: `preset=quick workload=dataset_bimodal.json replicas=3 started=2026-07-15T00:20:45+00:00`.
 
 | arm | routing policy |
 |---|---|
