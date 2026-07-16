@@ -110,6 +110,12 @@ The following data compares the two routing policies across increasing offered r
 | P99 Latency (s) | Cost-aware | 14.7 | 17.0 | 21.3 |
 | | Baseline | 19.1 | 26.8 | 21.1 |
 
+![p99 latency vs offered rate, dataset C](results/quick-3rep-dataset-c/figures/1_p99_latency.png)
+
+![mean latency vs offered rate, dataset C](results/quick-3rep-dataset-c/figures/2_mean_latency.png)
+
+![per-pod backlog, dataset C](results/quick-3rep-dataset-c/figures/3_queue_depth.png)
+
 ### Bimodal (thumbnails + whales, worst case for cost-blind routing)
 
 | Metric | Routing | 0.25 req/s | 0.45 req/s | 0.64 req/s |
@@ -122,6 +128,12 @@ The following data compares the two routing policies across increasing offered r
 | | Baseline | 19.8 | 21.7 | 25.7 |
 | P99 Latency (s) | Cost-aware | 19.8 | 20.4 | 21.7 |
 | | Baseline | 35.6 | 30.0 | 41.3 |
+
+![p99 latency vs offered rate, bimodal](results/bimodal-quick-1/figures/1_p99_latency.png)
+
+![mean latency vs offered rate, bimodal](results/bimodal-quick-1/figures/2_mean_latency.png)
+
+![per-pod backlog, bimodal](results/bimodal-quick-1/figures/3_queue_depth.png)
 
 ## Technical Conclusion
 

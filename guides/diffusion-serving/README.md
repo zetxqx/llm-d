@@ -163,6 +163,12 @@ Dataset C:
 | 0.4454 | 26.8 → 17.0 | **37%** | 8.9 → 5.3 | 40% |
 | 0.6363 | 21.1 → 21.3 | **-1%** | 8.7 → 7.7 | 11% |
 
+![p99 latency vs offered rate, dataset C](results/quick-3rep-dataset-c/figures/1_p99_latency.png)
+
+![mean latency vs offered rate, dataset C](results/quick-3rep-dataset-c/figures/2_mean_latency.png)
+
+![per-pod backlog, dataset C](results/quick-3rep-dataset-c/figures/3_queue_depth.png)
+
 Bimodal:
 
 | offered rate (req/s) | p99 baseline → cost-aware (s) | p99 reduction | mean baseline → cost-aware (s) | mean reduction |
@@ -172,6 +178,8 @@ Bimodal:
 | 0.6363 | 41.3 → 21.7 | **47%** | 9.6 → 5.5 | 43% |
 
 ![p99 latency vs offered rate, bimodal](results/bimodal-quick-1/figures/1_p99_latency.png)
+
+![mean latency vs offered rate, bimodal](results/bimodal-quick-1/figures/2_mean_latency.png)
 
 ![per-pod backlog, bimodal](results/bimodal-quick-1/figures/3_queue_depth.png)
 
