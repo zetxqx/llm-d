@@ -1,6 +1,6 @@
 # Cost-aware routing benchmark — report
 
-Generated 2026-07-16 21:07 UTC. Workload: **dataset_c.json** (mixed-resolution t2i, see `workloads/`). Pool: 3×H100 running `Qwen/Qwen-Image`, batch=1. Run: `preset=quick workload=dataset_c.json replicas=3 started=2026-07-14T22:00:00+00:00`.
+Generated 2026-07-16 21:33 UTC. Workload: **dataset_c.json** (mixed-resolution t2i, see `workloads/`). Pool: 3×H100 running `Qwen/Qwen-Image`, batch=1. Run: `preset=quick workload=dataset_c.json replicas=3 started=2026-07-14T22:00:00+00:00`.
 
 | arm | routing policy |
 |---|---|

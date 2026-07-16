@@ -76,13 +76,11 @@ def _plot_latency(data, outdir: Path, key, fname, title, ylabel):
         rates, med, _, _ = series(data, arm, key)
         if not len(rates):
             continue
-        ax.plot(rates, med, marker="o", label=ARM_LABEL[arm])
+        ax.plot(rates, med, label=ARM_LABEL[arm])
     ax.set_title(title)
     ax.set_xlabel("offered rate (req/s)")
     ax.set_ylabel(ylabel)
-    ax.set_ylim(bottom=0)
     ax.legend()
-    fig.tight_layout()
     fig.savefig(outdir / fname)
     plt.close(fig)
 
@@ -98,12 +96,12 @@ def pool_desc(results_dir: Path) -> str:
 
 def plot_p99(data, outdir: Path, pool: str = "H100 pool"):
     _plot_latency(data, outdir, "latency_p99", "1_p99_latency.png",
-                  f"p99 latency vs offered rate ({pool}, batch=1)", "p99 latency (s)")
+                  "p99 latency vs offered rate", "p99 latency (s)")
 
 
 def plot_mean(data, outdir: Path, pool: str = "H100 pool"):
     _plot_latency(data, outdir, "latency_mean", "2_mean_latency.png",
-                  f"mean latency vs offered rate ({pool}, batch=1)", "mean latency (s)")
+                  "mean latency vs offered rate", "mean latency (s)")
 
 
 def main() -> None:
