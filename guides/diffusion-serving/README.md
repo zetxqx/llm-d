@@ -1,6 +1,6 @@
 # Diffusion serving (text-to-image) with cost-aware routing
 
-Serve text-to-image diffusion models (`Qwen/Qwen-Image` on [vLLM-Omni](https://github.com/vllm-project/vllm-omni)) behind the [llm-d inference scheduler](https://github.com/llm-d/llm-d-inference-scheduler), routing each request by its **declared cost**. The guide ships the deployment manifests for the model pool and the router, plus a self-contained A/B benchmark that measures what cost-aware routing buys over a plain Kubernetes Service under mixed-resolution t2i traffic.
+Serve text-to-image diffusion models (`Qwen/Qwen-Image` on [vLLM-Omni](https://github.com/vllm-project/vllm-omni)) behind the [llm-d inference scheduler](https://github.com/llm-d/llm-d-inference-scheduler), routing each request by its **diffusion cost**. The guide ships the deployment manifests for the model pool and the router, plus a self-contained A/B benchmark that measures what cost-aware routing buys over a plain Kubernetes Service under mixed-resolution t2i traffic.
 
 ## Why this benchmark exists
 
@@ -9,7 +9,7 @@ The request body carries `size` (width×height), `num_inference_steps`, and
 `n` — enough to compute the request's cost before running it
 (`cost ≈ steps × pixels × n`). LLM routers have to *estimate* remaining work;
 a diffusion router can just read it. At batch=1 FIFO serving, the sum of
-declared costs queued on a pod is an almost exact predictor of how long a new
+diffusion costs queued on a pod is an almost exact predictor of how long a new
 request will wait there. (Step-caching features like TeaCache make this an
 upper bound rather than an exact value, which is still useful for ranking
 endpoints.)
@@ -22,7 +22,7 @@ Qwen-Image performance dashboard
 (`vllm-omni/benchmarks/diffusion/performance_dashboard/qwen_image_serving_performance.md`)
 — a weighted mixed-resolution text-to-image mix:
 
-| bucket | steps | weight | declared cost (units¹) | share of total work² |
+| bucket | steps | weight | diffusion cost (units¹) | share of total work² |
 |---|---|---|---|---|
 | 512×512 | 20 | 15% | 5.0 | ~3% |
 | 768×768 | 20 | 25% | 11.25 | ~11% |
@@ -30,7 +30,7 @@ Qwen-Image performance dashboard
 | 1536×1536 | 35 | 15% | 78.75 | ~44% |
 
 ¹ 1 unit = one denoise step over one 1024×1024 megapixel (the EPP producer's
-convention). ² by declared units; the measured-time split on A100 is similar.
+convention). ² by diffusion-cost units; the measured-time split on A100 is similar.
 
 The spread is the point: the largest requests are ~15× the smallest. A router
 that is blind to cost treats a queued 512² thumbnail the same as a queued
@@ -55,7 +55,7 @@ Both arms serve the same `Qwen/Qwen-Image` pool (3 replicas by default — see `
 | arm | routing | what it shows |
 |---|---|---|
 | **baseline** | one plain Kubernetes Service over the pool (no router). kube-proxy in its default iptables mode picks a uniformly *random* ready pod per new connection — not round-robin (that would need IPVS mode) | the out-of-the-box experience |
-| **diffusion-cost-aware** | llm-d EPP: `openai-parser` + `diffusion-load-producer` + `diffusion-cost-scorer` (least outstanding declared cost) | the policy under test |
+| **diffusion-cost-aware** | llm-d EPP: `openai-parser` + `diffusion-load-producer` + `diffusion-cost-scorer` (least outstanding diffusion cost) | the policy under test |
 
 ```
                        ┌───────────────────────────────┐

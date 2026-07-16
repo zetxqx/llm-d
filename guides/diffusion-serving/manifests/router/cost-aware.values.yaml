@@ -1,9 +1,9 @@
 ## cost-aware arm: openai-parser + diffusion-cost-scorer + max-score-picker.
 ##
-## The diffusion-load-producer tracks outstanding declared cost
+## The diffusion-load-producer tracks outstanding diffusion cost
 ## (num_inference_steps x width x height x n / 1024^2 "cost units") per
 ## endpoint, and the diffusion-cost-scorer prefers the endpoint with the least
-## outstanding cost. At batch=1 FIFO serving, outstanding declared cost is an
+## outstanding cost. At batch=1 FIFO serving, outstanding diffusion cost is an
 ## exact predictor of queue wait time.
 ## Layer on top of: llm-d/guides/recipes/router/base.values.yaml
 

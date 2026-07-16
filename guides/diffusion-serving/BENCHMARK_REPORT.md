@@ -29,9 +29,9 @@ schedulingProfiles:
     weight: 5
 ```
 
-This document analyzes the performance trade-off between **cost-aware routing** (route to the endpoint with the least outstanding declared cost) and **random routing** (plain Kubernetes Service, kube-proxy iptables mode picks a uniformly random ready pod per connection) under mixed-resolution image-generation traffic.
+This document analyzes the performance trade-off between **cost-aware routing** (route to the endpoint with the least outstanding diffusion cost) and **random routing** (plain Kubernetes Service, kube-proxy iptables mode picks a uniformly random ready pod per connection) under mixed-resolution image-generation traffic.
 
-Diffusion requests are special: their compute cost is declared up front. The request body carries `size`, `num_inference_steps`, and `n`, which is enough to compute the request's cost before running it (`cost = steps x megapixels x n`). LLM routers have to estimate remaining work; a diffusion router can just read it. At batch=1 FIFO serving, the sum of declared costs queued on a pod is an almost exact predictor of how long a new request will wait there.
+Diffusion requests are special: their compute cost is declared up front. The request body carries `size`, `num_inference_steps`, and `n`, which is enough to compute the request's cost before running it (`cost = steps x megapixels x n`). LLM routers have to estimate remaining work; a diffusion router can just read it. At batch=1 FIFO serving, the sum of diffusion costs queued on a pod is an almost exact predictor of how long a new request will wait there.
 
 The two arms:
 
@@ -64,7 +64,7 @@ Two workloads:
 
 **Dataset C** — the official mixed-resolution mix from the [vLLM-Omni Qwen-Image performance dashboard](https://github.com/vllm-project/vllm-omni/blob/1b318d11d17804c54c6ffa482efdd7abcb03657c/benchmarks/diffusion/performance_dashboard/qwen_image_serving_performance.md):
 
-| bucket | steps | weight | declared cost (units) |
+| bucket | steps | weight | diffusion cost (units) |
 |---|---|---|---|
 | 512x512 | 20 | 15% | 5.0 |
 | 768x768 | 20 | 25% | 11.25 |
@@ -147,9 +147,9 @@ Observation: As expected for a load-balancing change, peak throughput is roughly
 
 Note: This is a micro-benchmark (quick preset, 80 prompts, 1 repetition per point) to keep the runs short. Points where the spot pod set changed mid-run are marked tainted and excluded; all points reported above are clean. The direction is consistent across both workloads and all rates.
 
-### Why declared cost wins
+### Why diffusion cost wins
 
-Random routing treats a queued 512^2 thumbnail the same as a queued 1536^2 render, so short requests randomly get stuck behind long ones — the largest requests in Dataset C carry ~15x the cost of the smallest, and a single collision multiplies a short request's latency by ~10x. The cost-aware scorer reads the cost directly from the request body (`steps x megapixels x n`) and routes each request to the pod with the least outstanding declared work. There is no estimation involved: at batch=1 FIFO serving, outstanding declared cost is the queue wait time, up to the step-caching upper bound. This is a structural advantage diffusion serving has over LLM serving, where output length — the dominant cost term — is unknown at admission time.
+Random routing treats a queued 512^2 thumbnail the same as a queued 1536^2 render, so short requests randomly get stuck behind long ones — the largest requests in Dataset C carry ~15x the cost of the smallest, and a single collision multiplies a short request's latency by ~10x. The cost-aware scorer reads the cost directly from the request body (`steps x megapixels x n`) and routes each request to the pod with the least outstanding diffusion cost. There is no estimation involved: at batch=1 FIFO serving, outstanding diffusion cost is the queue wait time, up to the step-caching upper bound. This is a structural advantage diffusion serving has over LLM serving, where output length — the dominant cost term — is unknown at admission time.
 ## Appendix
 
 This micro-benchmark validates the diffusion cost-aware routing plugins proposed in [llm-d-router#1935](https://github.com/llm-d/llm-d-router/issues/1935) and implemented in [llm-d-router#2053](https://github.com/llm-d/llm-d-router/pull/2053).

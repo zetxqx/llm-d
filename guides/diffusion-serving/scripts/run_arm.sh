@@ -75,7 +75,7 @@ for frac in "${fractions[@]}"; do
     fi
 
     # Arm b: restart the EPP for a deterministic cold state per point (guards
-    # against declared-cost counter drift from failed requests).
+    # against diffusion-cost counter drift from failed requests).
     if [[ "$arm" == "b" ]]; then
       kubectl rollout restart deploy/"$EPP_DEPLOY" -n "$NAMESPACE"
       kubectl rollout status deploy/"$EPP_DEPLOY" -n "$NAMESPACE" --timeout=5m
