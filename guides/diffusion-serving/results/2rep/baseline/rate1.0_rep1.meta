@@ -1,0 +1,6 @@
+arm=baseline preset=quick rate=0.4242 rep=1 prompts=80 workload=dataset_c.json
+pods_before: 56beeb19-dbeb-4fde-99f6-ff44eb3f3391 10.100.2.6
+9db5d945-dca1-4ac4-a1d3-1e4ab6a2b735 10.100.18.9
+pods_after:  56beeb19-dbeb-4fde-99f6-ff44eb3f3391 10.100.2.6
+9db5d945-dca1-4ac4-a1d3-1e4ab6a2b735 10.100.18.9
+tainted=false

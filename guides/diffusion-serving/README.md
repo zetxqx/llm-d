@@ -200,7 +200,7 @@ manifests/
 scripts/          build/verify EPP image, deploy, switch arms, calibrate, sweep
                   (run_all.sh = calibrate + both arms + report in one command)
 analysis/         plot_results.py (figures), generate_report.py (REPORT.md)
-results/          one subdirectory per run (raw JSON/CSV + report + figures);
-                  the two runs behind the Results section are committed, new
-                  runs stay local (gitignored), results/latest -> newest run
+results/          shared calibration at the root; one subdirectory per run
+                  (raw JSON/CSV + report + figures), all committed with the
+                  guide; results/latest -> newest run (symlink, stays local)
 ```

@@ -1,6 +1,3 @@
-results/*
-!results/quick-3rep-dataset-c/
-!results/bimodal-quick-1/
-results-2rep/
+results/latest
 __pycache__/
 .venv/
