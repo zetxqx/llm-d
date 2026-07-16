@@ -1,6 +1,6 @@
 # Cost-aware routing benchmark — report
 
-Generated 2026-07-16 19:02 UTC. Workload: **dataset_c.json** (mixed-resolution t2i, see `workloads/`). Pool: 3×H100 running `Qwen/Qwen-Image`, batch=1. Run: `preset=quick workload=dataset_c.json replicas=3 started=2026-07-14T22:00:00+00:00`.
+Generated 2026-07-16 19:20 UTC. Workload: **dataset_c.json** (mixed-resolution t2i, see `workloads/`). Pool: 3×H100 running `Qwen/Qwen-Image`, batch=1. Run: `preset=quick workload=dataset_c.json replicas=3 started=2026-07-14T22:00:00+00:00`.
 
 | arm | routing policy |
 |---|---|
@@ -49,7 +49,6 @@ sequence and arrival timeline, so rows are directly comparable.
 | 0.4454 | 1 | 17.0 | 14.2 | 5.3 | 0.460 |  |  |
 | 0.6363 | 1 | 21.3 | 17.9 | 7.7 | 0.614 |  |  |
 
-![per-pod backlog](figures/3_queue_depth.png)
 
 ## Notes
 

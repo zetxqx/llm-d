@@ -74,12 +74,9 @@ The cost-aware numbers include the EPP/ext-proc hop that the baseline doesn't pa
 Load-aware routing usually does **not** raise peak throughput — the wins to
 look for are:
 
-- **p99 latency vs offered rate** (the money plot, log scale): tail latency
-  is where cost-blind routing hurts — short requests stuck behind whales.
+- **p99 latency vs offered rate** (the money plot): tail latency is where
+  cost-blind routing hurts — short requests stuck behind whales.
 - **Mean latency vs offered rate**: the average user experience.
-- **Per-pod backlog evenness** (`vllm_omni:num_requests_running+waiting`
-  timeseries): the baseline shows one pod piling up work while the other
-  idles; cost-aware routing should keep the lines close.
 
 The load generator is vLLM-Omni's own
 `benchmarks/diffusion/diffusion_benchmark_serving.py` (latency percentiles
@@ -167,8 +164,6 @@ Dataset C:
 
 ![mean latency vs offered rate, dataset C](results/quick-3rep-dataset-c/figures/2_mean_latency.png)
 
-![per-pod backlog, dataset C](results/quick-3rep-dataset-c/figures/3_queue_depth.png)
-
 Bimodal:
 
 | offered rate (req/s) | p99 baseline → cost-aware (s) | p99 reduction | mean baseline → cost-aware (s) | mean reduction |
@@ -180,8 +175,6 @@ Bimodal:
 ![p99 latency vs offered rate, bimodal](results/bimodal-quick-1/figures/1_p99_latency.png)
 
 ![mean latency vs offered rate, bimodal](results/bimodal-quick-1/figures/2_mean_latency.png)
-
-![per-pod backlog, bimodal](results/bimodal-quick-1/figures/3_queue_depth.png)
 
 At 100% of capacity on Dataset C the p99s converge: at saturation every pod is always busy, so there is no routing freedom left — the mean is still 11% better. On the bimodal mix cost-aware routing also sustains 16% more goodput at the highest rate (0.601 vs 0.517 req/s), because random routing wastes capacity when whole pods idle behind a whale pileup.
 

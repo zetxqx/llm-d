@@ -7,7 +7,7 @@ kind: Kustomization
 #      schedulable before starting a sweep.
 #   2. --log-stats  — populates the vllm_omni:num_requests_running/waiting
 #      Prometheus gauges on each pod's :8000/metrics, which the bench Job's
-#      metrics-poller sidecar scrapes for the queue-depth timeseries plots.
+#      metrics-poller sidecar records as per-pod queue-depth CSV timeseries.
 resources:
   - qwen-image/gke
 

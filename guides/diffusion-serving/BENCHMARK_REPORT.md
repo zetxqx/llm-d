@@ -114,8 +114,6 @@ The following data compares the two routing policies across increasing offered r
 
 ![mean latency vs offered rate, dataset C](results/quick-3rep-dataset-c/figures/2_mean_latency.png)
 
-![per-pod backlog, dataset C](results/quick-3rep-dataset-c/figures/3_queue_depth.png)
-
 ### Bimodal (thumbnails + whales, worst case for cost-blind routing)
 
 | Metric | Routing | 0.25 req/s | 0.45 req/s | 0.64 req/s |
@@ -133,8 +131,6 @@ The following data compares the two routing policies across increasing offered r
 
 ![mean latency vs offered rate, bimodal](results/bimodal-quick-1/figures/2_mean_latency.png)
 
-![per-pod backlog, bimodal](results/bimodal-quick-1/figures/3_queue_depth.png)
-
 ## Technical Conclusion
 
 1. Tail latency (P99)
@@ -143,7 +139,7 @@ Observation: Cost-aware routing cuts P99 latency by 23-37% on Dataset C below ca
 
 2. Mean latency
 
-Observation: Mean latency improves 11-40% on Dataset C and 35-43% on bimodal. The mechanism is visible in the per-pod backlog timeseries: with random routing one pod occasionally stacks several large requests while another drains empty; the cost-aware scorer keeps the per-pod backlog lines close together.
+Observation: Mean latency improves 11-40% on Dataset C and 35-43% on bimodal. The mechanism is visible in the per-pod backlog timeseries recorded in the raw results (`.csv` per point): with random routing one pod occasionally stacks several large requests while another drains empty; the cost-aware scorer keeps the per-pod backlogs close together.
 
 3. Throughput
 

@@ -1,11 +1,11 @@
 # Cost-aware routing benchmark — report
 
-Generated 2026-07-15 00:00 UTC. Workload: **dataset_c.json** (mixed-resolution t2i, see `workloads/`). Pool: 3×H100 running `Qwen/Qwen-Image`, batch=1. Run: `preset=quick workload=dataset_c.json replicas=3 started=2026-07-14T23:37:48+00:00`.
+Generated 2026-07-16 19:21 UTC. Workload: **dataset_c.json** (mixed-resolution t2i, see `workloads/`). Pool: 3×H100 running `Qwen/Qwen-Image`, batch=1. Run: `preset=quick workload=dataset_c.json replicas=3 started=2026-07-14T23:37:48+00:00`.
 
 | arm | routing policy |
 |---|---|
-| A | A · baseline (k8s Service) |
-| B | B · cost-aware scorer |
+| baseline | baseline (k8s Service) |
+| cost-aware | diffusion-cost-aware (llm-d EPP) |
 
 ## Calibration
 
@@ -23,7 +23,7 @@ Mixed mean service time S_mix = **4.71 s** → 3-pod capacity ≈ **0.636 req/s*
 Median over repetitions; both arms replay the identical request
 sequence and arrival timeline, so rows are directly comparable.
 
-| offered rate (req/s) | p99 A → B (s) | p99 reduction | mean A → B (s) | mean reduction |
+| offered rate (req/s) | p99 baseline → cost-aware (s) | p99 reduction | mean baseline → cost-aware (s) | mean reduction |
 |---|---|---|---|---|
 | 0.2545 | 27.5 → 14.7 | **46%** | 6.0 → 4.4 | 26% |
 | 0.4454 | 24.7 → 16.8 | **32%** | 6.9 → 5.4 | 22% |
@@ -33,7 +33,7 @@ sequence and arrival timeline, so rows are directly comparable.
 
 ![mean latency vs offered rate](figures/2_mean_latency.png)
 
-## Arm A — A · baseline (k8s Service)
+## baseline (k8s Service)
 
 | offered rate (req/s) | reps | p99 latency s (median) | p95 latency s | mean latency s | throughput req/s | failed | tainted |
 |---|---|---|---|---|---|---|---|
@@ -41,7 +41,7 @@ sequence and arrival timeline, so rows are directly comparable.
 | 0.4454 | 1 | 24.7 | 18.6 | 6.9 | 0.441 |  |  |
 | 0.6363 | 1 | 32.0 | 25.1 | 13.0 | 0.543 |  |  |
 
-## Arm B — B · cost-aware scorer
+## diffusion-cost-aware (llm-d EPP)
 
 | offered rate (req/s) | reps | p99 latency s (median) | p95 latency s | mean latency s | throughput req/s | failed | tainted |
 |---|---|---|---|---|---|---|---|
@@ -49,7 +49,6 @@ sequence and arrival timeline, so rows are directly comparable.
 | 0.4454 | 1 | 16.8 | 14.4 | 5.4 | 0.460 |  |  |
 | 0.6363 | 1 | 22.9 | 17.9 | 7.4 | 0.614 |  |  |
 
-![per-pod backlog](figures/3_queue_depth.png)
 
 ## Notes
 

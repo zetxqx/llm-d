@@ -3,7 +3,7 @@
 
 Usage: python analysis/generate_report.py [results_dir]
 
-Renders the three figures (via plot_results.py) and writes a self-contained
+Renders the two figures (via plot_results.py) and writes a self-contained
 markdown report with:
   - run configuration (calibration, capacity)
   - headline latency comparison (p99/mean A vs B per rate, with reductions)
@@ -78,7 +78,6 @@ def main() -> None:
     pool = plot_results.pool_desc(results_dir)
     plot_results.plot_p99(data, outdir, pool)
     plot_results.plot_mean(data, outdir, pool)
-    plot_results.plot_queues(data, results_dir, outdir)
 
     # Calibration lives at the results/ root (shared across runs); a run dir
     # sits one level below it.
@@ -151,7 +150,6 @@ def main() -> None:
         md += [f"## {plot_results.ARM_LABEL.get(arm, arm)}", "", arm_table(data, arm), ""]
 
     md += [
-        "![per-pod backlog](figures/3_queue_depth.png)",
         "",
         "## Notes",
         "",
