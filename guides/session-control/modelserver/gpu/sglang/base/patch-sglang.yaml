@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decode
+spec:
+  # Minimum fleet for the session-control experiment: enough pods that the
+  # router's pinning decision is observable (a wrong pick lands on one of two
+  # other pods), while keeping the stack at 6 GPUs total (3 × TP2).
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: modelserver
+          command: ["python3", "-m", "sglang.launch_server"]
+          args:
+            - "--model-path=Qwen/Qwen3-32B"
+            - "--host=0.0.0.0"
+            - "--port=8000"
+            - "--tensor-parallel-size=2"
+            - "--mem-fraction-static=0.9"
+            - "--enable-metrics"
+            # Session control (llm-d-router#2003): SGLang serves /open_session
+            # and /close_session unconditionally — dedicated-slot sessions need
+            # no server flag. Session-tagged radix mode (sglang#27058) needs
+            # v0.5.15+ — the recipes component tag is overridden in this
+            # guide's base kustomization.
+            - "--radix-eviction-policy=priority"
+            - "--enable-session-radix-cache"
+            # Populate usage.prompt_tokens_details.cached_tokens on the OpenAI
+            # endpoints (off by default upstream); the native /generate path
+            # reports cached_tokens in meta_info regardless.
+            - "--enable-cache-report"
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: llm-d-hf-token
+                  key: HF_TOKEN
+          resources:
+            limits:
+              cpu: '16'
+              memory: 128Gi
+              nvidia.com/gpu: 2
+            requests:
+              cpu: '8'
+              memory: 96Gi
+              nvidia.com/gpu: 2
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: shm
+            # SGLang image did not set $HOME, so under a restricted SecurityContext
+            # (random non-root UID, e.g. OpenShift) ~/ resolves to the non-writable
+            # "/". Back the cache dirs SGLang writes at startup with emptyDirs:
+            #   /.cache  — HF model downloads, FlashInfer JIT, Torch compile cache
+            #   /.triton — Triton kernel autotune cache
+            - mountPath: /.cache
+              name: sglang-cache
+            - mountPath: /.triton
+              name: triton-cache
+          startupProbe:
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 120
+          livenessProbe:
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 20Gi
+        - name: sglang-cache
+          emptyDir: {}
+        - name: triton-cache
+          emptyDir: {}

@@ -1,0 +1,66 @@
+## session-control guide overrides for the llm-d router.
+## Layer on top of: recipes/router/base.values.yaml
+##
+## Minimum inference stack for the Session Control experiment
+## (llm-d/llm-d-router#2003): aggregated SGLang workers behind a router whose
+## profile pins every turn of a session to the pod that served its first turn.
+##
+## What this config uses TODAY (all plugins exist in llm-d-router main):
+##   - session-affinity-filter — stateless pinning: the first response carries
+##     an x-session-token (base64 pod name); clients echo it on later turns and
+##     the filter narrows candidates to that pod. If the pod is gone, it falls
+##     through to all candidates.
+##   - session-id-producer — extracts x-session-id into the SessionID request
+##     attribute. Nothing consumes it yet; it is the seam the #2003
+##     session-binding-tracker will read, so client integrations built against
+##     this stack already send the right header.
+##   - queue / kv-cache-utilization / prefix-cache scorers — first-turn
+##     placement (and the fallback path when a pinned pod disappears).
+##
+## When the #2003 plugin family lands (session-binding-tracker,
+## session-control-filter/-scorer, active-session-scorer behind the
+## sessionControl feature gate), swap them into this plugins config — the
+## deployment topology below does not change.
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    env:
+      - name: HF_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: llm-d-hf-token
+            key: HF_TOKEN
+
+    pluginsConfigFile: "session-control-plugins.yaml"
+    pluginsCustomConfig:
+      session-control-plugins.yaml: |
+        apiVersion: llm-d.ai/v1alpha1
+        kind: EndpointPickerConfig
+        plugins:
+        - type: session-id-producer
+          parameters:
+            headerName: x-session-id
+        - type: session-affinity-filter
+        - type: queue-scorer
+        - type: kv-cache-utilization-scorer
+        - type: prefix-cache-scorer
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: session-affinity-filter
+          - pluginRef: queue-scorer
+            weight: 2
+          - pluginRef: kv-cache-utilization-scorer
+            weight: 2
+          - pluginRef: prefix-cache-scorer
+            weight: 3
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "session-control"

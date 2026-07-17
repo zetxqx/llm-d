@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+
+patches:
+  # Pin to H100 nodes: without a selector the only scheduling constraint is
+  # nvidia.com/gpu, and GKE would happily place TP2 Qwen3-32B on 24GB L4
+  # nodes where the weights don't fit. The nvidia.com/gpu taint toleration is
+  # auto-injected by GKE's ExtendedResourceToleration admission controller.
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: decode
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              cloud.google.com/gke-accelerator: nvidia-h100-80gb
