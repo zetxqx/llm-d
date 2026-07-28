@@ -76,6 +76,14 @@ images:
     newTag: nightly-20260601
 ```
 
+## Authoring a Guide
+
+Guides are two files — a machine-readable `guide.yaml` and a human-readable `README.md` whose bash code blocks are filled from the YAML by `scripts/guide.py`.
+
+See **[`guides/templates/README.md`](./templates/README.md)** for the templates, the
+quickstart, and the full authoring reference. It is the single source for those
+instructions — deliberately not repeated here, so the two cannot drift apart.
+
 ## Supporting Guides
 
 Our supporting guides address common operational challenges with model serving at scale:
