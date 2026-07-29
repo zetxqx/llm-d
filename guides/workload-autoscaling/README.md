@@ -54,6 +54,10 @@ before users experience sustained queueing and to remove capacity when demand
 falls. This path requires KEDA and Prometheus; it does not require Prometheus
 Adapter.
 
+#### SLO-Aware Autoscaling (KEDA + estimated latency)
+
+A specialization of this path drives the HPA from the pool's **latency** rather than its queue depth. The [SLO-Aware Autoscaling](./README.slo-aware.md) sub-path scales directly against latency SLOs, using the EPP's **estimated** TTFT/TPOT as the signal — either its ML-predicted latency (from the online-trained predictor) or the actual measured latency aggregated in real time when the predictor isn't enabled. A Prometheus recording rule turns that estimate into a single saturation ratio (latency ÷ SLO), and a KEDA `ScaledObject` with an [expr-lang](https://expr-lang.org/) formula computes the desired replica count and drives a standard HPA — no custom controller. With the ML predictor, capacity is added as pressure builds rather than after the queue has already formed. Best when clients express per-request latency SLOs and you want scaling driven by the objective itself rather than a proxy metric.
+
 ### HPA + WVA Metrics
 
 The [Workload Variant Autoscaler (WVA)](./README.wva.md) path integrates the Kubernetes Horizontal Pod Autoscaler (HPA) with the aggregated signal emitted by WVA: `wva_desired_replicas`.
@@ -62,13 +66,13 @@ WVA is designed for operators running multiple variants of the same model across
 
 ## Choosing a Scaling Signal
 
-| | [KEDA + EPP Metrics](./README.hpa-epp.md) | [HPA + WVA Metrics](./README.wva.md) |
-|---|---|---|
-| **Best for** | Deployments on homogeneous hardware where each target model-server pool can be isolated by metrics and scaled independently | Multi-variant deployments where cost-aware capacity allocation across heterogeneous shared hardware is required |
-| **Scaling signal** | EPP metrics such as queue depth and running request count | KV cache utilization, queue depth, performance budgets |
-| **Cost optimization** | None — scales based on load signals only | Optimizes across variants by preferring lower-cost hardware |
-| **Additional components** | Requires KEDA and Prometheus| Requires the WVA controller |
-| **Scale to zero** | Supported | Supported |
+| | [KEDA + EPP Metrics](./README.hpa-epp.md) | [HPA + WVA Metrics](./README.wva.md) | [SLO-Aware Autoscaling](./README.slo-aware.md) |
+|---|---|---|---|
+| **Best for** | Deployments on homogeneous hardware where each target model-server pool can be isolated by metrics and scaled independently | Multi-variant deployments where cost-aware capacity allocation across heterogeneous shared hardware is required | Single-pool deployments with per-request latency SLOs, scaled on predicted latency |
+| **Scaling signal** | EPP metrics such as queue depth and running request count | KV cache utilization, queue depth, performance budgets | EPP estimated TTFT/TPOT (ML-predicted, or measured) vs the SLO |
+| **Cost optimization** | None — scales based on load signals only | Optimizes across variants by preferring lower-cost hardware | Minimizes replicas needed to meet the SLO |
+| **Additional components** | Requires KEDA and Prometheus | Requires the WVA controller | KEDA + one Prometheus recording rule |
+| **Scale to zero** | Supported | Supported | Supported (via KEDA) |
 
 ## Features
 
