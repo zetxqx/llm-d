@@ -4,9 +4,7 @@
 
 Minimum inference stack for the **Session Control Protocol experiment**
 ([llm-d/llm-d-router#2003](https://github.com/llm-d/llm-d-router/issues/2003)):
-an aggregated SGLang fleet behind the llm-d router, sized as small as the
-experiment allows — 3 replicas, so a wrong routing decision is observable
-(two "wrong" pods exist) without burning a full benchmark fleet.
+an aggregated SGLang fleet behind the llm-d router — 4 replicas (8×H100), so a wrong routing decision is observable (three "wrong" pods exist) and the KV-capacity knee lands inside the benchmark's concurrency sweep (~c64).
 
 SGLang isolates a session's KV cache in a dedicated slot outside the shared
 radix tree (`POST /open_session` / `POST /close_session`), exempt from LRU
@@ -34,22 +32,30 @@ changes — the deployment topology stays as-is.
 
 ## Default Configuration
 
-| Parameter          | Value                                                   |
-|--------------------|---------------------------------------------------------|
-| Model              | [Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B) |
-| Engine             | SGLang                                                  |
-| Replicas           | 3                                                       |
-| Tensor Parallelism | 2                                                       |
-| GPUs per replica   | 2                                                       |
-| Total GPUs         | 6                                                       |
+| Parameter          | Value                                                                                                       |
+|--------------------|-------------------------------------------------------------------------------------------------------------|
+| Model              | [Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8](https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8)       |
+| Engine             | SGLang                                                                                                      |
+| Replicas           | 4                                                                                                           |
+| Tensor Parallelism | 2                                                                                                           |
+| GPUs per replica   | 2                                                                                                           |
+| Total GPUs         | 8                                                                                                           |
+| Context length     | 262,144 (native)                                                                                            |
+| KV cache dtype     | fp8_e4m3                                                                                                    |
+
+**Why this model.** The benchmark workload for this stack is agentic-trace replay (SemiAnalysis `cc-traces-weka-*`: median main-agent input ~195K tokens, 96% prefix reuse), which sets three hard requirements: ≥256K native context, standard GQA full attention (token-indexed KV, so radix/session-radix semantics and cache-hit metrics stay meaningful), and a small-activation MoE so 195K prefills are tractable. Qwen3-Coder-30B-A3B is the only current small model satisfying all three — the 2026 releases (Qwen3-Coder-Next, Qwen3.6, Gemma 4) all moved to hybrid linear/SWA attention. KV budget at this config: ~48KB/token FP8, ~9.4GB per median session, ~11–17 resident sessions per TP2 replica — the 4-replica fleet (~44–68 sessions) enters cache pressure around 64 concurrent sessions, which is the regime where affinity routing is measurable.
 
 > [!NOTE]
 > SGLang serves `/open_session` and `/close_session` unconditionally — no
-> engine flag is required for dedicated-slot sessions. The newer
-> session-tagged radix mode (`--enable-session-radix-cache`, requires
-> `--radix-eviction-policy priority`) postdates the image pinned in the shared
-> recipes component; the flags are present but commented in
-> [`modelserver/gpu/sglang/base/patch-sglang.yaml`](modelserver/gpu/sglang/base/patch-sglang.yaml).
+> engine flag is required for dedicated-slot sessions. The session-tagged
+> radix mode is enabled in
+> [`modelserver/gpu/sglang/base/patch-sglang.yaml`](modelserver/gpu/sglang/base/patch-sglang.yaml)
+> (`--enable-session-radix-cache`, which on this image requires
+> `--radix-eviction-policy priority`); the base kustomization overrides the
+> recipes component's image tag to v0.5.15.post1 where that mode first
+> shipped. When upgrading past sglang#29173 (2026-08-02), session tracking
+> moves to `UnifiedRadixCache`: add `SGLANG_ENABLE_UNIFIED_RADIX_TREE=1` and
+> drop the priority-policy requirement.
 
 ## Prerequisites
 
@@ -86,8 +92,7 @@ kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -
 
 ### 1. Prepare HF Token
 
-Qwen/Qwen3-32B is public, but the secret makes swapping in a gated model a
-no-op. See [helpers/hf-token.md](../../helpers/hf-token.md).
+Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8 is public, but the secret makes swapping in a gated model a no-op. See [helpers/hf-token.md](../../helpers/hf-token.md).
 
 ```bash
 export HF_TOKEN=<your HuggingFace token>
@@ -109,6 +114,22 @@ helm install ${GUIDE_NAME} \
   -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
   -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \
   -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
+```
+
+For the benchmark's baseline arm, upgrade the same release to the llm-d optimized-baseline profile (approximate prefix-cache affinity, no session awareness — see [`router/optimized-baseline.values.yaml`](router/optimized-baseline.values.yaml), including its `peakPrefillThroughput` calibration note):
+
+```bash
+helm upgrade ${GUIDE_NAME} \
+  ${ROUTER_STANDALONE_CHART} \
+  -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
+  -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/optimized-baseline.values.yaml \
+  -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
+
+# EPP reads the plugins ConfigMap at startup only — a mounted-ConfigMap update
+# is NOT hot-reloaded, and if the pod template is unchanged helm won't roll the
+# Deployment. Restart explicitly after every arm switch:
+kubectl rollout restart deployment/${GUIDE_NAME}-epp -n ${NAMESPACE}
+kubectl rollout status deployment/${GUIDE_NAME}-epp -n ${NAMESPACE} --timeout=5m
 ```
 
 <details>
@@ -143,8 +164,7 @@ export INFRA_PROVIDER=base # base | gke (gke adds an H100 nodeSelector)
 kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/gpu/sglang/${INFRA_PROVIDER}/
 ```
 
-Wait for the 3 decode pods to become ready (model download + engine warmup
-can take several minutes):
+Wait for the 4 decode pods to become ready (model download + engine warmup can take several minutes; 8 GPUs = 2 full H100 nodes, so the spot pool may need a scale-up first):
 
 ```bash
 kubectl wait --for=condition=Ready pod \
@@ -183,7 +203,7 @@ kubectl run curl-debug --rm -it \
 ```bash
 curl -X POST http://${IP}/v1/completions \
     -H 'Content-Type: application/json' \
-    -d '{"model": "Qwen/Qwen3-32B", "prompt": "How are you today?"}' | jq
+    -d '{"model": "Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8", "prompt": "How are you today?"}' | jq
 ```
 
 ### 3. Verify Session Affinity
@@ -198,7 +218,7 @@ confirm every turn pins to that pod:
 TOKEN=$(curl -si -X POST http://${IP}/v1/completions \
     -H 'Content-Type: application/json' \
     -H 'x-session-id: demo-session-1' \
-    -d '{"model": "Qwen/Qwen3-32B", "prompt": "Turn one."}' \
+    -d '{"model": "Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8", "prompt": "Turn one."}' \
   | awk 'BEGIN{IGNORECASE=1} /^x-session-token:/ {print $2}' | tr -d '\r')
 echo "pinned to: $(echo ${TOKEN} | base64 -d)"
 
@@ -208,7 +228,7 @@ for i in 2 3 4; do
       -H 'Content-Type: application/json' \
       -H "x-session-id: demo-session-1" \
       -H "x-session-token: ${TOKEN}" \
-      -d "{\"model\": \"Qwen/Qwen3-32B\", \"prompt\": \"Turn ${i}.\"}" \
+      -d "{\"model\": \"Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8\", \"prompt\": \"Turn ${i}.\"}" \
     | awk 'BEGIN{IGNORECASE=1} /^x-session-token:/ {print $2}' | tr -d '\r' | base64 -d; echo
 done
 ```
@@ -246,11 +266,7 @@ kubectl delete -n ${NAMESPACE} -k ${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/
 - **Aggregated only** — P/D-disaggregated session placement is an explicit
   non-goal of the #2003 experiment; session KV pinning is a decode-pod
   concern and this stack deliberately has no prefill tier.
-- **3 replicas is the experiment floor**, not a benchmark configuration. The
-  canonical Qwen3-32B benchmark fleets in sibling guides use 8 replicas
-  (16×H100); scale `replicas` in
-  [`patch-sglang.yaml`](modelserver/gpu/sglang/base/patch-sglang.yaml) when moving
-  to the #2003 phase-5 benchmarking work.
+- **4 replicas (8 GPUs) is the benchmark configuration; 3 replicas is the experiment floor** if the spot pool cannot fit 2 full nodes. At ~11–17 resident 195K-sessions per TP2 replica (FP8 KV), the 8-GPU fleet saturates around c64 in weka-trace replay; scale `replicas` in [`patch-sglang.yaml`](modelserver/gpu/sglang/base/patch-sglang.yaml) when sweeping past c80 (c128 needs ~12 replicas or a HiCache tier).
 - Stateless affinity trusts the client-echoed `x-session-token` and keeps no
   server-side state — no lifecycle, no capacity view, no invalidation. Those
   gaps are the point of the experiment.

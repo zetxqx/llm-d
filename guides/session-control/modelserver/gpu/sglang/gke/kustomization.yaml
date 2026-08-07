@@ -5,9 +5,10 @@ resources:
 
 patches:
   # Pin to H100 nodes: without a selector the only scheduling constraint is
-  # nvidia.com/gpu, and GKE would happily place TP2 Qwen3-32B on 24GB L4
-  # nodes where the weights don't fit. The nvidia.com/gpu taint toleration is
-  # auto-injected by GKE's ExtendedResourceToleration admission controller.
+  # nvidia.com/gpu, and GKE would happily place TP2 Qwen3-Coder-30B-A3B on
+  # 24GB L4 nodes where the 262K-context KV pool doesn't fit. The
+  # nvidia.com/gpu taint toleration is auto-injected by GKE's
+  # ExtendedResourceToleration admission controller.
   - patch: |-
       apiVersion: apps/v1
       kind: Deployment

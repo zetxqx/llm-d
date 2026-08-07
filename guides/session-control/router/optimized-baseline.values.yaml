@@ -1,0 +1,63 @@
+## Baseline arm for the session-control benchmark A/B.
+## Layer on top of: recipes/router/base.values.yaml
+##
+## This is the llm-d optimized-baseline router profile (copied from
+## guides/optimized-baseline/router/optimized-baseline.values.yaml) pointed at
+## the session-control fleet: llm-d's recommended default routing — approximate
+## prefix-cache affinity plus token-load balancing — with NO session awareness.
+## The benchmark contrast is this profile (baseline) vs
+## session-control.values.yaml (treatment, x-session-token pinning): the delta
+## in cache-hit rate, TTFT, and sustainable concurrency isolates what session
+## pinning adds over prefix-affinity routing alone.
+##
+## Swap arms by upgrading the same release with the other values file, THEN
+## restarting EPP — the plugins ConfigMap is only read at startup (no hot
+## reload), and helm won't roll the pod if only the ConfigMap changed:
+##   helm upgrade ${GUIDE_NAME} ${ROUTER_STANDALONE_CHART} \
+##     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
+##     -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/optimized-baseline.values.yaml \
+##     -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
+##   kubectl rollout restart deployment/${GUIDE_NAME}-epp -n ${NAMESPACE}
+##
+## CALIBRATION REQUIRED before baseline runs: the
+## prefix-cache-affinity-filter's peakPrefillThroughput default (15928 tok/s)
+## was calibrated for dense Qwen3-32B on H100 TP2. This guide serves
+## Qwen3-Coder-30B-A3B (3.3B active) whose prefill throughput is several times
+## higher — an uncalibrated filter underestimates prefill capacity and skews
+## placement. Measure with guides/recipes/router/calibration and set the value
+## on the filter before recording baseline numbers.
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    env:
+      - name: HF_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: llm-d-hf-token
+            key: HF_TOKEN
+
+    pluginsConfigFile: "optimized-baseline-plugins.yaml"
+    pluginsCustomConfig:
+      optimized-baseline-plugins.yaml: |
+        apiVersion: llm-d.ai/v1alpha1
+        kind: EndpointPickerConfig
+        plugins:
+        - type: approx-prefix-cache-producer
+        - type: inflight-load-producer
+        - type: prefix-cache-affinity-filter
+        - type: token-load-scorer
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: prefix-cache-affinity-filter
+          - pluginRef: token-load-scorer
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "session-control"

@@ -1,0 +1,112 @@
+# inference-perf in-cluster deployment for the weka-trace benchmark.
+#
+# Why in-cluster: the EPP is ClusterIP-only, and every replayed turn carries a
+# ~1MB prompt body (195K tokens) — a laptop port-forward cannot sustain c16+.
+# This runs the official inference-perf image as a Job next to the fleet.
+#
+# Usage (one run = one Job; completed Jobs are immutable — delete before rerun):
+#   kubectl apply -n llm-d-session-control -f inference-perf-weka.yaml
+#   kubectl logs -n llm-d-session-control -f job/inference-perf-weka
+#   kubectl delete -n llm-d-session-control job inference-perf-weka   # before next run
+#
+# The config below is the SMOKE TEST shape (c4, 8 sessions, 5s think-time cap).
+# For real sweep stages edit `load.stages` and `trace_idle_gap_cap_seconds`
+# (e.g. 30s) — and keep the cap IDENTICAL across arms: think time controls how
+# long idle sessions occupy KV, so it directly shapes cache-residency dynamics.
+#
+# Reports: the summary is printed to the Job log. For full per-request report
+# files, uncomment the `storage.google_cloud_storage` block (the Job's service
+# account needs GCS write access via Workload Identity).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inference-perf-weka-config
+data:
+  config.yml: |
+    load:
+      type: trace_session_replay
+      stages:
+        - concurrent_sessions: 4     # smoke test; sweep: 16 / 32 / 48 / 64 / 72 / 80
+          num_sessions: 8
+      num_workers: 8
+      worker_max_concurrency: 100
+      request_timeout: 600           # a cold 195K prefill can queue behind others
+    api:
+      type: chat
+      streaming: true
+      # Stable per-session header; feeds the EPP session-id-producer. Inert for
+      # the optimized-baseline arm, required plumbing for the #2003 tracker.
+      session_id_header_key: x-session-id
+    server:
+      type: sglang
+      model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8
+      base_url: http://session-control-epp:80
+    tokenizer:
+      # MUST match the served model: block hashes are reconstructed at 64-token
+      # granularity, and a mismatched tokenizer breaks ISL counts and radix
+      # block alignment on the server.
+      pretrained_model_name_or_path: Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8
+    data:
+      type: weka_trace_replay
+      weka_trace_replay:
+        # 256K-filtered corpus build — every request fits the fleet's 262,144
+        # context window.
+        hf_dataset_path: "semianalysisai/cc-traces-weka-with-subagents-060826-256k"
+        num_dataset_entries: 500
+        use_static_model: true
+        static_model_name: "Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8"
+        default_block_size: 64
+        skip_invalid_files: true
+        trace_idle_gap_cap_seconds: 5.0   # smoke; use 30.0 for recorded runs
+    report:
+      request_lifecycle:
+        summary: true
+        per_stage: true
+        per_request: true
+    # storage:
+    #   google_cloud_storage:
+    #     bucket_name: "<your-bucket>"
+    #     path: "session-control-bench/{timestamp}"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: inference-perf-weka
+  labels:
+    app: inference-perf-weka
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: inference-perf-weka
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: inference-perf
+          image: quay.io/inference-perf/inference-perf:latest
+          imagePullPolicy: Always
+          command: ["inference-perf"]
+          args: ["--config_file", "/etc/config/config.yml"]
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: llm-d-hf-token
+                  key: HF_TOKEN
+                  optional: true
+          resources:
+            requests:
+              cpu: "8"
+              memory: 16Gi
+            limits:
+              cpu: "16"
+              memory: 32Gi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: inference-perf-weka-config

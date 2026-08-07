@@ -3,21 +3,46 @@ kind: Deployment
 metadata:
   name: decode
 spec:
-  # Minimum fleet for the session-control experiment: enough pods that the
-  # router's pinning decision is observable (a wrong pick lands on one of two
-  # other pods), while keeping the stack at 6 GPUs total (3 × TP2).
-  replicas: 3
+  # Fleet for the session-control benchmark: 4 × TP2 = 8 GPUs (2 full H100
+  # nodes). Routing decisions stay observable (a wrong pick lands on one of
+  # three other pods) and the extra replica moves the KV-capacity knee to
+  # ~c64, making the c48-c80 sweep range measurable. The experiment floor is
+  # 3 replicas if the spot pool cannot fit 2 full nodes.
+  replicas: 4
+  # Recreate, not RollingUpdate: the H100 spot pool runs near-full, so a
+  # rolling update would need 2 spare GPUs per surge pod that usually don't
+  # exist — old pods must release their GPUs before new ones can schedule.
+  # The fleet is an experiment stack; a full bounce is acceptable.
+  strategy:
+    type: Recreate
   template:
     spec:
       containers:
         - name: modelserver
           command: ["python3", "-m", "sglang.launch_server"]
           args:
-            - "--model-path=Qwen/Qwen3-32B"
+            # Qwen3-Coder-30B-A3B: 262K-native-context MoE (3.3B active) with
+            # standard GQA full attention — the weka-trace replay workload
+            # (median main-agent ISL ~195K, p95 >395K) does not fit Qwen3-32B's
+            # 32K/131K window, and the 2026 hybrid-attention small models break
+            # token-indexed radix semantics. FP8 weights ~30GB -> ~15GB/GPU at
+            # TP2, leaving ~110GB KV pool per replica.
+            - "--model-path=Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8"
             - "--host=0.0.0.0"
             - "--port=8000"
             - "--tensor-parallel-size=2"
-            - "--mem-fraction-static=0.9"
+            # Full native window; the -256k weka corpus builds are filtered to
+            # fit exactly this.
+            - "--context-length=262144"
+            # FP8 KV halves per-token cost (96KB -> 48KB): a 195K session holds
+            # ~9.4GB, so each TP2 replica retains ~11-17 resident sessions and
+            # the 4-replica fleet (~44-68 sessions) enters cache-pressure
+            # territory around c64 — the regime where session-affinity routing
+            # becomes observable.
+            - "--kv-cache-dtype=fp8_e4m3"
+            # 0.88 (down from 0.9): headroom for 262K chunked-prefill
+            # activation spikes.
+            - "--mem-fraction-static=0.88"
             - "--enable-metrics"
             # Session control (llm-d-router#2003): SGLang serves /open_session
             # and /close_session unconditionally — dedicated-slot sessions need

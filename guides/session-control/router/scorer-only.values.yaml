@@ -1,0 +1,55 @@
+## Ablation arm for the session-control benchmark A/B/C.
+## Layer on top of: recipes/router/base.values.yaml
+##
+## Identical to session-control.values.yaml with session-affinity-filter
+## removed: the same queue / kv-utilization / prefix-cache scorers place every
+## turn independently, with no pinning. Contrasting this arm against the
+## treatment (session-control.values.yaml) isolates the value of session
+## pinning specifically, while contrasting it against the baseline
+## (optimized-baseline.values.yaml) separates "any prefix-affinity mechanism"
+## from "none": the three arms together distinguish session-awareness from
+## prefix-affinity from plain load balancing.
+##
+## session-id-producer is kept (it is inert without a consumer) so client
+## traffic is identical across arms.
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    env:
+      - name: HF_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: llm-d-hf-token
+            key: HF_TOKEN
+
+    pluginsConfigFile: "scorer-only-plugins.yaml"
+    pluginsCustomConfig:
+      scorer-only-plugins.yaml: |
+        apiVersion: llm-d.ai/v1alpha1
+        kind: EndpointPickerConfig
+        plugins:
+        - type: session-id-producer
+          parameters:
+            headerName: x-session-id
+        - type: queue-scorer
+        - type: kv-cache-utilization-scorer
+        - type: prefix-cache-scorer
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: queue-scorer
+            weight: 2
+          - pluginRef: kv-cache-utilization-scorer
+            weight: 2
+          - pluginRef: prefix-cache-scorer
+            weight: 3
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "session-control"
