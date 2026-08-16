@@ -4,3 +4,5 @@ resources:
   - ../base
 components:
   - ../../../../../recipes/modelserver/components/disable-gke-nccl-tuner-patch
+patches:
+  - path: patch-custom.yaml

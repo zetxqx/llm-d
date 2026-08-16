@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decode
+spec:
+  replicas: 3
+  template:
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-h100-80gb
+      containers:
+        - name: modelserver
+          args:
+            - "/data/Qwen3-32B"
+            - "--disable-access-log-for-endpoints=/health,/metrics,/v1/models"
+            - "--tensor-parallel-size=2"
+          volumeMounts:
+            - mountPath: /data
+              name: model-volume
+              readOnly: true
+      volumes:
+        - name: model-volume
+          persistentVolumeClaim:
+            claimName: qwen3-32b-pvc
+            readOnly: true
