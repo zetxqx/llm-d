@@ -1,0 +1,99 @@
+# optimized-baseline overlay patch for a vLLM-Omni *diffusion* model server
+# running Qwen/Qwen-Image (text-to-image via POST /v1/images/generations).
+#
+# Mirrors ../../vllm-omni/base/patch-vllm-omni.yaml (Z-Image-Turbo), but serves
+# the larger Qwen-Image model, so it targets an H100 instead of an L4.
+#
+# Sizing: Qwen-Image is a ~20B MMDiT + ~8B Qwen2.5-VL text encoder (~57 GB in
+# bf16/fp16). It does NOT fit a 24 GB L4, but fits one 80 GB H100 at full
+# precision, so no quantization or --enable-cpu-offload is needed here.
+# (On <40 GB GPUs you would need GGUF/FP8 quantization; see the AskUserQuestion
+# notes and docs.vllm.ai/projects/vllm-omni quantization guide.)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decode
+spec:
+  # Single H100 replica keeps the showcase cheap. Bump to 2+ to give the router
+  # multiple endpoints to balance across (the point of the llm-d routing study).
+  replicas: 1
+  template:
+    spec:
+      # Pin to the H100 node pool. The Z-Image stack has no nodeSelector and
+      # rides the cluster's default (L4) GPU pool; Qwen-Image must land on H100.
+      # Adjust the pool name to your cluster (matches the standalone
+      # k8s/vllm-omni-qwen-image-batching.yaml).
+      nodeSelector:
+        cloud.google.com/gke-nodepool: bobbm-spoth100
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: modelserver
+          command: ["vllm", "serve"]
+          # All args live in this overlay for consistency with the LLM baseline.
+          args:
+            - "Qwen/Qwen-Image"
+            - "--omni"
+            - "--disable-access-log-for-endpoints=/health,/metrics,/v1/models"
+            # Optional on H100 (headroom); add for very high resolutions or if
+            # VAE decode approaches the memory limit:
+            # - "--vae-use-slicing"
+            # - "--vae-use-tiling"
+            # Optional experimental continuous batching (per the standalone
+            # Qwen-Image manifest): raises throughput at some latency cost.
+            # - "--step-execution"
+            # - "--max-num-seqs=4"
+          env:
+            # Qwen-Image is Apache-2.0 (public), so the token is optional; kept
+            # for parity so the same overlay works for gated models.
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: llm-d-hf-token
+                  key: HF_TOKEN
+                  optional: true
+          resources:
+            limits:
+              cpu: '16'
+              memory: 128Gi
+              nvidia.com/gpu: 1
+            requests:
+              cpu: '8'
+              memory: 96Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: shm
+            - mountPath: /.cache
+              name: torch-compile-cache
+            - mountPath: /.triton
+              name: triton-cache
+            - mountPath: /.config
+              name: vllm-config
+          # ~57 GB of weights to download + compile on first start; be patient.
+          startupProbe:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 120
+          livenessProbe:
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        - name: torch-compile-cache
+          emptyDir: {}
+        - name: triton-cache
+          emptyDir: {}
+        - name: vllm-config
+          emptyDir: {}

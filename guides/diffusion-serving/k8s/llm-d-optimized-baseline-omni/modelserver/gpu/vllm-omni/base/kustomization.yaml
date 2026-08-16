@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Reuses the llm-d recipe base (decode Deployment + ServiceAccount) and the
+# vLLM-Omni image component straight from the cloned llm-d repo, so this overlay
+# stays a thin diff. Paths climb out of k8s/ into the gitignored llm-d clone.
+resources:
+  - ../../../../../../llm-d/guides/recipes/modelserver/base/single-host/default
+
+namePrefix: optimized-baseline-omni-nvidia-gpu-vllm-
+
+components:
+  - ../../../../../../llm-d/guides/recipes/modelserver/components/images/gpu-vllm-omni
+
+# Override the component's default dev image with the released vLLM-Omni image
+# that is known-good for Z-Image-Turbo (matches the standalone k8s/vllm-omni-image.yaml).
+# Matches the image name *after* the component's rename has been applied.
+images:
+  - name: ghcr.io/revit13/vllm-openai
+    newName: vllm/vllm-omni
+    newTag: v0.22.0
+
+labels:
+  - pairs:
+      llm-d.ai/model: Z-Image-Turbo
+      # Must match router.modelServers.matchLabels in the router values so the
+      # EndpointPicker selects these pods.
+      llm-d.ai/guide: optimized-baseline
+      llm-d.ai/accelerator-variant: gpu
+      llm-d.ai/accelerator-vendor: nvidia
+    includeSelectors: true
+    includeTemplates: true
+
+patches:
+  - path: patch-vllm-omni.yaml

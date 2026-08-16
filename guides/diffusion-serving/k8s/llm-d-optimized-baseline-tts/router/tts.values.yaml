@@ -1,0 +1,32 @@
+## optimized-baseline (Qwen3-TTS) overrides for the llm-d router.
+## Layer on top of: llm-d/guides/recipes/router/base.values.yaml
+##
+## WHY payload-agnostic AGAIN (like diffusion), DESPITE TTS BEING AUTOREGRESSIVE
+## -----------------------------------------------------------------------------
+## Parsing: the EPP registers request-body parsers only for LLM path suffixes
+## (chat/completions, completions). /v1/audio/speech matches none, so the stock
+## profile would 400 exactly like /v1/images/generations did on the diffusion
+## stack (verified live 2026-07-02). Passthrough parser avoids that.
+##
+## Scoring: Qwen3-TTS *is* AR — the talker stage even runs with
+## enable_prefix_caching: true (see vllm_omni/deploy/qwen3_tts.yaml), so unlike
+## diffusion there is a real KV/prefix cache on the backend. Whether the omni
+## server aggregates those per-stage vllm:* metrics on its /metrics endpoint
+## (and therefore whether queue/kv-cache/prefix scorers would light up) is NOT
+## yet verified — a good experiment for the routing investigation. Until then,
+## active-request-scorer + session-affinity (both EPP-side) are the safe choice.
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    # Chart built-in: passthrough-parser + active-request-scorer + session-affinity.
+    pluginsConfigFile: "payload-agnostic.yaml"
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "optimized-baseline-tts"

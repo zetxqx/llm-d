@@ -1,0 +1,88 @@
+# optimized-baseline overlay patch for a vLLM-Omni *image editing* server.
+#
+# Serves OmniGen2 (OmniGen2/OmniGen2) — instruction-based image editing via
+# POST /v1/chat/completions (image in as URL/data-URL, edited image out as a
+# data URL in the message content).
+#
+# Model choice: the repo's reference edit model (Qwen/Qwen-Image-Edit, ~20B DiT
+# + 7B text encoder) does not fit a 24 GB L4. OmniGen2 (~4B DiT + Qwen2.5-VL-3B)
+# runs 1024x1024 at ~14.7 GB (examples/offline_inference/text_to_image/README.md
+# table), so it fits 1 L4 with VAE slicing/tiling headroom.
+#
+# OmniGen2 editing knobs (per examples/offline_inference/image_to_image/
+# image_edit.py): guidance_scale = TEXT guidance, guidance_scale_2 = IMAGE
+# guidance — pass them in the request's extra_body.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decode
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: modelserver
+          command: ["vllm", "serve"]
+          args:
+            - "OmniGen2/OmniGen2"
+            - "--omni"
+            - "--disable-access-log-for-endpoints=/health,/metrics,/v1/models"
+            # VAE memory headroom on L4 (24 GB).
+            - "--vae-use-slicing"
+            - "--vae-use-tiling"
+            # Required on L4: without offload, OmniGen2's resident MLLM text
+            # encoder + DiT peak at ~22.0 GiB and the startup dummy run OOMs on
+            # the L4's 22.03 GiB (observed live 2026-07-02). CPU offload parks
+            # idle components (text encoder <-> DiT) in host RAM at some
+            # latency cost. Drop this flag on >=40 GB GPUs.
+            - "--enable-cpu-offload"
+          env:
+            # Optional for this public model; parity with the other overlays.
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: llm-d-hf-token
+                  key: HF_TOKEN
+                  optional: true
+          resources:
+            limits:
+              cpu: '16'
+              memory: 64Gi
+              nvidia.com/gpu: 1
+            requests:
+              cpu: '8'
+              memory: 48Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: shm
+            - mountPath: /.cache
+              name: torch-compile-cache
+            - mountPath: /.triton
+              name: triton-cache
+            - mountPath: /.config
+              name: vllm-config
+          startupProbe:
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 120
+          livenessProbe:
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+        - name: torch-compile-cache
+          emptyDir: {}
+        - name: triton-cache
+          emptyDir: {}
+        - name: vllm-config
+          emptyDir: {}

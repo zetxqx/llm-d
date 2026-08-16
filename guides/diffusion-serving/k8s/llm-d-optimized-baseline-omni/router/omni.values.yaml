@@ -1,0 +1,80 @@
+## optimized-baseline (Omni / diffusion) overrides for the llm-d router.
+## Layer on top of: llm-d/guides/recipes/router/base.values.yaml
+##
+## WHY THIS DIFFERS FROM THE STOCK optimized-baseline.values.yaml
+## ----------------------------------------------------------------
+## Two independent reasons the stock LLM config can't route diffusion:
+##
+## 1. REQUEST PARSING. The stock EPP registers a request-body parser only for
+##    LLM path suffixes (chat/completions, completions). A diffusion request to
+##    /v1/images/generations hits no registered parser and the EPP rejects it
+##    with HTTP 400: "no parser registered matching path suffix for:
+##    /v1/images/generations". (Observed live, 2026-07-02.)
+##
+## 2. SCORING. The stock scorers kv-cache-utilization / prefix-cache read vLLM
+##    *LLM* metrics; the diffusion path emits none (no token KV cache, no prompt
+##    prefix cache). Even queue-scorer reads the backend's num_requests_waiting
+##    metric, which the diffusion server does not export — so it has no signal.
+##
+## This file uses a CUSTOM EPP IMAGE (branch feat/openai-images-generations-parser)
+## that addresses both: the openai parser claims /v1/images/generations, and the
+## diffusion-load-producer / diffusion-cost-scorer pair schedules by declared
+## cost (num_inference_steps x megapixels x n) instead of backend metrics.
+## Fallback for the stock image: pluginsConfigFile "payload-agnostic.yaml"
+## (passthrough-parser + active-request-scorer), with no pluginsCustomConfig.
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    # Custom EPP build with /v1/images/generations parsing and diffusion
+    # declared-cost load tracking (branch feat/openai-images-generations-parser).
+    image:
+      registry: us-central1-docker.pkg.dev/bobzetian-gke-dev/bobinference
+      repository: llm-d-router-endpoint-picker
+      tag: images-gen-v2
+      pullPolicy: Always
+
+    # Custom profile for the custom EPP build: openai-parser claims
+    # /v1/images/generations, diffusion-load-producer tracks declared cost
+    # (steps x megapixels x n) per endpoint, diffusion-cost-scorer prefers the
+    # endpoint with the least outstanding cost. active-request-scorer stays in
+    # the mix so any non-diffusion traffic on the pool remains visible.
+    # (Previous known-good baseline with the stock image: "payload-agnostic.yaml".)
+    pluginsConfigFile: "diffusion-omni.yaml"
+    pluginsCustomConfig:
+      diffusion-omni.yaml: |
+        apiVersion: inference.networking.x-k8s.io/v1alpha1
+        kind: EndpointPickerConfig
+        plugins:
+        - name: openaiParser
+          type: openai-parser
+        - name: maxScore
+          type: max-score-picker
+        # - name: activeRequest
+        #   type: active-request-scorer
+        # - name: diffusionCost
+        #   type: diffusion-cost-scorer
+        # - type: diffusion-load-producer
+        #   parameters:
+        #     defaultNumInferenceSteps: 50   # match the served model's default steps
+        #     defaultSize: "1024x1024"
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: maxScore
+          # - pluginRef: activeRequest
+          #   weight: 1
+          # - pluginRef: diffusionCost
+          #   weight: 5
+        requestHandler:
+          parsers:
+          - pluginRef: openaiParser
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "optimized-baseline"

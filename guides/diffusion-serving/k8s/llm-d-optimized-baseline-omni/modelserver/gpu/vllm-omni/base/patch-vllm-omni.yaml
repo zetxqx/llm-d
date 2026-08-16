@@ -1,0 +1,85 @@
+# optimized-baseline overlay patch for a vLLM-Omni *diffusion* model server.
+#
+# Mirrors guides/optimized-baseline/modelserver/gpu/vllm/base/patch-vllm.yaml,
+# but serves the Z-Image-Turbo text-to-image diffusion model instead of an
+# autoregressive LLM.
+#
+# Differences from the LLM baseline worth noting:
+#   * --omni flag + diffusion model name.
+#   * 1 GPU per replica (no tensor parallelism; this turbo model fits on one).
+#   * --vae-use-slicing / --vae-use-tiling to cut VAE peak memory.
+#   * Model is public (Tongyi-MAI/Z-Image-Turbo) so HF_TOKEN is optional, but
+#     kept here so the same overlay works for gated diffusion models.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decode
+spec:
+  # optimized-baseline defaults to 8 replicas / 16 GPUs. Scaled down to 2 here
+  # so the routing layer still has multiple endpoints to balance across while
+  # staying friendly to a dev cluster (2 replicas x 1 GPU = 2 GPUs total).
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: modelserver
+          command: ["vllm", "serve"]
+          # All args live in this overlay for consistency with the LLM baseline.
+          args:
+            - "Tongyi-MAI/Z-Image-Turbo"
+            - "--omni"
+            - "--disable-access-log-for-endpoints=/health,/metrics,/v1/models"
+            # Reduce VAE memory use; helps on smaller GPUs. Drop if you have headroom.
+            - "--vae-use-slicing"
+            - "--vae-use-tiling"
+          env:
+            # Optional for this public model; required for gated diffusion models.
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: llm-d-hf-token
+                  key: HF_TOKEN
+                  optional: true
+          resources:
+            limits:
+              cpu: '16'
+              memory: 64Gi
+              nvidia.com/gpu: 1
+            requests:
+              cpu: '8'
+              memory: 48Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: shm
+            - mountPath: /.cache
+              name: torch-compile-cache
+            - mountPath: /.triton
+              name: triton-cache
+            - mountPath: /.config
+              name: vllm-config
+          # Diffusion model load + compile can be slow; allow a generous startup.
+          startupProbe:
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 120
+          livenessProbe:
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+        - name: torch-compile-cache
+          emptyDir: {}
+        - name: triton-cache
+          emptyDir: {}
+        - name: vllm-config
+          emptyDir: {}

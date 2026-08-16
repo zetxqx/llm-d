@@ -1,0 +1,80 @@
+# optimized-baseline overlay patch for a vLLM-Omni *TTS* model server.
+#
+# Serves Qwen3-TTS-12Hz-1.7B-CustomVoice via POST /v1/audio/speech.
+# Unlike the diffusion (Z-Image-Turbo) overlay, this is an AUTOREGRESSIVE
+# two-stage pipeline (talker -> code2wav) defined by the bundled deploy config
+# vllm_omni/deploy/qwen3_tts.yaml, which:
+#   * pins both stages to devices "0"  -> 1 GPU per replica
+#   * streams codec chunks between stages via SharedMemoryConnector -> /dev/shm
+#     is on the request hot path, so give it a generous memory-backed volume
+#   * enables prefix caching on the talker stage (stage 0) — an AR cache signal
+#     the diffusion overlay fundamentally lacks
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: decode
+spec:
+  # 2 replicas x 1 GPU, same dev-friendly sizing as the diffusion stack.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: modelserver
+          command: ["vllm", "serve"]
+          args:
+            - "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+            - "--omni"
+            - "--trust-remote-code"
+            - "--disable-access-log-for-endpoints=/health,/metrics,/v1/models"
+          env:
+            # Optional for this public model; kept for parity with the other overlays.
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: llm-d-hf-token
+                  key: HF_TOKEN
+                  optional: true
+          resources:
+            limits:
+              cpu: '16'
+              memory: 48Gi
+              nvidia.com/gpu: 1
+            requests:
+              cpu: '8'
+              memory: 24Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - mountPath: /dev/shm
+              name: shm
+            - mountPath: /.cache
+              name: torch-compile-cache
+            - mountPath: /.triton
+              name: triton-cache
+            - mountPath: /.config
+              name: vllm-config
+          # Two-stage AR pipeline load + cudagraph capture takes a while.
+          startupProbe:
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 120
+          livenessProbe:
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        # SharedMemoryConnector (talker -> code2wav codec streaming) lives here.
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+        - name: torch-compile-cache
+          emptyDir: {}
+        - name: triton-cache
+          emptyDir: {}
+        - name: vllm-config
+          emptyDir: {}

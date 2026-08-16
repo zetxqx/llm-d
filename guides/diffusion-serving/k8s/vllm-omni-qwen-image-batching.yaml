@@ -1,0 +1,107 @@
+# vLLM-Omni deployment with diffusion CONTINUOUS BATCHING enabled.
+#
+# Unlike Z-Image-Turbo (request-mode, one request at a time per server, see
+# k8s/vllm-omni-image.yaml), this serves Qwen/Qwen-Image — one of the pipelines
+# implementing the SupportsStepExecution protocol — with:
+#   --step-execution   step-wise denoise loop (scheduler-visible step boundaries)
+#   --max-num-seqs 4   up to 4 compatible requests co-batched per denoise step
+#
+# Requests only co-batch when they share the same SamplingParamsKey (same
+# height/width, CFG settings, LoRA). Different num_inference_steps are fine.
+# See vllm-omni docs/design/feature/diffusion_continuous_batching.md.
+#
+# Qwen-Image is a 20B MMDiT (~40 GB bf16) + Qwen2.5-VL text encoder, so it does
+# not fit the 24 GB L4s — this targets the bobbm-spoth100 pool (H100 80GB,
+# spot). Spot caveat: the node can be reclaimed at any time.
+#
+# Apply with:
+#   kubectl apply -f vllm-omni-qwen-image-batching.yaml
+# Then:
+#   kubectl port-forward svc/vllm-omni-qwen-image 8001:8000
+#   curl -X POST http://localhost:8001/v1/images/generations \
+#     -H "Content-Type: application/json" \
+#     -d '{"prompt":"a lantern festival at night","size":"1024x1024","seed":1}' \
+#     | jq -r '.data[0].b64_json' | base64 -d > qwen-out.png
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-omni-qwen-image
+  labels:
+    app: vllm-omni-qwen-image
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-omni-qwen-image
+  template:
+    metadata:
+      labels:
+        app: vllm-omni-qwen-image
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: bobbm-spoth100
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vllm-omni-qwen-image
+          image: vllm/vllm-omni:v0.24.0
+          args:
+            - "vllm"
+            - "serve"
+            - "Qwen/Qwen-Image"
+            - "--omni"
+            - "--port"
+            - "8000"
+            # Continuous batching (experimental): step-wise execution is the
+            # feature gate; max-num-seqs sets the per-step batch capacity.
+            - "--step-execution"
+            - "--max-num-seqs"
+            - "4"
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "8"
+              memory: 64Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: "16"
+              memory: 128Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: hf-cache
+              mountPath: /root/.cache/huggingface
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            # ~60 GB of weights to download on first start; be patient.
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            failureThreshold: 120
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        - name: hf-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-omni-qwen-image
+  labels:
+    app: vllm-omni-qwen-image
+spec:
+  selector:
+    app: vllm-omni-qwen-image
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

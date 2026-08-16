@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Same thin-diff pattern as the diffusion stack: reuse the llm-d recipe base
+# (decode Deployment + ServiceAccount) and the vLLM-Omni image component from
+# the cloned llm-d repo.
+resources:
+  - ../../../../../../llm-d/guides/recipes/modelserver/base/single-host/default
+
+namePrefix: optimized-baseline-tts-nvidia-gpu-vllm-
+
+components:
+  - ../../../../../../llm-d/guides/recipes/modelserver/components/images/gpu-vllm-omni
+
+# Override the component's default dev image with the released vLLM-Omni image
+# (same pin as the diffusion stack; applied after the component's rename).
+images:
+  - name: ghcr.io/revit13/vllm-openai
+    newName: vllm/vllm-omni
+    newTag: v0.22.0
+
+labels:
+  - pairs:
+      llm-d.ai/model: Qwen3-TTS-1.7B-CustomVoice
+      # Distinct guide value so this pool never collides with the diffusion
+      # stack's selector (llm-d.ai/guide: optimized-baseline), even if both
+      # ever land in the same namespace. Must match router.modelServers
+      # .matchLabels in router/tts.values.yaml.
+      llm-d.ai/guide: optimized-baseline-tts
+      llm-d.ai/accelerator-variant: gpu
+      llm-d.ai/accelerator-vendor: nvidia
+    includeSelectors: true
+    includeTemplates: true
+
+patches:
+  - path: patch-vllm-omni-tts.yaml

@@ -1,0 +1,83 @@
+# Basic minimal Kubernetes deployment for vanilla vLLM (text-to-text).
+#
+# Serves the smallest Qwen model (Qwen3-0.6B) behind an OpenAI-compatible
+# API server on a single GPU. Intended as the simplest possible example of
+# deploying vLLM on Kubernetes.
+#
+# Image: vllm/vllm-openai:latest  (official vLLM OpenAI-compatible server)
+# Model: Qwen/Qwen3-0.6B          (public on Hugging Face, no token required)
+#
+# Apply with:
+#   kubectl apply -f vllm-basic-deployment.yaml
+# Test once the pod is Ready:
+#   kubectl port-forward svc/vllm-basic 8000:8000
+#   curl http://localhost:8000/v1/models
+#   curl http://localhost:8000/v1/chat/completions \
+#     -H 'Content-Type: application/json' \
+#     -d '{"model": "Qwen/Qwen3-0.6B", "messages": [{"role": "user", "content": "Hello!"}]}'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-basic
+  labels:
+    app: vllm-basic
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vllm-basic
+  template:
+    metadata:
+      labels:
+        app: vllm-basic
+    spec:
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest
+          args:
+            - "--model"
+            - "Qwen/Qwen3-0.6B"
+            - "--port"
+            - "8000"
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          # vLLM uses shared memory for inter-process communication; the
+          # default 64Mi /dev/shm is too small. Back it with a memory volume.
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: hf-cache
+              mountPath: /root/.cache/huggingface
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 60
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+        - name: hf-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-basic
+  labels:
+    app: vllm-basic
+spec:
+  selector:
+    app: vllm-basic
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+

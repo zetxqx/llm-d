@@ -1,0 +1,85 @@
+# Minimal Kubernetes deployment for vLLM-Omni image generation.
+#
+# Serves a diffusion text-to-image model behind the OpenAI-compatible API.
+# This is a SEPARATE deployment from the Omni chat model (Qwen-Omni models
+# only output text + audio; image generation needs a diffusion model).
+#
+# Image: vllm/vllm-omni:v0.22.0   (latest released version)
+# Model: Tongyi-MAI/Z-Image-Turbo (a small, fast "turbo" diffusion model)
+#
+# Apply with:
+#   kubectl apply -f vllm-omni-image.yaml
+# Generate an image once the pod is Ready:
+#   kubectl port-forward svc/vllm-omni-image 8001:8000
+#   curl -X POST http://localhost:8001/v1/images/generations \
+#     -H "Content-Type: application/json" \
+#     -d '{"prompt":"a dragon over the Green Mountains of Vermont","size":"1024x1024","seed":42}' \
+#     | jq -r '.data[0].b64_json' | base64 -d > out.png
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-omni-image
+  labels:
+    app: vllm-omni-image
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-omni-image
+  template:
+    metadata:
+      labels:
+        app: vllm-omni-image
+    spec:
+      containers:
+        - name: vllm-omni-image
+          image: vllm/vllm-omni:v0.22.0
+          args:
+            - "vllm"
+            - "serve"
+            - "Tongyi-MAI/Z-Image-Turbo"
+            - "--omni"
+            - "--port"
+            - "8000"
+            # Reduce VAE memory use; helps on smaller GPUs. Drop if you have headroom.
+            - "--vae-use-slicing"
+            - "--vae-use-tiling"
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: hf-cache
+              mountPath: /root/.cache/huggingface
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 60
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+        - name: hf-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-omni-image
+  labels:
+    app: vllm-omni-image
+spec:
+  selector:
+    app: vllm-omni-image
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

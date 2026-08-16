@@ -1,0 +1,44 @@
+apiVersion: nvidia.com/v1alpha1
+kind: DynamoGraphDeployment
+metadata:
+  name: vllm-omni-image
+spec:
+  services:
+    Frontend:
+      envFromSecret: hf-token-secret
+      componentType: frontend
+      replicas: 1
+      extraPodSpec:
+        mainContainer:
+          # Pick the latest vllm-runtime tag from
+          # https://catalog.ngc.nvidia.com/orgs/nvidia/teams/ai-dynamo/containers/vllm-runtime
+          # (vLLM-Omni is pre-installed in the container images, amd64 only).
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:my-tag
+    VllmOmniWorker:
+      envFromSecret: hf-token-secret
+      componentType: worker
+      replicas: 1
+      resources:
+        limits:
+          gpu: "1"
+        requests:
+          custom:
+            # Qwen/Qwen-Image weights are large; leave room for the HF download cache.
+            ephemeral-storage: "80Gi"
+      extraPodSpec:
+        mainContainer:
+          image: nvcr.io/nvidia/ai-dynamo/vllm-runtime:my-tag
+          workingDir: /workspace/examples/backends/vllm
+          command:
+            - python3
+            - -m
+            - dynamo.vllm.omni
+          args:
+            - --model
+            - Qwen/Qwen-Image
+            - --output-modalities
+            - image
+            # Generated media is written here inside the worker pod. Request
+            # b64_json in the API call to get images inline instead of a URL.
+            - --media-output-fs-url
+            - file:///tmp/dynamo_media

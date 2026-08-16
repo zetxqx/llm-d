@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Same thin-diff pattern as the diffusion/TTS stacks: reuse the llm-d recipe
+# base and vLLM-Omni image component from the cloned llm-d repo.
+resources:
+  - ../../../../../../llm-d/guides/recipes/modelserver/base/single-host/default
+
+namePrefix: optimized-baseline-edit-nvidia-gpu-vllm-
+
+components:
+  - ../../../../../../llm-d/guides/recipes/modelserver/components/images/gpu-vllm-omni
+
+# Released vLLM-Omni image (same pin as the other stacks).
+images:
+  - name: ghcr.io/revit13/vllm-openai
+    newName: vllm/vllm-omni
+    newTag: v0.22.0
+
+labels:
+  - pairs:
+      llm-d.ai/model: OmniGen2
+      # Distinct guide value -> this pool never collides with the diffusion or
+      # TTS stacks' selectors. Must match router/edit.values.yaml matchLabels.
+      llm-d.ai/guide: optimized-baseline-edit
+      llm-d.ai/accelerator-variant: gpu
+      llm-d.ai/accelerator-vendor: nvidia
+    includeSelectors: true
+    includeTemplates: true
+
+patches:
+  - path: patch-vllm-omni-edit.yaml

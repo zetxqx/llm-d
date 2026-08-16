@@ -1,0 +1,61 @@
+## optimized-baseline (Qwen-Image / diffusion) overrides for the llm-d router.
+## Layer on top of: llm-d/guides/recipes/router/base.values.yaml
+##
+## Same routing case as the Z-Image stack (router/omni.values.yaml): diffusion
+## requests hit POST /v1/images/generations, which the stock EPP openai-parser
+## does not claim (HTTP 400: "no parser registered matching path suffix"). This
+## uses the CUSTOM EPP image (branch feat/openai-images-generations-parser) whose
+## openai-parser claims /v1/images/generations and parses the declared cost
+## fields.
+##
+## The only difference from omni.values.yaml is modelServers.matchLabels: it
+## selects the Qwen-Image pool (llm-d.ai/guide: optimized-baseline-omni-qwen-image)
+## so this router and the Z-Image router never share endpoints.
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    # Custom EPP build with /v1/images/generations parsing.
+    image:
+      registry: us-central1-docker.pkg.dev/bobzetian-gke-dev/bobinference
+      repository: llm-d-router-endpoint-picker
+      tag: images-gen-v2
+      pullPolicy: Always
+
+    # openai-parser claims /v1/images/generations; max-score-picker selects an
+    # endpoint. The diffusion-load-producer / diffusion-cost-scorer pair is left
+    # commented (parser-only showcase); uncomment to score by declared cost.
+    pluginsConfigFile: "diffusion-omni.yaml"
+    pluginsCustomConfig:
+      diffusion-omni.yaml: |
+        apiVersion: inference.networking.x-k8s.io/v1alpha1
+        kind: EndpointPickerConfig
+        plugins:
+        - name: openaiParser
+          type: openai-parser
+        - name: maxScore
+          type: max-score-picker
+        # - name: diffusionCost
+        #   type: diffusion-cost-scorer
+        # - type: diffusion-load-producer
+        #   parameters:
+        #     defaultNumInferenceSteps: 50   # match the served model's default steps
+        #     defaultSize: "1328x1328"       # Qwen-Image's recommended resolution
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: maxScore
+          # - pluginRef: diffusionCost
+          #   weight: 5
+        requestHandler:
+          parsers:
+          - pluginRef: openaiParser
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "optimized-baseline-omni-qwen-image"

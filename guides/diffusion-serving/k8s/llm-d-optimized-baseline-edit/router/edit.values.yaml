@@ -1,0 +1,36 @@
+## optimized-baseline (image editing / OmniGen2) overrides for the llm-d router.
+## Layer on top of: llm-d/guides/recipes/router/base.values.yaml
+##
+## THE THIRD ROUTING CASE — different from both diffusion and TTS
+## -----------------------------------------------------------------------------
+## Image editing rides POST /v1/chat/completions, a path suffix the EPP's stock
+## openai-parser DOES understand — so unlike /v1/images/generations (diffusion
+## stack) and /v1/audio/speech (TTS stack), the stock profile would NOT 400.
+##
+## We still choose payload-agnostic, for two different reasons:
+##  1. No scorer signal anyway: OmniGen2 is a pure-diffusion backend — no token
+##     KV cache, no LLM metrics — so the cache-/queue-scorers the stock profile
+##     feeds from the parsed body + backend metrics have nothing to read.
+##  2. Body cost: edit requests carry multi-MB base64 data-URL images. Parsing
+##     and prefix-hashing megabytes of image bytes per request is pure overhead
+##     (and prefix-cache affinity over base64 pixels is meaningless).
+##
+## Open experiment (Tier 3 of docs/routing-opportunities.md): iterative editing
+## sessions (user refines the same image repeatedly) are where
+## session-affinity-scorer should visibly pay off — same-session requests
+## return to the endpoint whose caches are warm for that image.
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    # Chart built-in: passthrough-parser + active-request-scorer + session-affinity.
+    pluginsConfigFile: "payload-agnostic.yaml"
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "optimized-baseline-edit"
