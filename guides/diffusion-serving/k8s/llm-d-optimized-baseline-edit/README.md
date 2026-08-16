@@ -53,17 +53,17 @@ Pool isolation: label `llm-d.ai/guide: optimized-baseline-edit` + own namespace
 ## Deploy
 
 ```bash
-# from the workspace root
-export WORKSPACE=$(pwd)
+# from the repo root
+export REPO_ROOT=$(pwd)
 export NAMESPACE=llm-d-edit
-export GUIDE_DIR=$WORKSPACE/k8s/llm-d-optimized-baseline-edit
-source $WORKSPACE/llm-d/guides/env.sh   # ROUTER_* vars
+export GUIDE_DIR=$REPO_ROOT/guides/diffusion-serving/k8s/llm-d-optimized-baseline-edit
+source $REPO_ROOT/guides/env.sh   # ROUTER_* vars
 
 kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
 
 # 1. Router (standalone mode)
 helm install llm-d-edit $ROUTER_STANDALONE_CHART \
-  -f $WORKSPACE/llm-d/guides/recipes/router/base.values.yaml \
+  -f $REPO_ROOT/guides/recipes/router/base.values.yaml \
   -f $GUIDE_DIR/router/edit.values.yaml \
   -n $NAMESPACE --version $ROUTER_CHART_VERSION
 

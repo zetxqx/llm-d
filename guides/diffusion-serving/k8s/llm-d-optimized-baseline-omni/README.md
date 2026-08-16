@@ -1,20 +1,20 @@
 # llm-d optimized-baseline for vLLM-Omni (diffusion)
 
-An [optimized-baseline](../../llm-d/guides/optimized-baseline/README.md) llm-d
+An [optimized-baseline](../../../optimized-baseline/README.md) llm-d
 deployment adapted to serve a **vLLM-Omni diffusion** model
 (`Tongyi-MAI/Z-Image-Turbo`) behind the llm-d Router / EndpointPicker, instead of
 the stock autoregressive LLM (`Qwen3-32B`).
 
 It is the llm-d-routed counterpart of the standalone
-[`k8s/vllm-omni-image.yaml`](../vllm-omni-image.yaml): same model and image,
+[`vllm-omni-image.yaml`](../vllm-omni-image.yaml): same model and image,
 but fronted by the llm-d inference scheduler with multiple replicas so we can
 study how diffusion serving benefits (or doesn't) from llm-d routing.
 
 ## Structure
 
 Same two-part shape as the upstream guide — a Helm-deployed **router** and a
-Kustomize-deployed **model server** — kept as a thin diff over the cloned
-`llm-d/guides/recipes` base.
+Kustomize-deployed **model server** — kept as a thin diff over the
+`guides/recipes` base.
 
 ```
 router/omni.values.yaml                          # Z-Image router (openai-parser)
@@ -25,9 +25,8 @@ modelserver/gpu/vllm-omni-qwen-image/base/       # Qwen-Image decode overlay (H1
 modelserver/gpu/vllm-omni-qwen-image/gke/        # Qwen-Image GKE overlay
 ```
 
-> The Kustomize overlays reference the cloned `llm-d/` repo via relative paths
-> (`../../../../../../llm-d/...`). They are validated with `kubectl kustomize`.
-> Keep the `llm-d` clone in place at the workspace root.
+> The Kustomize overlays reference the repo recipes via relative paths
+> (`../../../../../../../recipes/...`). They are validated with `kubectl kustomize`.
 
 ## What changed vs. stock optimized-baseline — and why it matters
 
@@ -93,7 +92,7 @@ Z-Image pool. Both routers use the same custom EPP whose openai-parser claims
 ```bash
 # Router for the Qwen-Image pool.
 helm upgrade -i llm-d-omni-qwen-image $ROUTER_STANDALONE_CHART \
-  -f $WORKSPACE/llm-d/guides/recipes/router/base.values.yaml \
+  -f $REPO_ROOT/guides/recipes/router/base.values.yaml \
   -f $GUIDE_DIR/router/qwen-image.values.yaml \
   -n $NAMESPACE --version $ROUTER_CHART_VERSION
 
@@ -111,20 +110,20 @@ curl -s -X POST http://localhost:8080/v1/images/generations \
 ## Deploy
 
 ```bash
-# from the workspace root
-export WORKSPACE=$(pwd)
+# from the repo root
+export REPO_ROOT=$(pwd)
 export NAMESPACE=llm-d-omni
-export GUIDE_DIR=$WORKSPACE/k8s/llm-d-optimized-baseline-omni
+export GUIDE_DIR=$REPO_ROOT/guides/diffusion-serving/k8s/llm-d-optimized-baseline-omni
+source $REPO_ROOT/guides/env.sh
 
 # 0. Prereqs: Gateway API Inference Extension CRDs + namespace (see the upstream
 #    guide's Prerequisites). Z-Image-Turbo is public, so the HF token is
 #    optional; create it only for gated models.
 kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
 
-# 1. Router (standalone mode). Uses env vars from llm-d/guides/env.sh.
-#    (source llm-d/guides/env.sh first to populate ROUTER_* vars.)
+# 1. Router (standalone mode). Uses env vars from guides/env.sh.
 helm upgrade -i llm-d-omni $ROUTER_STANDALONE_CHART \
-  -f $WORKSPACE/llm-d/guides/recipes/router/base.values.yaml \
+  -f $REPO_ROOT/guides/recipes/router/base.values.yaml \
   -f $GUIDE_DIR/router/omni.values.yaml \
   -n $NAMESPACE --version $ROUTER_CHART_VERSION
 

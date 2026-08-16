@@ -4,12 +4,12 @@ kind: Kustomization
 # vLLM-Omni image component straight from the cloned llm-d repo, so this overlay
 # stays a thin diff. Paths climb out of k8s/ into the gitignored llm-d clone.
 resources:
-  - ../../../../../../llm-d/guides/recipes/modelserver/base/single-host/default
+  - ../../../../../../../recipes/modelserver/base/single-host/default
 
 namePrefix: optimized-baseline-omni-nvidia-gpu-vllm-
 
 components:
-  - ../../../../../../llm-d/guides/recipes/modelserver/components/images/gpu-vllm-omni
+  - ../../../../../../../recipes/modelserver/components/images/gpu-vllm-omni/release
 
 # Override the component's default dev image with the released vLLM-Omni image
 # that is known-good for Z-Image-Turbo (matches the standalone k8s/vllm-omni-image.yaml).

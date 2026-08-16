@@ -4,12 +4,12 @@ kind: Kustomization
 # (decode Deployment + ServiceAccount) and the vLLM-Omni image component from
 # the cloned llm-d repo.
 resources:
-  - ../../../../../../llm-d/guides/recipes/modelserver/base/single-host/default
+  - ../../../../../../../recipes/modelserver/base/single-host/default
 
 namePrefix: optimized-baseline-tts-nvidia-gpu-vllm-
 
 components:
-  - ../../../../../../llm-d/guides/recipes/modelserver/components/images/gpu-vllm-omni
+  - ../../../../../../../recipes/modelserver/components/images/gpu-vllm-omni/release
 
 # Override the component's default dev image with the released vLLM-Omni image
 # (same pin as the diffusion stack; applied after the component's rename).
