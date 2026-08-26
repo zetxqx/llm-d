@@ -1,4 +1,4 @@
-# Diffusion Text-to-Image Guide
+# [Experimental] Diffusion Text-to-Image Guide
 
 This guide deploys an image diffusion model behind the llm-d router and serves it over the OpenAI-compatible `POST /v1/images/generations` endpoint.
 
@@ -87,7 +87,7 @@ Deploy the llm-d Router in **Standalone Mode** overlaying router custom configur
 helm install ${GUIDE_NAME} \
     ${ROUTER_STANDALONE_CHART} \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
-    -f ${REPO_ROOT}/guides/diffusion-serving/${GUIDE_NAME}/router/${ENGINE}.values.yaml \
+    -f ${REPO_ROOT}/guides/diffusion-serving/${GUIDE_NAME}/router/values.yaml \
     -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
 ```
 
@@ -104,7 +104,7 @@ export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
 helm install ${GUIDE_NAME} \
     ${ROUTER_GATEWAY_CHART}  \
     -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
-    -f ${REPO_ROOT}/guides/diffusion-serving/${GUIDE_NAME}/router/${ENGINE}.values.yaml \
+    -f ${REPO_ROOT}/guides/diffusion-serving/${GUIDE_NAME}/router/values.yaml \
     --set provider.name=${PROVIDER_NAME} \
     --set httpRoute.create=true \
     --set httpRoute.inferenceGatewayName=llm-d-inference-gateway \

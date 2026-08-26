@@ -9,9 +9,9 @@ router:
     failureMode: FailOpen
 
   epp:
-    pluginsConfigFile: "t2i-sglang.yaml"
+    pluginsConfigFile: "t2i.yaml"
     pluginsCustomConfig:
-      t2i-sglang.yaml: |
+      t2i.yaml: |
         apiVersion: inference.networking.x-k8s.io/v1alpha1
         kind: EndpointPickerConfig
         plugins:
@@ -24,9 +24,6 @@ router:
           plugins:
           - pluginRef: activeRequest
           - pluginRef: maxScore
-        # SGLang's diffusion server mounts no /metrics route. Without this
-        # opt-out the EPP polls the 404 continuously, and no scorer here reads
-        # backend metrics anyway.
         dataLayer:
           injectDefaults: false
 
