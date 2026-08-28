@@ -10,4 +10,4 @@ Diffusion models generate media such as images, audio, and video by iterative de
 ## Guide Index
 
 * **[Text-to-Image Guide](./text-to-image/README.md)**: Generate images from text prompts over the OpenAI-compatible `POST /v1/images/generations` endpoint, serving on vLLM-Omni or SGLang.
-* **[Image-to-Image Guide](./image-to-image/README.md)**: Edit an uploaded image over the OpenAI-compatible `POST /v1/images/edits` endpoint, which carries `multipart/form-data`, serving on vLLM-Omni or SGLang.
+* **[Text-to-Video Guide](./text-to-video/README.md)**: Generate video clips from text prompts over the OpenAI-compatible asynchronous `/v1/videos` endpoint family, which carries `multipart/form-data`, serving on vLLM-Omni.
