@@ -1,0 +1,72 @@
+## session-control guide overrides for the llm-d router - close-routing arm (R-close).
+## Layer on top of: recipes/router/base.values.yaml (+ monitoring-gmp + envoy-access-log).
+##
+## Binding-based session control from llm-d-router branch feat/session-control-2003 (image session-control-2003-65a81ad9):
+##   - session-id-producer with BOTH sources: x-session-id header (generation requests) and session_id body field (close requests carry only the body).
+##   - session-binding-tracker - binds session -> endpoint after the picker selects; drops bindings on close and endpoint deletion.
+##   - session-control-filter - pins later turns (and the close) to the bound endpoint.
+##   - sglang-session-parser - makes POST /close_session schedulable; listed first in requestHandler.parsers (first path match wins).
+##
+## The R-blind arm uses close-routing-blind.values.yaml (headerName only - closes carry no session id at the EPP and schedule fresh).
+## The R-noclose arm uses THIS file too; the arm difference is client-side (no session_close_path in the inference-perf config).
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    # session-binding-tracker / session-control-filter / sglang-session-parser are registered Alpha; the EPP refuses to load them without this flag.
+    flags:
+      allow-experimental-plugins: true
+
+    image:
+      pullPolicy: IfNotPresent
+      registry: us-central1-docker.pkg.dev
+      repository: bobzetian-gke-dev/bobinference/llm-d-router-endpoint-picker
+      tag: session-control-2003-65a81ad9
+
+    env:
+      - name: HF_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: llm-d-hf-token
+            key: HF_TOKEN
+
+    pluginsConfigFile: "close-routing-plugins.yaml"
+    pluginsCustomConfig:
+      close-routing-plugins.yaml: |
+        apiVersion: llm-d.ai/v1alpha1
+        kind: EndpointPickerConfig
+        plugins:
+        - type: session-id-producer
+          parameters:
+            headerName: x-session-id
+            bodyField: session_id
+        - type: session-binding-tracker
+        - type: session-control-filter
+        - type: sglang-session-parser
+        - type: queue-scorer
+        - type: kv-cache-utilization-scorer
+        - type: prefix-cache-scorer
+        requestHandler:
+          parsers:
+          - pluginRef: sglang-session-parser
+          - pluginRef: openai-parser
+          - pluginRef: passthrough-parser
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: session-control-filter
+          - pluginRef: queue-scorer
+            weight: 2
+          - pluginRef: kv-cache-utilization-scorer
+            weight: 2
+          - pluginRef: prefix-cache-scorer
+            weight: 3
+
+  modelServers:
+    matchLabels:
+      llm-d.ai/guide: "session-control"

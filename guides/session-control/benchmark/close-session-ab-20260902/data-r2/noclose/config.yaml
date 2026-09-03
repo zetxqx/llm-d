@@ -1,0 +1,125 @@
+api:
+  type: chat
+  streaming: true
+  headers: null
+  slo_unit: null
+  slo_tpot_header: null
+  slo_ttft_header: null
+  response_format: null
+  session_id_header_key: x-session-id
+  session_id_body_field: session_id
+  session_close_path: null
+  session_final_header_key: null
+  session_token_header_key: null
+data:
+  type: weka_trace_replay
+  path: null
+  corpus_file_path: null
+  input_distribution: null
+  output_distribution: null
+  shared_prefix: null
+  multimodal: null
+  trace: null
+  otel_trace_replay: null
+  weka_trace_replay:
+    use_static_model: true
+    static_model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8
+    model_mapping: null
+    default_max_tokens: 1000
+    override_tool_call_max_tokens: true
+    inject_random_session_id: false
+    duplicate_sessions_target: null
+    max_wait_ms: 30000
+    predecessor_wait_timeout_sec: 3600.0
+    include_errors: true
+    skip_invalid_files: true
+    bad_tool_call_handling: none
+    trace_directory: /work/traces
+    trace_files: null
+    hf_dataset_path: null
+    trace_idle_gap_cap_seconds: 30.0
+    ignore_trace_delays: false
+    use_think_time_only: false
+    default_block_size: 64
+    num_dataset_entries: 100
+    datagen_workers: null
+    subagent_separate_session_id: true
+    close_subagent_sessions: true
+  conversation_replay: null
+  visionarena: null
+  synthetic_agentic: null
+  use_chat_template: false
+load:
+  type: trace_session_replay
+  interval: 1.0
+  stages:
+  - concurrent_sessions: 16
+    session_rate: null
+    num_sessions: 16
+    timeout: 4800.0
+  sweep: null
+  num_workers: 4
+  worker_max_concurrency: 1024
+  worker_max_tcp_connections: 2500
+  trace: null
+  circuit_breakers: []
+  request_timeout: 900.0
+  stage_teardown_grace_seconds: 120.0
+  lora_traffic_split: null
+  base_seed: 1788415994126
+metrics: null
+report:
+  request_lifecycle:
+    summary: true
+    per_stage: true
+    per_request: true
+    per_request_fields:
+      request: false
+      response: false
+      info: true
+      response_chunks: false
+      computed_metrics: true
+    per_adapter: true
+    per_adapter_stage: false
+    percentiles:
+    - 0.1
+    - 1.0
+    - 5.0
+    - 10.0
+    - 25.0
+    - 50.0
+    - 75.0
+    - 90.0
+    - 95.0
+    - 99.0
+    - 99.9
+    use_server_output_tokens: true
+    max_error_messages: 100
+  prometheus:
+    summary: true
+    per_stage: false
+  session_lifecycle:
+    summary: true
+    per_stage: true
+    per_session: false
+  goodput: null
+storage:
+  local_storage:
+    path: /work/reports
+    report_file_prefix: null
+  google_cloud_storage: null
+  simple_storage_service: null
+server:
+  type: sglang
+  model_name: Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8
+  base_url: http://10.100.2.5:8000
+  ignore_eos: true
+  api_key: null
+  cert_path: null
+  key_path: null
+tokenizer:
+  pretrained_model_name_or_path: Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8
+  trust_remote_code: null
+  token: null
+  load_timeout: 300.0
+circuit_breakers: null

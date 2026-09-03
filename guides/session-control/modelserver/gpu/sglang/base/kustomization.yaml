@@ -6,7 +6,7 @@ resources:
 namePrefix: session-control-gpu-sglang-
 
 components:
-  - ../../../../../recipes/modelserver/components/images/gpu-sglang
+  - ../../../../../recipes/modelserver/components/images/gpu-sglang/release
 
 labels:
   - pairs:
@@ -20,9 +20,9 @@ labels:
 patches:
   - path: patch-sglang.yaml
 
-# Session-tagged radix cache (sglang#27058, --enable-session-radix-cache in
-# patch-sglang.yaml) first shipped in v0.5.15 — override the recipes
-# component's pinned v0.5.13.post1.
+# Session-reference-aware radix cache (sglang#29173, --enable-session-radix-cache
+# in patch-sglang.yaml on UnifiedRadixCache) first shipped in v0.5.17 — override
+# the recipes release component's pinned v0.5.16.
 images:
   - name: docker.io/lmsysorg/sglang
-    newTag: v0.5.15.post1
+    newTag: v0.5.17

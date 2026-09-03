@@ -19,13 +19,13 @@
 ##     -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
 ##   kubectl rollout restart deployment/${GUIDE_NAME}-epp -n ${NAMESPACE}
 ##
-## CALIBRATION REQUIRED before baseline runs: the
-## prefix-cache-affinity-filter's peakPrefillThroughput default (15928 tok/s)
-## was calibrated for dense Qwen3-32B on H100 TP2. This guide serves
-## Qwen3-Coder-30B-A3B (3.3B active) whose prefill throughput is several times
-## higher — an uncalibrated filter underestimates prefill capacity and skews
-## placement. Measure with guides/recipes/router/calibration and set the value
-## on the filter before recording baseline numbers.
+## peakPrefillThroughput CALIBRATED 2026-08-07: 68,228 tok/s, measured with
+## guides/recipes/router/calibration (CHUNK_SIZE=8192 matching the engine's
+## chunked_prefill_size, 20 samples, via the EPP) against this fleet
+## (Qwen3-Coder-30B-A3B-Instruct-FP8, TP2 H100). The plugin default (15,928,
+## dense Qwen3-32B) would underestimate prefill capacity 4.3×. Re-run the
+## calibration after any change to model, TP, GPU type, or chunked-prefill
+## size.
 
 router:
   extraServicePorts:
@@ -51,6 +51,8 @@ router:
         - type: approx-prefix-cache-producer
         - type: inflight-load-producer
         - type: prefix-cache-affinity-filter
+          parameters:
+            peakPrefillThroughput: 68228
         - type: token-load-scorer
         schedulingProfiles:
         - name: default

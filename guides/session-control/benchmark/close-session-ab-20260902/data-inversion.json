@@ -1,0 +1,140 @@
+{
+ "close": {
+  "arm": "close",
+  "residents": 8,
+  "resident_tokens": 2065286,
+  "fill_frac": 0.8824733863228303,
+  "churn_n": 25,
+  "closes_ok": 25,
+  "hit_mean": 0.9999496453107608,
+  "lat_mean": 0.6004488803591812,
+  "survivors": 8,
+  "probes": [
+   {
+    "sid": "resident-close-0",
+    "hit": 0.9999496453873238,
+    "latency": 0.599441708996892,
+    "cached": 258156,
+    "prompt": 258169
+   },
+   {
+    "sid": "resident-close-1",
+    "hit": 0.9999496769648242,
+    "latency": 0.5866134590469301,
+    "cached": 258318,
+    "prompt": 258331
+   },
+   {
+    "sid": "resident-close-2",
+    "hit": 0.999949625094453,
+    "latency": 0.6251457919133827,
+    "cached": 258052,
+    "prompt": 258065
+   },
+   {
+    "sid": "resident-close-3",
+    "hit": 0.9999495916927109,
+    "latency": 0.5584509170148522,
+    "cached": 257881,
+    "prompt": 257894
+   },
+   {
+    "sid": "resident-close-4",
+    "hit": 0.9999497176452387,
+    "latency": 0.6223920830525458,
+    "cached": 258527,
+    "prompt": 258540
+   },
+   {
+    "sid": "resident-close-5",
+    "hit": 0.9999496418762662,
+    "latency": 0.589403957943432,
+    "cached": 258138,
+    "prompt": 258151
+   },
+   {
+    "sid": "resident-close-6",
+    "hit": 0.9999496063480495,
+    "latency": 0.580109916976653,
+    "cached": 257956,
+    "prompt": 257969
+   },
+   {
+    "sid": "resident-close-7",
+    "hit": 0.99994965747722,
+    "latency": 0.6420332079287618,
+    "cached": 258218,
+    "prompt": 258231
+   }
+  ]
+ },
+ "noclose": {
+  "arm": "noclose",
+  "residents": 8,
+  "resident_tokens": 2064453,
+  "fill_frac": 0.8821174548291743,
+  "churn_n": 25,
+  "closes_ok": 0,
+  "hit_mean": 1.2109275513970447e-05,
+  "lat_mean": 21.303819729131646,
+  "survivors": 0,
+  "probes": [
+   {
+    "sid": "resident-noclose-0",
+    "hit": 1.1627816838629158e-05,
+    "latency": 21.352074666996486,
+    "cached": 3,
+    "prompt": 258002
+   },
+   {
+    "sid": "resident-noclose-1",
+    "hit": 1.1624122378760404e-05,
+    "latency": 21.259083000011742,
+    "cached": 3,
+    "prompt": 258084
+   },
+   {
+    "sid": "resident-noclose-2",
+    "hit": 1.1619305088093698e-05,
+    "latency": 21.407596040982753,
+    "cached": 3,
+    "prompt": 258191
+   },
+   {
+    "sid": "resident-noclose-3",
+    "hit": 1.1621645702509113e-05,
+    "latency": 21.31374254100956,
+    "cached": 3,
+    "prompt": 258139
+   },
+   {
+    "sid": "resident-noclose-4",
+    "hit": 1.1630341234211811e-05,
+    "latency": 21.27576508396305,
+    "cached": 3,
+    "prompt": 257946
+   },
+   {
+    "sid": "resident-noclose-5",
+    "hit": 1.1620160203275336e-05,
+    "latency": 21.25682962499559,
+    "cached": 3,
+    "prompt": 258172
+   },
+   {
+    "sid": "resident-noclose-6",
+    "hit": 1.1633904299503232e-05,
+    "latency": 21.247795875067823,
+    "cached": 3,
+    "prompt": 257867
+   },
+   {
+    "sid": "resident-noclose-7",
+    "hit": 1.5496908366780827e-05,
+    "latency": 21.317671000026166,
+    "cached": 4,
+    "prompt": 258116
+   }
+  ]
+ }
+}

@@ -46,16 +46,7 @@ changes — the deployment topology stays as-is.
 **Why this model.** The benchmark workload for this stack is agentic-trace replay (SemiAnalysis `cc-traces-weka-*`: median main-agent input ~195K tokens, 96% prefix reuse), which sets three hard requirements: ≥256K native context, standard GQA full attention (token-indexed KV, so radix/session-radix semantics and cache-hit metrics stay meaningful), and a small-activation MoE so 195K prefills are tractable. Qwen3-Coder-30B-A3B is the only current small model satisfying all three — the 2026 releases (Qwen3-Coder-Next, Qwen3.6, Gemma 4) all moved to hybrid linear/SWA attention. KV budget at this config: ~48KB/token FP8, ~9.4GB per median session, ~11–17 resident sessions per TP2 replica — the 4-replica fleet (~44–68 sessions) enters cache pressure around 64 concurrent sessions, which is the regime where affinity routing is measurable.
 
 > [!NOTE]
-> SGLang serves `/open_session` and `/close_session` unconditionally — no
-> engine flag is required for dedicated-slot sessions. The session-tagged
-> radix mode is enabled in
-> [`modelserver/gpu/sglang/base/patch-sglang.yaml`](modelserver/gpu/sglang/base/patch-sglang.yaml)
-> (`--enable-session-radix-cache`, which on this image requires
-> `--radix-eviction-policy priority`); the base kustomization overrides the
-> recipes component's image tag to v0.5.15.post1 where that mode first
-> shipped. When upgrading past sglang#29173 (2026-08-02), session tracking
-> moves to `UnifiedRadixCache`: add `SGLANG_ENABLE_UNIFIED_RADIX_TREE=1` and
-> drop the priority-policy requirement.
+> SGLang serves `/open_session` and `/close_session` unconditionally — no engine flag is required for dedicated-slot sessions. Session-reference-aware radix mode (sglang#29173, first shipped in v0.5.17; the base kustomization overrides the recipes component's image tag accordingly) is enabled in [`modelserver/gpu/sglang/base/patch-sglang.yaml`](modelserver/gpu/sglang/base/patch-sglang.yaml): `--enable-session-radix-cache` plus the mandatory `SGLANG_ENABLE_UNIFIED_RADIX_TREE=1` env (the session-ref tracker lives in `UnifiedRadixCache`; without the env the server refuses to start). Semantics differ from the first-generation v0.5.15 mode (sglang#27058): session-referenced KV is deprioritized for eviction while the session is open, and `/close_session` dereferences the session's KV rather than freeing it immediately. The old `--radix-eviction-policy priority` requirement is gone — the unified tree ignores that flag.
 
 ## Prerequisites
 
@@ -108,10 +99,14 @@ Standalone mode (EPP with Envoy sidecar, no Kubernetes Gateway). The release
 name `${GUIDE_NAME}` is mandatory — the inference pool selector matches the
 guide label that pairs with this release.
 
+The benchmark values stack is layered: base → GMP monitoring adaptation → Envoy access-log override (per-request pod attribution) → the arm profile. Include ALL of them on every install/upgrade — helm replaces values wholesale, so omitting one silently reverts it.
+
 ```bash
 helm install ${GUIDE_NAME} \
   ${ROUTER_STANDALONE_CHART} \
   -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
+  -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/monitoring-gmp.values.yaml \
+  -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/envoy-access-log.values.yaml \
   -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \
   -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
 ```
@@ -122,6 +117,8 @@ For the benchmark's baseline arm, upgrade the same release to the llm-d optimize
 helm upgrade ${GUIDE_NAME} \
   ${ROUTER_STANDALONE_CHART} \
   -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
+  -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/monitoring-gmp.values.yaml \
+  -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/envoy-access-log.values.yaml \
   -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/optimized-baseline.values.yaml \
   -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
 
@@ -130,6 +127,8 @@ helm upgrade ${GUIDE_NAME} \
 # Deployment. Restart explicitly after every arm switch:
 kubectl rollout restart deployment/${GUIDE_NAME}-epp -n ${NAMESPACE}
 kubectl rollout status deployment/${GUIDE_NAME}-epp -n ${NAMESPACE} --timeout=5m
+# Then confirm the active arm from the EPP startup log:
+kubectl logs deploy/${GUIDE_NAME}-epp -n ${NAMESPACE} -c epp | grep config-file
 ```
 
 <details>
@@ -169,6 +168,22 @@ Wait for the 4 decode pods to become ready (model download + engine warmup can t
 ```bash
 kubectl wait --for=condition=Ready pod \
   -l llm-d.ai/guide=${GUIDE_NAME} -n ${NAMESPACE} --timeout=30m
+```
+
+#### Upgrading an existing model server
+
+The guide labels (including `llm-d.ai/model`) are part of the Deployment's immutable selector, so `kubectl apply` fails with a selector error whenever a label changes (e.g. a model swap). Delete-and-reapply is the reliable upgrade path, and is also fine for image-only bumps (the Deployment uses `strategy: Recreate` anyway — the spot pool is too full for rolling surge):
+
+```bash
+kubectl delete deployment -l llm-d.ai/guide=${GUIDE_NAME} -n ${NAMESPACE}
+kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/gpu/sglang/${INFRA_PROVIDER}/
+```
+
+Session bindings and KV cache do not survive the bounce; drain or restart any running benchmark. After the pods are Ready, confirm the engine picked up the session-radix config:
+
+```bash
+kubectl exec -n ${NAMESPACE} deploy/session-control-gpu-sglang-decode -c modelserver -- \
+  curl -s localhost:8000/get_server_info | grep -o '"enable_session_radix_cache":[a-z]*'
 ```
 
 ## Verification

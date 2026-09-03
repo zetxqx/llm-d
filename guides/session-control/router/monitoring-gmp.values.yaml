@@ -1,0 +1,15 @@
+## GMP monitoring adaptation for the session-control benchmark.
+## Layer on top of: recipes/router/base.values.yaml (include in EVERY helm
+## upgrade of this release — helm does not carry --set values across upgrades).
+##
+## The cluster runs Google Managed Prometheus, not prometheus-operator, so the
+## chart's ServiceMonitor must stay disabled; scraping is done by the
+## PodMonitoring resources in ../benchmark/monitoring.yaml. EPP metrics auth is
+## disabled so the GMP collector can scrape :9090 anonymously.
+
+router:
+  monitoring:
+    prometheus:
+      enabled: false
+      auth:
+        enabled: false

@@ -1,0 +1,36 @@
+# GMP (Google Managed Prometheus) scrape configs for the benchmark.
+# The cluster runs GMP, not prometheus-operator — the router chart's
+# ServiceMonitor-based monitoring feature does not apply here; instead the
+# release is upgraded with router.monitoring.prometheus.auth.enabled=false
+# (EPP metrics auth off) and these PodMonitoring resources do the scraping.
+#
+#   kubectl apply -n llm-d-session-control -f monitoring.yaml
+#
+# Query via Cloud Monitoring PromQL (project bobzetian-gke-dev), e.g.:
+#   sglang:num_requests_total{namespace="llm-d-session-control"}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: session-control-decode
+spec:
+  selector:
+    matchLabels:
+      llm-d.ai/role: decode
+      llm-d.ai/guide: session-control
+  endpoints:
+    - port: 8000
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: session-control-epp
+spec:
+  selector:
+    matchLabels:
+      llm-d-router-gateway: session-control-epp
+  endpoints:
+    - port: 9090
+      path: /metrics
+      interval: 15s

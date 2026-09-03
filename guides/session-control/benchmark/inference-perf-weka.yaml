@@ -26,11 +26,18 @@ data:
     load:
       type: trace_session_replay
       stages:
-        - concurrent_sessions: 4     # smoke test; sweep: 16 / 32 / 48 / 64 / 72 / 80
-          num_sessions: 8
+        # Recorded sweep, ONE stage per Job (edit for each stage): sessions =
+        # 2× concurrency so the pool turns over at least once.
+        - concurrent_sessions: 48    # sweep: 16 / 32 / 48 / 64 / 72 / 80
+          num_sessions: 96
       num_workers: 8
       worker_max_concurrency: 100
       request_timeout: 600           # a cold 195K prefill can queue behind others
+      # PINNED (2026-08-07): defaults to a timestamp, which reshuffles sessions
+      # per run and breaks cross-arm comparability. Value = the arm-B c16 run's
+      # seed, so that completed stage stays in the comparable set. Never change
+      # mid-campaign.
+      base_seed: 1786064268311
     api:
       type: chat
       streaming: true
@@ -52,21 +59,33 @@ data:
         # 256K-filtered corpus build — every request fits the fleet's 262,144
         # context window.
         hf_dataset_path: "semianalysisai/cc-traces-weka-with-subagents-060826-256k"
-        num_dataset_entries: 500
+        # IMPORTANT: every entry is compiled into an execution graph with fully
+        # synthesized prompts BEFORE replay starts, single-threaded — 500
+        # entries burned >30 min CPU and ~10GB RSS without sending a request
+        # (2026-08-06 false start). Keep this just above num_sessions.
+        num_dataset_entries: 100
         use_static_model: true
         static_model_name: "Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8"
         default_block_size: 64
         skip_invalid_files: true
-        trace_idle_gap_cap_seconds: 5.0   # smoke; use 30.0 for recorded runs
+        trace_idle_gap_cap_seconds: 30.0  # recorded-run value; keep identical across arms
+        # Clamp max_tokens to (clamp - recorded prompt tokens). Requires the
+        # patched image (fork branch weka-context-window-clamp). Sizing: the
+        # server re-tokenizes synthesized text + chat template ~1.9% larger
+        # than the trace-recorded counts (measured at c32: recorded ~256.5K ->
+        # actual 261,255), so the margin must be PROPORTIONAL, not fixed:
+        # clamp <= window - drift*max_input = 262,144 - 2.8%*256K ~= 255,000.
+        # (258,048 with a fixed 4,096 margin still produced 12x 400s at c32.)
+        context_window_clamp: 255000
     report:
       request_lifecycle:
         summary: true
         per_stage: true
         per_request: true
-    # storage:
-    #   google_cloud_storage:
-    #     bucket_name: "<your-bucket>"
-    #     path: "session-control-bench/{timestamp}"
+    storage:
+      google_cloud_storage:
+        bucket_name: "bobzetian-session-control-bench"
+        path: "reports/{timestamp}"
 ---
 apiVersion: batch/v1
 kind: Job
@@ -84,8 +103,11 @@ spec:
       restartPolicy: Never
       containers:
         - name: inference-perf
-          image: quay.io/inference-perf/inference-perf:latest
-          imagePullPolicy: Always
+          # Custom build: kubernetes-sigs/inference-perf f6c714b + fork branch
+          # weka-context-window-clamp @ 0c82d74 (context_window_clamp support).
+          # Built 2026-08-07 via Cloud Build. Digest-pinned.
+          image: us-central1-docker.pkg.dev/bobzetian-gke-dev/bobinference/inference-perf@sha256:bae74353b6efb4062120a7a1d6ddc78abd7303093877f667e8e28d2b9f6cb01b
+          imagePullPolicy: IfNotPresent
           command: ["inference-perf"]
           args: ["--config_file", "/etc/config/config.yml"]
           env:

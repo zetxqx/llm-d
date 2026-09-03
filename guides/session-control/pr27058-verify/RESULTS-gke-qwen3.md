@@ -49,7 +49,7 @@ PR 27058's session radix cache works as advertised on v0.5.15.post1: session KV 
 - `RUNBOOK.md` — detailed step-by-step reproduction instructions.
 - `replay_sglang_native.py` — patched replay (released API, `--sid-suffix`, `ignore_eos`).
 - `replay_sglang_chat.py` — same A/B via `/v1/chat/completions` (SGLang `session_id` extension field; text-rendered trace — see RUNBOOK § chat variant).
-- `microbench/` — self-contained micro benchmark (hero agent vs. churn): script, shared metrics sampler, per-turn CSVs, chart and results write-up. See `microbench/README.md`.
+- `microbench/` — self-contained micro benchmark (a long main session waiting on subagents whose contexts die once they return their results): script, shared metrics sampler, per-turn CSVs, chart and results write-up. See `microbench/README.md`.
 - `gen_charts.py` — renders `figures/kv-pressure-ab.png` from the CSVs (styled with the tvhahn/matplotlib-skill conventions).
 - `sample_metrics_ab.sh` — 1 Hz KV-gauge sampler that produced the CSVs below (URL-parameterized variant of the gist's `sample_metrics.sh`).
 - `metrics_on.csv` / `metrics_off.csv` — pass 1 samples (1 Hz, in-pod).

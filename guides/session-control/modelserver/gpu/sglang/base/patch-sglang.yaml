@@ -46,16 +46,25 @@ spec:
             - "--enable-metrics"
             # Session control (llm-d-router#2003): SGLang serves /open_session
             # and /close_session unconditionally — dedicated-slot sessions need
-            # no server flag. Session-tagged radix mode (sglang#27058) needs
-            # v0.5.15+ — the recipes component tag is overridden in this
-            # guide's base kustomization.
-            - "--radix-eviction-policy=priority"
+            # no server flag. Session-reference-aware radix mode (sglang#29173,
+            # v0.5.17+; tag overridden in this guide's base kustomization) runs
+            # on UnifiedRadixCache: eviction consumes unreferenced KV before
+            # session-referenced KV, and /close_session dereferences a
+            # session's KV instead of freeing it. Requires the
+            # SGLANG_ENABLE_UNIFIED_RADIX_TREE env below or startup fails; the
+            # unified tree ignores --radix-eviction-policy, so the old
+            # priority-policy flag is gone.
             - "--enable-session-radix-cache"
             # Populate usage.prompt_tokens_details.cached_tokens on the OpenAI
             # endpoints (off by default upstream); the native /generate path
             # reports cached_tokens in meta_info regardless.
             - "--enable-cache-report"
           env:
+            # Required by --enable-session-radix-cache since sglang#29173: the
+            # session-ref tracker lives in UnifiedRadixCache, and the unified
+            # tree is still env-gated (not a server arg) as of v0.5.17.
+            - name: SGLANG_ENABLE_UNIFIED_RADIX_TREE
+              value: "1"
             - name: HF_TOKEN
               valueFrom:
                 secretKeyRef:
