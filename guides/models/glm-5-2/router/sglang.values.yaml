@@ -1,6 +1,6 @@
-# SGLang GLM-5.2 overrides for wide-ep.values.yaml. Apply after
-# wide-ep.values.yaml; targetPorts (the 8 per-rank ports) and matchLabels
-# are inherited from it.
+# SGLang overrides for glm-5-2.values.yaml. Apply after glm-5-2.values.yaml;
+# targetPorts (the 8 per-rank ports) and matchLabels are inherited from it,
+# and the plugin config below replaces its vLLM one.
 #
 # The SGLang Rust frontend serves the native /generate API on every DP rank,
 # so the EPP parses /generate bodies (pre-tokenized input_ids) with the
@@ -21,7 +21,7 @@ router:
       refresh-metrics-interval: 10s
     pluginsCustomConfig:
       wide-ep-config.yaml: |
-        apiVersion: llm-d.ai/v1alpha1
+        apiVersion: llm-d.ai/v1
         kind: EndpointPickerConfig
         plugins:
         - type: sglanghttp-parser

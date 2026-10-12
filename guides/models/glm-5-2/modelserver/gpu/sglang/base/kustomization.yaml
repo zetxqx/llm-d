@@ -17,10 +17,10 @@ components:
   # listeners and P/D bootstrap (sgl-project/sglang#34430, #36234),
   # --attn-dp-size (#41818) and per-listener /health warmup (#43004). No
   # release tag contains all of them yet, so track the nightly image.
-  - ../../../../../recipes/modelserver/components/images/gpu-sglang/nightly
+  - ../../../../../../recipes/modelserver/components/images/gpu-sglang/nightly
   # The sidecar routes SGLang /generate through the P/D handler since
   # llm-d/llm-d-router#2525, which is only in the main image so far.
-  - ../../../../../recipes/modelserver/components/images/routing-sidecar/nightly
+  - ../../../../../../recipes/modelserver/components/images/routing-sidecar/nightly
 
 labels:
   - pairs:

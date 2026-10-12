@@ -4,10 +4,10 @@
 
 This recipe deploys [GLM-5.2-FP8](https://huggingface.co/zai-org/GLM-5.2-FP8) (753B MoE) on H200 GPUs with SGLang, P/D disaggregated, in a wide expert parallel pattern with DP-aware scheduling. Prefill runs DEP8 (attention DP=8, EP=8) on 1 node by default; decode runs DEP16 (attention DP=16, EP=16) across 2 nodes. DeepEP `normal` mode for prefill and `low_latency` mode for decode.
 
-It is the SGLang counterpart of the [vLLM GLM-5.2 recipe](../vllm-glm-5.2/README.md) and reuses the [wide-ep guide](../../../README.md) for the router and shared prerequisites. It does not aim for feature parity with the vLLM recipe. Tracking issues: [llm-d/llm-d#2198](https://github.com/llm-d/llm-d/issues/2198) and [llm-d/llm-d#2554](https://github.com/llm-d/llm-d/issues/2554).
+It is the SGLang variant (`MODEL_SERVER=sglang`) of the [GLM-5.2 guide](../../../README.md) and shares its router values and deploy steps with the vLLM recipe. It does not aim for feature parity with the vLLM recipe. Tracking issues: [llm-d/llm-d#2198](https://github.com/llm-d/llm-d/issues/2198) and [llm-d/llm-d#2554](https://github.com/llm-d/llm-d/issues/2554).
 
 > [!WARNING]
-> This is an initial recipe. It was brought up once end to end on GKE A3 Ultra (3 nodes, `gke-p1w1d1w2`, Spot H200) with the NVSHMEM-fixed image described in [Limitations](#limitations); no benchmark numbers are published yet. The SGLang pieces it depends on are only in SGLang `main` (nightly image), not in a release.
+> This is an initial recipe. It was brought up once end to end on GKE A3 Ultra (3 nodes, `p1w1d1w2`, Spot H200) with the NVSHMEM-fixed image described in [Limitations](#limitations); no benchmark numbers are published yet. The SGLang pieces it depends on are only in SGLang `main` (nightly image), not in a release.
 
 ### How llm-d talks to SGLang here
 
@@ -50,21 +50,21 @@ The decode limits follow from DeepEP low-latency mode, which dispatches at most 
 
 ### P/D Deployment Options
 
-Deployments are named `gke-p<replicas>w<nodes>d<replicas>w<nodes>`. GKE is the only provider overlay so far; other providers need their own `providers/<name>` overlay (RDMA device requests, HCA selection, cache volumes).
+Deployments are named `p<replicas>w<nodes>d<replicas>w<nodes>`; `default` is `p1w1d1w2`. All of them build on the GKE provider overlay, the only one so far; other providers need their own `providers/<name>` overlay (RDMA device requests, HCA selection, cache volumes).
 
 | Deployment | Prefill | Decode | Nodes / GPUs |
 | --- | --- | --- | --- |
-| `gke-p1w1d1w1` | 1 replica, 1 node, DEP8 | 1 replica, 1 node, DEP8 | 2 / 16 |
-| `gke-p1w1d1w2` | 1 replica, 1 node, DEP8 | 1 replica, 2 nodes, DEP16 | 3 / 24 |
-| `gke-p1w2d1w2` | 1 replica, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16 | 4 / 32 |
-| `gke-p2w1d1w2` | 2 replicas, 1 node, DEP8 | 1 replica, 2 nodes, DEP16 | 4 / 32 |
-| `gke-p2w2d2w2` | 2 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16 | 8 / 64 |
+| `p1w1d1w1` | 1 replica, 1 node, DEP8 | 1 replica, 1 node, DEP8 | 2 / 16 |
+| `p1w1d1w2` | 1 replica, 1 node, DEP8 | 1 replica, 2 nodes, DEP16 | 3 / 24 |
+| `p1w2d1w2` | 1 replica, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16 | 4 / 32 |
+| `p2w1d1w2` | 2 replicas, 1 node, DEP8 | 1 replica, 2 nodes, DEP16 | 4 / 32 |
+| `p2w2d2w2` | 2 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16 | 8 / 64 |
 
 ### Supported Hardware Backends
 
 | Backend | Directory | Notes |
 | --- | --- | --- |
-| NVIDIA GPU (GKE A3 Ultra, RoCE) | `providers/gke/`, `deployments/gke-*` | GPUs and RDMA NICs through DRA (`gke-rdma` claims), privileged containers for GPU-initiated RDMA, block/subblock affinity; needs the NVSHMEM fix in [Limitations](#limitations) |
+| NVIDIA GPU (GKE A3 Ultra, RoCE) | `providers/gke/`, `deployments/*` | GPUs and RDMA NICs through DRA (`gke-rdma` claims), privileged containers for GPU-initiated RDMA, block/subblock affinity; needs the NVSHMEM fix in [Limitations](#limitations) |
 
 ## Layout
 
@@ -79,7 +79,7 @@ prefill pod                                decode pod
 +--------------------------------+         +----------------------------------------+
 ```
 
-The InferencePool lists ports 8000 to 8007 (`router/wide-ep.values.yaml`), so the EPP sees every rank of every pod as an endpoint.
+The InferencePool lists ports 8000 to 8007 (`router/glm-5-2.values.yaml`), so the EPP sees every rank of every pod as an endpoint.
 
 ## Components
 
@@ -91,120 +91,34 @@ Add [kustomize Components](https://kubectl.docs.kubernetes.io/guides/config_mana
 
 Component env entries merge by name, so their values replace the base defaults.
 
-## Prerequisites
+## Deploy
 
-In addition to the [wide-ep prerequisites](../../../README.md#prerequisites) (client tools, GAIE CRDs, LeaderWorkerSet controller `v0.10.0`+ with `DisaggregatedSet` enabled, namespace, HF token secret):
+Follow the [GLM-5.2 guide](../../../README.md) with `MODEL_SERVER=sglang`. Its prerequisites, router install, model server step, verification and cleanup all have SGLang variants: the router step layers [`router/sglang.values.yaml`](../../../router/sglang.values.yaml) on top of `glm-5-2.values.yaml`, and `DEPLOYMENT` picks an overlay from [P/D Deployment Options](#pd-deployment-options) (`default` is `p1w1d1w2`). Only approximate prefix routing (`ROUTING=approximate`) applies.
 
-```bash
-export KUBECONFIG=~/.kube/config
-export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
-source ${REPO_ROOT}/guides/env.sh
-export GUIDE_NAME="wide-ep"
-export NAMESPACE=<your-namespace>
-export MODEL=zai-org/GLM-5.2-FP8
-```
+For GKE, prepare the cluster as described in [the GKE provider docs](../../../../../../docs/infrastructure/providers/gke/README.md) (GPUDirect RDMA, DRA and DRANET drivers) so the `gke-rdma-template` claims resolve.
 
-For GKE, prepare the cluster as described in [the GKE provider docs](../../../../../docs/infrastructure/providers/gke/README.md) (GPUDirect RDMA, DRA and DRANET drivers) so the `gke-rdma-template` claims resolve.
-
-## Deploy the llm-d Router
-
-Install the router with the wide-ep values and the SGLang overrides on top. The overrides swap the EPP plugin config for one that parses `/generate` and only uses signals the EPP computes itself (see [Limitations](#limitations)).
-
-```bash
-helm install ${GUIDE_NAME} \
-    ${ROUTER_STANDALONE_CHART} \
-    -f ${REPO_ROOT}/guides/recipes/router/base.values.yaml \
-    -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml \
-    -f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/sglang-glm-5.2.values.yaml \
-    -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
-```
-
-For Gateway mode, add the same `sglang-glm-5.2.values.yaml` file after `${GUIDE_NAME}.values.yaml` in the [Gateway Mode command](../../../README.md#1-deploy-the-llm-d-router).
-
-## Deploy the Model Server
-
-### P/D Disaggregated
-
-Pick a deployment from the [P/D Deployment Options](#pd-deployment-options) table (run from this directory) and apply:
-
-```bash
-export DEPLOYMENT=gke-p1w1d1w2 # gke- followed by a topology from the table
-kubectl apply -n ${NAMESPACE} -k deployments/${DEPLOYMENT}
-```
-
-On GKE the stock nightly image cannot start the multi-node decode group (see [Limitations](#limitations)), so wrap the deployment in a small overlay that swaps in your NVSHMEM-fixed build:
+On GKE the stock nightly image cannot start the multi-node decode group (see [Limitations](#limitations)), so wrap the deployment in a small overlay that swaps in your NVSHMEM-fixed build, and apply that overlay instead of `deployments/${DEPLOYMENT}`:
 
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - <path-to>/sglang-glm-5.2/deployments/gke-p1w1d1w2
+  - <path-to>/sglang/deployments/p1w1d1w2
 images:
   - name: docker.io/lmsysorg/sglang
     newName: <your-registry>/sglang-roce
     newTag: <tag>
 ```
 
-Do not deploy this recipe and the vLLM GLM-5.2 recipe in the same namespace: the InferencePool selects pods by `llm-d.ai/guide` only and would mix both engines into one pool.
+Do not deploy this recipe and the vLLM recipe in the same namespace: the InferencePool selects pods by `llm-d.ai/guide` only and would mix both engines into one pool.
 
-Wait for the pods to become ready. Model load takes time; the startup probe allows up to 45 minutes:
+Model load takes time; the startup probe allows up to 45 minutes. A pod is ready once `/health` on its local rank-0 listener returns `200`. Every Rust listener answers `503` until its own startup warmup, a one-token generation on its rank, succeeds ([sgl-project/sglang#43004](https://github.com/sgl-project/sglang/pull/43004)). The warmup uses SGLang's fake bootstrap host, so at startup the prefill log shows one `Fake KVSender Exception` line per rank; that is the warmup, not a failing request.
 
-```bash
-kubectl get pods -n ${NAMESPACE} -l llm-d.ai/model=GLM-5.2-FP8,llm-d.ai/engine-type=sglang -w
-```
+### Requests
 
-A pod is ready once `/health` on its local rank-0 listener returns `200`. Every Rust listener answers `503` until its own startup warmup, a one-token generation on its rank, succeeds ([sgl-project/sglang#43004](https://github.com/sgl-project/sglang/pull/43004)). The warmup uses SGLang's fake bootstrap host, so at startup the prefill log shows one `Fake KVSender Exception` line per rank; that is the warmup, not a failing request.
+`/generate` requests must carry `input_ids`. The EPP's `sglanghttp-parser` rejects bodies that only have `text`, because prefix-cache routing needs the token IDs. The guide's verification step tokenizes the prompt inside a prefill pod, which already has the tokenizer files in its HF cache. The response is SGLang's native format: generated `text` plus `meta_info` with `prompt_tokens`, `completion_tokens` and `cached_tokens`. Add `"stream": true` for server-sent events.
 
-## Verification
-
-### 1. Get the IP of the Proxy
-
-```bash
-export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
-```
-
-### 2. Tokenize a prompt
-
-`/generate` requests must carry `input_ids`. The EPP's `sglanghttp-parser` rejects bodies that only have `text`, because prefix-cache routing needs the token IDs. Produce them with the model tokenizer inside a prefill pod, which already has the tokenizer files in its HF cache:
-
-```bash
-export PREFILL_POD=$(kubectl get pod -n ${NAMESPACE} -l llm-d.ai/role=prefill,llm-d.ai/engine-type=sglang -o jsonpath='{.items[0].metadata.name}')
-export INPUT_IDS=$(kubectl exec -n ${NAMESPACE} ${PREFILL_POD} -c sglang -- python3 -c "
-from transformers import AutoTokenizer
-import json
-tok = AutoTokenizer.from_pretrained('zai-org/GLM-5.2-FP8', trust_remote_code=True)
-print(json.dumps(tok.encode('How are you today?')))
-")
-echo ${INPUT_IDS}
-```
-
-### 3. Send Test Requests
-
-Open a temporary shell inside the cluster:
-
-```bash
-kubectl run curl-debug --rm -it \
-    --image=cfmanteiga/alpine-bash-curl-jq \
-    --namespace="$NAMESPACE" \
-    --env="IP=$IP" \
-    --env="INPUT_IDS=$INPUT_IDS" \
-    -- /bin/bash
-```
-
-Send a `/generate` request through the EPP:
-
-```bash
-curl -X POST http://${IP}/generate \
-    -H 'Content-Type: application/json' \
-    -d "{
-        \"input_ids\": ${INPUT_IDS},
-        \"sampling_params\": {\"max_new_tokens\": 64, \"temperature\": 0}
-    }" | jq
-```
-
-The response is SGLang's native format: generated `text` plus `meta_info` with `prompt_tokens`, `completion_tokens` and `cached_tokens`. Add `"stream": true` for server-sent events.
-
-### 4. Check the P/D path
+### Check the P/D path
 
 Every prefill rank listener must expose the full bootstrap topology. Query the rank-0 listener of each prefill pod (replace the pod IP):
 
@@ -222,7 +136,7 @@ On by default for both roles as EAGLE with 3 steps and 4 draft tokens (GLM-5.2 s
 
 ### EPP Routing
 
-`router/sglang-glm-5.2.values.yaml` replaces the wide-ep plugin config. It parses `/generate` with `sglanghttp-parser`, scores prefill endpoints with the approximate prefix-cache scorer (weight 3) and the active-request scorer (weight 2), and scores decode endpoints with the active-request scorer. All 8 DP rank ports (8000-8007) are inherited as `targetPorts`. The metrics refresh interval is raised to 10s because the Rust listeners expose no `/metrics`.
+`router/sglang.values.yaml` replaces the vLLM plugin config of `router/glm-5-2.values.yaml`. It parses `/generate` with `sglanghttp-parser`, scores prefill endpoints with the approximate prefix-cache scorer (weight 3) and the active-request scorer (weight 2), and scores decode endpoints with the active-request scorer. All 8 DP rank ports (8000-8007) are inherited as `targetPorts`. The metrics refresh interval is raised to 10s because the Rust listeners expose no `/metrics`.
 
 ### Tunables
 
@@ -242,7 +156,7 @@ All engine knobs are container env vars on the `sglang` container of each role, 
 
 ## Limitations
 
-- **No per-rank `/metrics`.** The Rust listeners do not expose `/metrics`, so the EPP config in `router/sglang-glm-5.2.values.yaml` uses only the approximate prefix-cache scorer and the active-request scorer. Queue depth and KV utilization scoring, and the wide-ep monitoring overlay, do not apply. Tracked in [llm-d/llm-d#2198](https://github.com/llm-d/llm-d/issues/2198).
+- **No per-rank `/metrics`.** The Rust listeners do not expose `/metrics`, so the EPP config in `router/sglang.values.yaml` uses only the approximate prefix-cache scorer and the active-request scorer. Queue depth and KV utilization scoring, and the guide's monitoring overlay, do not apply. Tracked in [llm-d/llm-d#2198](https://github.com/llm-d/llm-d/issues/2198).
 - **`/generate` only, pre-tokenized.** The EPP parser list only contains `sglanghttp-parser`, so OpenAI-style paths are rejected with `400` and `/generate` bodies need `input_ids`. Chat and completions on the Rust frontend are follow-up work ([sgl-project/sglang#36718](https://github.com/sgl-project/sglang/pull/36718)); once the image serves them, add `openai-parser` to the EPP parser list.
 - **No KV-event based precise routing.** Per-rank KV-cache ownership for shared endpoints is still being designed ([llm-d/llm-d-router#2306](https://github.com/llm-d/llm-d-router/issues/2306)), so there is no `kv-events` component here.
 - **NVSHMEM on RoCE (GKE).** The SGLang nightly ships NVSHMEM 3.4.5, whose IBGDA transport fails on RoCE with `create DCT share err` / `nvshmem setup connections failed` (uninitialized `ibv_ah_attr`; fixed upstream in NVSHMEM 3.5). DeepEP low-latency mode on multi-node decode therefore cannot start on GKE A3 Ultra with the stock image. InfiniBand fabrics are not affected.
@@ -259,7 +173,4 @@ All engine knobs are container env vars on the `sglang` container of each role, 
 
 ## Cleanup
 
-```bash
-kubectl delete -n ${NAMESPACE} -k deployments/${DEPLOYMENT}
-helm uninstall ${GUIDE_NAME} -n ${NAMESPACE}
-```
+Use the cleanup steps of the [GLM-5.2 guide](../../../README.md#cleanup); if you applied your own image overlay, delete that overlay instead of `deployments/${DEPLOYMENT}`.

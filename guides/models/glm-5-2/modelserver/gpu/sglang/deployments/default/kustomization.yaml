@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Default SGLang deployment of GLM-5.2-FP8 on GKE A3 Ultra: the p1w1d1w2
+# topology (1 DEP8 prefill node + 1 DEP16 decode replica on 2 nodes -> 3 nodes /
+# 24 GPUs). MTP speculative decoding is on in the base manifests. Alternative
+# topologies and components: ../ and ../../components/.
+resources:
+  - ../p1w1d1w2

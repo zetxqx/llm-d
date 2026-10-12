@@ -9,7 +9,7 @@ resources:
 # The disable-gke-nccl-tuner-patch component only targets Deployment and
 # LeaderWorkerSet, so the equivalent env vars are set in the patch below.
 components:
-  - ../../../../../../recipes/modelserver/components/gke-rdma
+  - ../../../../../../../recipes/modelserver/components/gke-rdma
 
 # The patch below matches roles, containers, volumes, and env entries by
 # name via the DisaggregatedSet schema the base declares. The common pod
