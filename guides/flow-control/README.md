@@ -418,7 +418,7 @@ curl -s -H "Authorization: Bearer ${TOKEN}" http://${GUIDE_NAME}-epp:9090/metric
 
 Expected: a series labeled `fairness_id="tenant-a", priority="100"` with a count of at
 least 1. If it is absent while a `priority="0"` series grows, the objective headers are
-not being honored. Check that `objectives.yaml` is applied and that its `poolRef`
+not being honored. Check that `objectives.yaml` is applied and that its `poolRefs` (or `poolRef` in `v1alpha2`)
 matches the InferencePool in the namespace (`kubectl get inferencepools -n ${NAMESPACE}`).
 
 ### Use Case 2: Backpressure Management

@@ -161,35 +161,35 @@ To ground the diagram above, here are the example manifests that would produce t
 
 #### 1. InferenceObjectives (Traffic Classes)
 
-These resources define the priority of the traffic. Note the use of a negative priority for best-effort workloads.
+These [`InferenceObjective`](../../api-reference/inferenceobjective.md) resources (`llm-d.ai/v1`) define the priority of each traffic class and bind it to one or more `InferencePool`s in the same namespace via `poolRefs` or `poolSelector`. Note the use of a negative priority for best-effort workloads.
 
 ```yaml
-apiVersion: llm-d.ai/v1alpha2
+apiVersion: llm-d.ai/v1
 kind: InferenceObjective
 metadata:
   name: premium-traffic
 spec:
   priority: 100
-  poolRef:
-    name: default-pool
+  poolRefs:
+  - name: default-pool
 ---
-apiVersion: llm-d.ai/v1alpha2
+apiVersion: llm-d.ai/v1
 kind: InferenceObjective
 metadata:
   name: standard-traffic
 spec:
   priority: 0
-  poolRef:
-    name: default-pool
+  poolRefs:
+  - name: default-pool
 ---
-apiVersion: llm-d.ai/v1alpha2
+apiVersion: llm-d.ai/v1
 kind: InferenceObjective
 metadata:
   name: best-effort-traffic
 spec:
   priority: -10
-  poolRef:
-    name: default-pool
+  poolRefs:
+  - name: default-pool
 ```
 
 #### 2. EPP Configuration

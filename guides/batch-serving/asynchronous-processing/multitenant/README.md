@@ -333,10 +333,7 @@ export FLOW_CONTROL=holdback   # router values: values/router/flow-control-holdb
 
 > [!NOTE]
 > **One InferencePool per router:** Deploying llm-d Router creates a single `InferencePool` named `llm-d-router`
-> (`POOL_NAME`), and the objectives overlay binds all 6 `InferenceObjective`s to it. An `InferenceObjective` binds
-> to a single `poolRef.name`, and Kubernetes resource names are unique per namespace, so when one `llm-d-async`
-> feeds several `InferencePool`s, put each pool and its router in its own namespace and apply
-> `manifests/objectives` there, with `poolRef.name` patched to that pool if its router release has another name.
+> (`POOL_NAME`), and the objectives overlay binds all 6 `InferenceObjective`s to it. With [`InferenceObjective` `llm-d.ai/v1`](../../../../docs/api-reference/inferenceobjective.md), one set of objectives can target multiple `InferencePool`s in the same namespace via `poolRefs` or `poolSelector`; with `v1alpha2` (`poolRef`), an objective targets a single pool, so either put each pool and its router in its own namespace or migrate the objectives to `llm-d.ai/v1` `poolRefs` / `poolSelector` once your cluster serves the `v1` CRD.
 
 ### 3. Deploy Redis and llm-d-async
 
