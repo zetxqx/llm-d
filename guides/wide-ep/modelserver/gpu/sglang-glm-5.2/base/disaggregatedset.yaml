@@ -95,9 +95,14 @@ spec:
                       # RUN SGLang GLM-5.2-FP8 prefill worker
                       #################
 
-                      # Attention DP and EP span every pod in the group with TP=1
-                      # per rank, so all three parallel sizes equal the group's
-                      # total GPU count (SGLang's --tp-size is the total GPU count).
+                      # DEP layout over every GPU in the group. SGLang's --tp-size
+                      # is the size of the GPU group that holds one copy of the
+                      # model, not the attention TP size. Inside that group,
+                      # attention runs data parallel with one rank per GPU
+                      # (--attn-dp-size, so attention TP is 1) and the experts are
+                      # split across all GPUs (--ep-size). vLLM spells the same
+                      # layout --tensor-parallel-size 1 --data-parallel-size N
+                      # --enable-expert-parallel.
                       DP_SIZE=$(( LWS_GROUP_SIZE * DP_SIZE_LOCAL ))
 
                       MTP_ARGS=""
@@ -116,10 +121,19 @@ spec:
                       # every prefill pod, not by a separate bootstrap server.
                       # --disaggregation-bootstrap-port must name that port, and
                       # the decode sidecar injects the same port
-                      # (SGLANG_BOOTSTRAP_PORT). round_robin makes each prefill
-                      # rank register the room it served so the EPP may pick any
-                      # rank; the P/D default follow_bootstrap_room fails the
-                      # request when the rank differs from room % dp_size.
+                      # (SGLANG_BOOTSTRAP_PORT).
+                      #
+                      # --load-balance-method does no balancing here: each Rust
+                      # listener sends its requests straight to its own rank. The
+                      # value only selects how decode finds the prefill rank. The
+                      # P/D default follow_bootstrap_room assumes the rank is
+                      # room % dp_size and fails the request otherwise; any other
+                      # value makes the prefill rank register the room it served
+                      # so decode can look it up, which lets the EPP pick any rank.
+                      #
+                      # SGLang defaults to a bfloat16 KV cache for DSA models on
+                      # Hopper (fp8 only on Blackwell); fp8_e4m3 doubles the KV
+                      # capacity and selects the flashmla_kv DSA backends.
                       exec python3 -m sglang.launch_server \
                         --model-path zai-org/GLM-5.2-FP8 \
                         --trust-remote-code \
@@ -129,9 +143,9 @@ spec:
                         --node-rank ${LWS_WORKER_INDEX:-0} \
                         --dist-init-addr ${LWS_LEADER_ADDRESS}:5757 \
                         --tp-size ${DP_SIZE} \
-                        --dp-size ${DP_SIZE} \
+                        --attn-dp-size ${DP_SIZE} \
                         --ep-size ${DP_SIZE} \
-                        --enable-dp-attention \
+                        --kv-cache-dtype fp8_e4m3 \
                         --moe-a2a-backend deepep \
                         --deepep-mode normal \
                         --moe-dense-tp-size 1 \
@@ -169,8 +183,8 @@ spec:
                     # instead of compiling it inside the container.
                     - name: SGLANG_RUST_BUILD_MODE
                       value: never
-                    # Keep /health a plain 200 on the rank-0 listener. The decode
-                    # side heartbeats the prefill bootstrap address (this port)
+                    # Keep /health a plain 200 after startup warmup. The decode
+                    # side heartbeats the prefill bootstrap address (port 8000)
                     # with GET /health every 5s and drops the prefill, failing
                     # in-flight transfers, after 2 misses; the default deep probe
                     # can take up to 20s while a prefill batch is running.
@@ -231,39 +245,31 @@ spec:
                     - containerPort: 8007
                       name: dp7
                       protocol: TCP
-                  # Probes. The Rust listener binds only after the weights are
-                  # loaded and the communication groups are up, so a TCP check on
-                  # the pod's local rank-0 port already means the engine is
-                  # initialized. Readiness runs a one-token /generate with the
-                  # fake bootstrap host (the same probe SGLang's /health_generate
-                  # uses) because the Rust /health endpoints answer 503 on every
-                  # listener except global DP rank 0, which would keep multi-node
-                  # worker pods out of the InferencePool.
+                  # Probes. Every Rust listener answers /health with 503 until
+                  # its own startup warmup (a one-token generation on its rank)
+                  # succeeds, then with a plain 200 (see
+                  # SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION above).
                   startupProbe:
-                    tcpSocket:
+                    httpGet:
+                      path: /health
                       port: dp0
                     initialDelaySeconds: 0
                     periodSeconds: 1
                     timeoutSeconds: 5
                     failureThreshold: 2700
                   livenessProbe:
-                    tcpSocket:
+                    httpGet:
+                      path: /health
                       port: dp0
                     periodSeconds: 30
                     timeoutSeconds: 5
                     failureThreshold: 3
                   readinessProbe:
-                    exec:
-                      command:
-                        - /bin/sh
-                        - -c
-                        - >-
-                          curl -sf -m 50 -X POST http://127.0.0.1:8000/generate
-                          -H 'Content-Type: application/json'
-                          -d '{"input_ids":[0],"sampling_params":{"max_new_tokens":1},"bootstrap_host":"2.2.2.2","bootstrap_room":0}'
-                          > /dev/null
-                    periodSeconds: 30
-                    timeoutSeconds: 55
+                    httpGet:
+                      path: /health
+                      port: dp0
+                    periodSeconds: 10
+                    timeoutSeconds: 5
                     failureThreshold: 3
                   resources:
                     limits:
@@ -396,7 +402,9 @@ spec:
                       # RUN SGLang GLM-5.2-FP8 decode worker
                       #################
 
-                      # See the prefill role: DP = EP = total GPUs, TP=1 per rank.
+                      # Same DEP layout as the prefill role: --tp-size,
+                      # --attn-dp-size and --ep-size all equal the group's GPU
+                      # count, so attention TP is 1.
                       DP_SIZE=$(( LWS_GROUP_SIZE * DP_SIZE_LOCAL ))
 
                       MTP_ARGS=""
@@ -411,6 +419,7 @@ spec:
                       # ranks, so pass per-rank x DP; keep the per-rank value and
                       # the CUDA graph capture sizes within that budget.
                       MAX_RUNNING_REQUESTS=$(( ${DECODE_MAX_RUNNING_REQUESTS_PER_RANK:-32} * DP_SIZE ))
+                      # The KV cache dtype must match the prefill role.
                       exec python3 -m sglang.launch_server \
                         --model-path zai-org/GLM-5.2-FP8 \
                         --trust-remote-code \
@@ -420,9 +429,9 @@ spec:
                         --node-rank ${LWS_WORKER_INDEX:-0} \
                         --dist-init-addr ${LWS_LEADER_ADDRESS}:5757 \
                         --tp-size ${DP_SIZE} \
-                        --dp-size ${DP_SIZE} \
+                        --attn-dp-size ${DP_SIZE} \
                         --ep-size ${DP_SIZE} \
-                        --enable-dp-attention \
+                        --kv-cache-dtype fp8_e4m3 \
                         --moe-a2a-backend deepep \
                         --deepep-mode low_latency \
                         --moe-dense-tp-size 1 \
@@ -454,8 +463,8 @@ spec:
                       value: "1"
                     - name: SGLANG_RUST_BUILD_MODE
                       value: never
-                    # Keep /health a plain 200 on the rank-0 listener. The decode
-                    # side heartbeats the prefill bootstrap address (this port)
+                    # Keep /health a plain 200 after startup warmup. The decode
+                    # side heartbeats the prefill bootstrap address (port 8000)
                     # with GET /health every 5s and drops the prefill, failing
                     # in-flight transfers, after 2 misses; the default deep probe
                     # can take up to 20s while a prefill batch is running.
@@ -518,39 +527,31 @@ spec:
                     - containerPort: 8207
                       name: sglang-rank7
                       protocol: TCP
-                  # Probes. The Rust listener binds only after the weights are
-                  # loaded and the communication groups are up, so a TCP check on
-                  # the pod's local rank-0 port already means the engine is
-                  # initialized. Readiness runs a one-token /generate with the
-                  # fake bootstrap host (the same probe SGLang's /health_generate
-                  # uses) because the Rust /health endpoints answer 503 on every
-                  # listener except global DP rank 0, which would keep multi-node
-                  # worker pods out of the InferencePool.
+                  # Probes. Every Rust listener answers /health with 503 until
+                  # its own startup warmup (a one-token generation on its rank)
+                  # succeeds, then with a plain 200 (see
+                  # SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION above).
                   startupProbe:
-                    tcpSocket:
+                    httpGet:
+                      path: /health
                       port: sglang-rank0
                     initialDelaySeconds: 0
                     periodSeconds: 1
                     timeoutSeconds: 5
                     failureThreshold: 2700
                   livenessProbe:
-                    tcpSocket:
+                    httpGet:
+                      path: /health
                       port: sglang-rank0
                     periodSeconds: 30
                     timeoutSeconds: 5
                     failureThreshold: 3
                   readinessProbe:
-                    exec:
-                      command:
-                        - /bin/sh
-                        - -c
-                        - >-
-                          curl -sf -m 50 -X POST http://127.0.0.1:8200/generate
-                          -H 'Content-Type: application/json'
-                          -d '{"input_ids":[0],"sampling_params":{"max_new_tokens":1},"bootstrap_host":"2.2.2.2","bootstrap_room":0}'
-                          > /dev/null
-                    periodSeconds: 30
-                    timeoutSeconds: 55
+                    httpGet:
+                      path: /health
+                      port: sglang-rank0
+                    periodSeconds: 10
+                    timeoutSeconds: 5
                     failureThreshold: 3
                   resources:
                     limits:

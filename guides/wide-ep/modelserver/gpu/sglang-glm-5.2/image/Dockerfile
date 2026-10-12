@@ -8,12 +8,12 @@
 # an identical ABI.
 # Must match the SGLang image the recipe deploys (the gpu-sglang/nightly
 # component); pin it by digest so the rebuilt plugin matches the wheel inside.
-ARG BASE_IMAGE=docker.io/lmsysorg/sglang@sha256:5921361fcf358cdde4df1968c941c14157f418613b099ad7f3e5aeed6427ae15
+ARG BASE_IMAGE=docker.io/lmsysorg/sglang@sha256:8346c975515af7ec6b2692faadd5332f789001f78f958335175d4d34e170537c
 FROM ${BASE_IMAGE}
 
 ARG NVSHMEM_REF=v3.4.5-0
-# Build context: this directory plus the patch copied from the repo root:
-#   cp ${REPO_ROOT}/patches/nvshmem_zero_ibv_ah_attr_v3.4.5-0.patch . && docker build -t <your-registry>/sglang-roce:<tag> .
+# Build context: this directory, which holds the patch:
+#   docker build -t <your-registry>/sglang-roce:<tag> .
 COPY nvshmem_zero_ibv_ah_attr_v3.4.5-0.patch /tmp/nvshmem.patch
 
 RUN set -eux; \

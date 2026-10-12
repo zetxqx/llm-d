@@ -2,7 +2,7 @@
 
 ## Overview
 
-This recipe deploys [GLM-5.2-FP8](https://huggingface.co/zai-org/GLM-5.2-FP8) (753B MoE) on H200 GPUs with SGLang, P/D disaggregated, in a wide expert parallel pattern with DP-aware scheduling. Prefill runs DEP8 (TP=1, DP=EP=8) on 1 node by default; decode runs DEP16 (TP=1, DP=EP=16) across 2 nodes. DeepEP `normal` mode for prefill and `low_latency` mode for decode.
+This recipe deploys [GLM-5.2-FP8](https://huggingface.co/zai-org/GLM-5.2-FP8) (753B MoE) on H200 GPUs with SGLang, P/D disaggregated, in a wide expert parallel pattern with DP-aware scheduling. Prefill runs DEP8 (attention DP=8, EP=8) on 1 node by default; decode runs DEP16 (attention DP=16, EP=16) across 2 nodes. DeepEP `normal` mode for prefill and `low_latency` mode for decode.
 
 It is the SGLang counterpart of the [vLLM GLM-5.2 recipe](../vllm-glm-5.2/README.md) and reuses the [wide-ep guide](../../../README.md) for the router and shared prerequisites. It does not aim for feature parity with the vLLM recipe. Tracking issues: [llm-d/llm-d#2198](https://github.com/llm-d/llm-d/issues/2198) and [llm-d/llm-d#2554](https://github.com/llm-d/llm-d/issues/2554).
 
@@ -20,7 +20,7 @@ Request flow for one `/generate` call:
 
 1. The EPP picks a prefill rank (`prefillIP:800r`) and a decode rank (`decodeIP:800r`) and sends the request to the decode pod's routing sidecar.
 2. The sidecar (`--kv-connector=sglang`) adds `bootstrap_host` (the prefill pod IP), `bootstrap_port` (8000) and a random `bootstrap_room`, then sends the same body to the prefill rank and to its local decode rank (`localhost:820r`) at the same time.
-3. The prefill rank registers the room it served with the bootstrap registry. In Rust mode the registry is served by the rank-0 listener (port 8000) of every prefill pod ([sgl-project/sglang#36234](https://github.com/sgl-project/sglang/pull/36234)); the prefill is started with `--load-balance-method round_robin` so any rank the EPP picks is accepted.
+3. The prefill rank registers the room it served with the bootstrap registry. In Rust mode the registry is served by the rank-0 listener (port 8000) of every prefill pod ([sgl-project/sglang#36234](https://github.com/sgl-project/sglang/pull/36234)). Each listener sends requests straight to its own rank, so `--load-balance-method` only selects how decode finds the prefill rank: the P/D default `follow_bootstrap_room` assumes `bootstrap_room % dp_size` and fails other ranks, while `round_robin` makes the rank register the room.
 4. The decode rank looks the room up on `bootstrap_host:8000`, pulls the KV cache over NIXL, and streams tokens back through the sidecar.
 
 ## Default Configuration
@@ -31,15 +31,20 @@ Request flow for one `/generate` call:
 | Accelerator | NVIDIA H200 (8 GPUs per node) |
 | Frontend | SGLang Rust server, one listener per DP rank (`SGLANG_RUST_SERVER=1`) |
 | API | `/generate` with `input_ids` |
-| Prefill parallelism | TP=1, DP=8, EP=8 (DEP8), 1 node |
-| Decode parallelism | TP=1, DP=16, EP=16 (DEP16, wide), 2 nodes |
+| Prefill parallelism | DEP8: attention DP=8, EP=8 (`--tp-size 8 --attn-dp-size 8 --ep-size 8`), 1 node |
+| Decode parallelism | DEP16 (wide): attention DP=16, EP=16 (`--tp-size 16 --attn-dp-size 16 --ep-size 16`), 2 nodes |
 | All-to-all | DeepEP, `normal` (prefill) and `low_latency` (decode) |
+| KV cache | FP8 (`--kv-cache-dtype fp8_e4m3`, DSA backends `flashmla_kv`) |
 | KV transfer | NIXL (`DISAGG_TRANSFER_BACKEND`; only `nixl` has been tested) |
 | MTP speculative decoding | On (EAGLE, 3 steps, 4 draft tokens; opt-out via `no-mtp` component) |
 | `mem-fraction-static` | 0.85 on both roles |
 | Decode running requests | 32 per rank (`DECODE_MAX_RUNNING_REQUESTS_PER_RANK`, passed to SGLang as per-rank x DP), CUDA graph max batch 32 |
 | Prefill chunk | 8192 tokens per rank (`PREFILL_CHUNK_TOKENS_PER_RANK`) |
 | Reasoning / tool-call parsers | glm45 / glm47 (only used by OpenAI-style routes, see [Limitations](#limitations)) |
+
+SGLang's `--tp-size` is the size of the GPU group that holds one copy of the model, not the attention TP size. Attention runs one DP rank per GPU inside that group (attention TP=1) and the experts are split across all its GPUs. The vLLM recipe spells the same layout `--tensor-parallel-size 1 --data-parallel-size N --enable-expert-parallel`.
+
+SGLang defaults DSA models (GLM-5.2 uses DeepSeek Sparse Attention) to a bfloat16 KV cache on Hopper and only picks FP8 on Blackwell, so the recipe sets `--kv-cache-dtype fp8_e4m3` explicitly. That doubles the KV capacity per GPU; prefill and decode must use the same dtype.
 
 The decode limits follow from DeepEP low-latency mode, which dispatches at most `SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK` (128) tokens per rank per step: 32 running requests x 4 draft tokens. Raise all three together.
 
@@ -148,7 +153,7 @@ Wait for the pods to become ready. Model load takes time; the startup probe allo
 kubectl get pods -n ${NAMESPACE} -l llm-d.ai/model=GLM-5.2-FP8,llm-d.ai/engine-type=sglang -w
 ```
 
-A pod is ready once a one-token `/generate` probe on its local rank-0 listener succeeds. The Rust `/health` endpoints answer 503 on every listener except global DP rank 0, so the recipe does not use them for readiness. The probe uses SGLang's fake bootstrap host, so every 30s the prefill log shows one `Prefill bootstrap failed ... Fake KVSender Exception` line; that is the probe, not a failing request.
+A pod is ready once `/health` on its local rank-0 listener returns `200`. Every Rust listener answers `503` until its own startup warmup, a one-token generation on its rank, succeeds ([sgl-project/sglang#43004](https://github.com/sgl-project/sglang/pull/43004)). The warmup uses SGLang's fake bootstrap host, so at startup the prefill log shows one `Fake KVSender Exception` line per rank; that is the warmup, not a failing request.
 
 ## Verification
 
@@ -225,7 +230,7 @@ All engine knobs are container env vars on the `sglang` container of each role, 
 
 | Variable | Role | Default | Purpose |
 | --- | --- | --- | --- |
-| `DP_SIZE_LOCAL` | both | `8` | Ranks per pod; DP = EP = `DP_SIZE_LOCAL` x group size |
+| `DP_SIZE_LOCAL` | both | `8` | Ranks per pod; `--tp-size`, `--attn-dp-size` and `--ep-size` are all `DP_SIZE_LOCAL` x group size |
 | `ENABLE_MTP`, `MTP_NUM_STEPS`, `MTP_NUM_DRAFT_TOKENS` | both | `1`, `3`, `4` | EAGLE/MTP speculative decoding |
 | `PREFILL_MEM_FRACTION_STATIC`, `DECODE_MEM_FRACTION_STATIC` | prefill, decode | `0.85` | `--mem-fraction-static` |
 | `PREFILL_CHUNK_TOKENS_PER_RANK` | prefill | `8192` | Per-rank chunked prefill budget; SGLang divides `--chunked-prefill-size` by DP, so the manifest passes per-rank x DP |
@@ -241,15 +246,13 @@ All engine knobs are container env vars on the `sglang` container of each role, 
 - **`/generate` only, pre-tokenized.** The EPP parser list only contains `sglanghttp-parser`, so OpenAI-style paths are rejected with `400` and `/generate` bodies need `input_ids`. Chat and completions on the Rust frontend are follow-up work ([sgl-project/sglang#36718](https://github.com/sgl-project/sglang/pull/36718)); once the image serves them, add `openai-parser` to the EPP parser list.
 - **No KV-event based precise routing.** Per-rank KV-cache ownership for shared endpoints is still being designed ([llm-d/llm-d-router#2306](https://github.com/llm-d/llm-d-router/issues/2306)), so there is no `kv-events` component here.
 - **NVSHMEM on RoCE (GKE).** The SGLang nightly ships NVSHMEM 3.4.5, whose IBGDA transport fails on RoCE with `create DCT share err` / `nvshmem setup connections failed` (uninitialized `ibv_ah_attr`; fixed upstream in NVSHMEM 3.5). DeepEP low-latency mode on multi-node decode therefore cannot start on GKE A3 Ultra with the stock image. InfiniBand fabrics are not affected.
-- **Fixed image for RoCE.** llm-d carries the one-line fix as `patches/nvshmem_zero_ibv_ah_attr_v3.4.5-0.patch`. `image/Dockerfile` rebuilds only the `nvshmem_transport_ibgda.so.3` plugin from patched 3.4.5 source and copies it over the wheel's copy, so the DeepEP kernels keep their ABI. Build it and point the `docker.io/lmsysorg/sglang` image at your build with a kustomize `images:` override:
+- **Fixed image for RoCE.** The recipe carries the one-line fix as `image/nvshmem_zero_ibv_ah_attr_v3.4.5-0.patch`. `image/Dockerfile` rebuilds only the `nvshmem_transport_ibgda.so.3` plugin from patched 3.4.5 source and copies it over the wheel's copy, so the DeepEP kernels keep their ABI. Build it and point the `docker.io/lmsysorg/sglang` image at your build with a kustomize `images:` override:
 
   ```bash
-  cp ${REPO_ROOT}/patches/nvshmem_zero_ibv_ah_attr_v3.4.5-0.patch image/
   # BASE_IMAGE must be the SGLang image the gpu-sglang/nightly component resolves to (pin it by digest).
   docker build --build-arg BASE_IMAGE=docker.io/lmsysorg/sglang@sha256:<digest> -t <your-registry>/sglang-roce:<tag> image/
   ```
 
-- **`/health` on non-zero ranks.** The Rust listeners of DP ranks other than global rank 0 answer `503` to `/health` and `/health_generate` while `/generate` works. The recipe therefore uses TCP startup and liveness probes plus a one-token `/generate` readiness probe.
 - **Latency floor on the P/D path.** With the Rust frontend, a single `/generate` through P/D takes about 3s end to end even for a 5-token prompt, and the latency is quantized in 1s steps (3.0s, 4.0s, 5.0s). Long generations are fast once started (256 tokens in about 5.6s at 1 request), so the cost sits in the bootstrap and KV-transfer phase; the suspected cause is the Rust server's 1s idle tick gating the decode scheduler's bootstrap polling. Treat TTFT numbers from this recipe as not representative until this is resolved upstream.
 - **DeepEP is untuned.** The engine logs `Only use 20 SMs for DeepEP communication`; no `--deepep-config` is set. Throughput numbers need tuning before they are comparable with the vLLM recipe.
 - **Nightly images.** The base tracks the `gpu-sglang/nightly` and `routing-sidecar/nightly` image components. Pin them in an overlay for anything beyond experimentation.
