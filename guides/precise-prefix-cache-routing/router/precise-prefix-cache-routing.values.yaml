@@ -65,6 +65,7 @@ router:
                 kvBlockIndexConfig:
                   enableMetrics: true
               kvEventsConfig:
+                engineType: "vllm"
                 topicFilter: "kv@"
                 concurrency: 8
                 discoverPods: true

@@ -216,7 +216,7 @@ To use **agentgateway** as the sidecar proxy instead of Envoy, see [router recip
 
 To use a Kubernetes Gateway managed proxy rather than the standalone version, follow these steps instead of applying the previous Helm chart:
 
-1. _Deploy a Kubernetes Gateway_ named by following one of [the gateway guides](../../docs/infrastructure/gateway).
+1. _Deploy a Kubernetes Gateway_ named `llm-d-inference-gateway` by following one of [the gateway guides](../../docs/infrastructure/gateway).
 2. _Deploy the llm-d router and an HTTPRoute_ that connects it to the Gateway as follows:
 
 <!-- guide:deploy.gateway start -->
@@ -489,6 +489,7 @@ kubectl delete -n ${NAMESPACE} -k ${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/
 <!-- llm-d-cicd:skip start -->
 ```bash
 kubectl delete -n ${NAMESPACE} -k ${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/${ACCELERATOR_TYPE}/${MODEL_SERVER}/${TPU_SLICE_TOPOLOGY}
+kubectl delete -n ${NAMESPACE} -f ${REPO_ROOT}/docs/infrastructure/providers/gke/dynamic-slicing/kueue-localqueue.yaml --ignore-not-found=true
 ```
 <!-- llm-d-cicd:skip end -->
 <!-- guide:cleanup.modelserver.dynamic_slice end -->
