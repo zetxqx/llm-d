@@ -132,8 +132,10 @@ spec:
                       # so decode can look it up, which lets the EPP pick any rank.
                       #
                       # SGLang defaults to a bfloat16 KV cache for DSA models on
-                      # Hopper (fp8 only on Blackwell); fp8_e4m3 doubles the KV
-                      # capacity and selects the flashmla_kv DSA backends.
+                      # Hopper (fp8 only on Blackwell); fp8_e4m3 nearly doubles
+                      # the KV capacity. flashmla_kv is the DSA backend SGLang
+                      # picks for fp8 on Hopper; it is pinned so the kernels do
+                      # not change with SGLang defaults.
                       exec python3 -m sglang.launch_server \
                         --model-path zai-org/GLM-5.2-FP8 \
                         --trust-remote-code \
@@ -146,6 +148,8 @@ spec:
                         --attn-dp-size ${DP_SIZE} \
                         --ep-size ${DP_SIZE} \
                         --kv-cache-dtype fp8_e4m3 \
+                        --dsa-prefill-backend flashmla_kv \
+                        --dsa-decode-backend flashmla_kv \
                         --moe-a2a-backend deepep \
                         --deepep-mode normal \
                         --moe-dense-tp-size 1 \
@@ -419,7 +423,7 @@ spec:
                       # ranks, so pass per-rank x DP; keep the per-rank value and
                       # the CUDA graph capture sizes within that budget.
                       MAX_RUNNING_REQUESTS=$(( ${DECODE_MAX_RUNNING_REQUESTS_PER_RANK:-32} * DP_SIZE ))
-                      # The KV cache dtype must match the prefill role.
+                      # The KV cache dtype and DSA backends match the prefill role.
                       exec python3 -m sglang.launch_server \
                         --model-path zai-org/GLM-5.2-FP8 \
                         --trust-remote-code \
@@ -432,6 +436,8 @@ spec:
                         --attn-dp-size ${DP_SIZE} \
                         --ep-size ${DP_SIZE} \
                         --kv-cache-dtype fp8_e4m3 \
+                        --dsa-prefill-backend flashmla_kv \
+                        --dsa-decode-backend flashmla_kv \
                         --moe-a2a-backend deepep \
                         --deepep-mode low_latency \
                         --moe-dense-tp-size 1 \

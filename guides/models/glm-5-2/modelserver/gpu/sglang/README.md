@@ -34,7 +34,7 @@ Request flow for one `/generate` call:
 | Prefill parallelism | DEP8: attention DP=8, EP=8 (`--tp-size 8 --attn-dp-size 8 --ep-size 8`), 1 node |
 | Decode parallelism | DEP16 (wide): attention DP=16, EP=16 (`--tp-size 16 --attn-dp-size 16 --ep-size 16`), 2 nodes |
 | All-to-all | DeepEP, `normal` (prefill) and `low_latency` (decode) |
-| KV cache | FP8 (`--kv-cache-dtype fp8_e4m3`, DSA backends `flashmla_kv`) |
+| KV cache | FP8 (`--kv-cache-dtype fp8_e4m3`, `--dsa-prefill-backend flashmla_kv --dsa-decode-backend flashmla_kv`) |
 | KV transfer | NIXL (`DISAGG_TRANSFER_BACKEND`; only `nixl` has been tested) |
 | MTP speculative decoding | On (EAGLE, 3 steps, 4 draft tokens; opt-out via `no-mtp` component) |
 | `mem-fraction-static` | 0.85 on both roles |
@@ -44,7 +44,7 @@ Request flow for one `/generate` call:
 
 SGLang's `--tp-size` is the size of the GPU group that holds one copy of the model, not the attention TP size. Attention runs one DP rank per GPU inside that group (attention TP=1) and the experts are split across all its GPUs. The vLLM recipe spells the same layout `--tensor-parallel-size 1 --data-parallel-size N --enable-expert-parallel`.
 
-SGLang defaults DSA models (GLM-5.2 uses DeepSeek Sparse Attention) to a bfloat16 KV cache on Hopper and only picks FP8 on Blackwell, so the recipe sets `--kv-cache-dtype fp8_e4m3` explicitly. That doubles the KV capacity per GPU; prefill and decode must use the same dtype.
+SGLang defaults DSA models (GLM-5.2 uses DeepSeek Sparse Attention) to a bfloat16 KV cache on Hopper and only picks FP8 on Blackwell, so the recipe sets `--kv-cache-dtype fp8_e4m3` explicitly. That nearly doubles the KV capacity per GPU (656 instead of 1152 bytes per token); prefill and decode must use the same dtype. The recipe also pins both DSA backends to `flashmla_kv`, which is what SGLang picks for an FP8 KV cache on Hopper, so the kernels do not change with SGLang defaults. On Blackwell, SGLang would pick `trtllm` instead.
 
 The decode limits follow from DeepEP low-latency mode, which dispatches at most `SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK` (128) tokens per rank per step: 32 running requests x 4 draft tokens. Raise all three together.
 
