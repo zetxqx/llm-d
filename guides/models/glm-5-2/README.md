@@ -33,10 +33,10 @@ CoreWeave (CKS) with InfiniBand networking.
 
 An SGLang variant (`MODEL_SERVER=sglang`) runs the same wide-EP P/D layout on GKE A3 Ultra (RoCE)
 with the SGLang Rust frontend, which gives every DP rank its own HTTP listener. It serves only
-SGLang's native `/generate` API with pre-tokenized input, and has no benchmark numbers yet. Its
-defaults, image requirements and limitations are in the
-[SGLang recipe](modelserver/gpu/sglang/README.md); the rest of this page describes the vLLM recipe
-unless it says otherwise.
+SGLang's native `/generate` API with pre-tokenized input, and has no benchmark numbers yet. It
+uses the same deploy, verify and cleanup steps below; how it works, its engine settings, tunables
+and limitations are in the [SGLang engine reference](modelserver/gpu/sglang/README.md). The rest
+of this page describes the vLLM recipe unless it says otherwise.
 
 ## Default Configuration
 
@@ -63,6 +63,10 @@ If your SLO target is throughput rather than TTFT, `p2w2d2w2` (2 prefill + 2 dec
 64 GPUs) is the second Pareto point measured in the blog post. The full topology range — from
 the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` — is in
 [Scaling and Alternative Topologies](#scaling-and-alternative-topologies).
+
+With `MODEL_SERVER=sglang`, `DEPLOYMENT=default` deploys `p1w1d1w2`: 1 DEP8 prefill node and 1
+DEP16 decode replica on 2 nodes (3 nodes / 24 GPUs), with MTP on and no KV offloading. Its engine
+settings are in the [SGLang engine reference](modelserver/gpu/sglang/README.md#engine-configuration).
 
 ### Routing Modes
 
@@ -107,6 +111,10 @@ This guide includes configurations for the following accelerator and model serve
   every NIC on all other hosts (rail-only networks fail). See
   [RDMA and Networking Configuration](../../../docs/infrastructure/rdma/README.md) and the
   [multi-node deployment guide](../../../docs/infrastructure/multi-node.md).
+
+- For `MODEL_SERVER=sglang` on GKE A3 Ultra, prepare the cluster as described in the
+  [GKE provider docs](../../../docs/infrastructure/providers/gke/README.md) (GPUDirect RDMA, DRA
+  and DRANET drivers) so the `gke-rdma-template` resource claims resolve.
 
 - Create a [HuggingFace token](../../../helpers/hf-token.md) and export it as `HF_TOKEN` in your shell.
 
@@ -191,7 +199,7 @@ Layers [`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml) o
 - **CPU prefix-cache scorer** (weight 2) — fixed LRU capacity (200k entries per server), tracks CPU-offloaded prefix blocks.
 - **Active-request scorer** (weight 1 prefill, 3 decode) — load balancing.
 
-With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses `/generate` bodies with the `sglanghttp-parser` and scores with the approximate prefix-cache scorer and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics` (see the [SGLang recipe](modelserver/gpu/sglang/README.md)).
+With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses `/generate` bodies with the `sglanghttp-parser` and scores with the approximate prefix-cache scorer and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics` (see the [SGLang engine reference](modelserver/gpu/sglang/README.md#limitations)).
 
 <!-- guide:deploy.router_values.approximate start -->
 <!-- variants:start -->
@@ -277,7 +285,7 @@ helm install ${GUIDE_NAME} \
 
 ### 2. Deploy the Model Server
 
-**Apply the Kustomize overlay** for your deployment (`DEPLOYMENT=default` deploys `p3w2d1w2` + tiered offloading for approximate routing; `ROUTING=precise` set `DEPLOYMENT=p2w1d1w1-precise` in the router step, which includes per-rank KV-event publishing and the `wide-ep-render` Service). With `MODEL_SERVER=sglang`, `DEPLOYMENT=default` deploys `p1w1d1w2` on GKE; on GKE the multi-node decode group also needs the NVSHMEM-fixed image from the [SGLang recipe](modelserver/gpu/sglang/README.md#limitations):
+**Apply the Kustomize overlay** for your deployment (`DEPLOYMENT=default` deploys `p3w2d1w2` + tiered offloading for approximate routing; `ROUTING=precise` set `DEPLOYMENT=p2w1d1w1-precise` in the router step, which includes per-rank KV-event publishing and the `wide-ep-render` Service). With `MODEL_SERVER=sglang`, `DEPLOYMENT=default` deploys `p1w1d1w2`:
 
 <!-- guide:deploy.modelserver start -->
 ```bash
@@ -286,7 +294,28 @@ kubectl apply -n ${NAMESPACE} \
 ```
 <!-- guide:deploy.modelserver end -->
 
-Two hardware notes: prefill workers request `1500Gi` DRAM for the CPU offload tier, and the
+With `MODEL_SERVER=sglang` on GKE, the stock SGLang nightly image cannot start the multi-node
+decode group because of an NVSHMEM bug on RoCE. Build the NVSHMEM-fixed image as described in the
+[SGLang engine reference](modelserver/gpu/sglang/README.md#limitations), then wrap the deployment
+in a small overlay that swaps in your build, and apply that overlay instead of
+`deployments/${DEPLOYMENT}`. The cleanup step below still works, because the overlay only changes
+the image.
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - <path-to>/guides/models/glm-5-2/modelserver/gpu/sglang/deployments/p1w1d1w2
+images:
+  - name: docker.io/lmsysorg/sglang
+    newName: <your-registry>/sglang-roce
+    newTag: <tag>
+```
+
+Do not deploy the vLLM and SGLang recipes in the same namespace: the InferencePool selects pods by
+`llm-d.ai/guide` only and would mix both engines into one pool.
+
+For vLLM, two hardware notes: prefill workers request `1500Gi` DRAM for the CPU offload tier, and the
 NVMe tier uses a host-path volume at `/mnt/local/kv-cache`. On nodes without local NVMe, swap
 the overlay's `offloading-tiered` component for `offloading-cpu` (DRAM only).
 
@@ -445,28 +474,29 @@ Send the same long prompt twice: the second request routes to the same prefill r
 
 ## Scaling and Alternative Topologies
 
-Every topology below is a Kustomize overlay under `modelserver/gpu/vllm/deployments/`: set
-`DEPLOYMENT` to its name and apply it with the [model server step](#2-deploy-the-model-server).
+Every topology below is a Kustomize overlay under `modelserver/gpu/${MODEL_SERVER}/deployments/`:
+set `DEPLOYMENT` to its name and apply it with the [model server step](#2-deploy-the-model-server).
+vLLM ships every topology; SGLang ships the ones marked in the SGLang column.
 
-| Deployment | Prefill                    | Decode                        | Nodes / GPUs |
-| ---------- | -------------------------- | ----------------------------- | ------------ |
-| `p1w1d1w1` | 1 replica, 1 node, DEP8    | 1 replica, 1 node, DEP8      | 2 / 16       |
-| `p1w1d1w2` | 1 replica, 1 node, DEP8    | 1 replica, 2 nodes, DEP16    | 3 / 24       |
-| `p1w2d1w2` | 1 replica, 2 nodes, DEP16  | 1 replica, 2 nodes, DEP16    | 4 / 32       |
-| `p2w1d1w1` | 2 replicas, 1 node, DEP8   | 1 replica, 1 node, DEP8      | 3 / 24       |
-| `p2w1d1w1-precise` | 2 replicas, 1 node, DEP8 (`kv-events` + `render`) | 1 replica, 1 node, DEP8 (`kv-events`) | 3 / 24 |
-| `p2w1d1w2` | 2 replicas, 1 node, DEP8   | 1 replica, 2 nodes, DEP16    | 4 / 32       |
-| `p2w2d1w2` | 2 replicas, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16    | 6 / 48       |
-| `p2w2d2w2` | 2 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16   | 8 / 64       |
-| `p3w2d1w2` | 3 replicas, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16    | 8 / 64       |
-| `p3w2d2w2` | 3 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16   | 10 / 80      |
+| Deployment | Prefill                    | Decode                        | Nodes / GPUs | SGLang |
+| ---------- | -------------------------- | ----------------------------- | ------------ | ------ |
+| `p1w1d1w1` | 1 replica, 1 node, DEP8    | 1 replica, 1 node, DEP8      | 2 / 16       | ✓      |
+| `p1w1d1w2` | 1 replica, 1 node, DEP8    | 1 replica, 2 nodes, DEP16    | 3 / 24       | ✓      |
+| `p1w2d1w2` | 1 replica, 2 nodes, DEP16  | 1 replica, 2 nodes, DEP16    | 4 / 32       | ✓      |
+| `p2w1d1w1` | 2 replicas, 1 node, DEP8   | 1 replica, 1 node, DEP8      | 3 / 24       |        |
+| `p2w1d1w1-precise` | 2 replicas, 1 node, DEP8 (`kv-events` + `render`) | 1 replica, 1 node, DEP8 (`kv-events`) | 3 / 24 | |
+| `p2w1d1w2` | 2 replicas, 1 node, DEP8   | 1 replica, 2 nodes, DEP16    | 4 / 32       | ✓      |
+| `p2w2d1w2` | 2 replicas, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16    | 6 / 48       |        |
+| `p2w2d2w2` | 2 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16   | 8 / 64       | ✓      |
+| `p3w2d1w2` | 3 replicas, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16    | 8 / 64       |        |
+| `p3w2d2w2` | 3 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16   | 10 / 80      |        |
 
 > [!NOTE]
 > The alternatives are to be hardened until the coming llm-d release.
 
-The SGLang recipe ships `p1w1d1w1`, `p1w1d1w2`, `p1w2d1w2`, `p2w1d1w2` and `p2w2d2w2` under
-`modelserver/gpu/sglang/deployments/`, with the `no-mtp` component only; see its
-[deployment options](modelserver/gpu/sglang/README.md#pd-deployment-options).
+The SGLang overlays all build on the GKE provider overlay (`modelserver/gpu/sglang/providers/gke`),
+the only one so far; other providers need their own `providers/<name>` overlay (RDMA device
+requests, HCA selection, cache volumes). The only SGLang component is `no-mtp`.
 
 Raw topology overlays ship with MTP on and offloading off; opt in or out per deployment by
 adding [Kustomize components](https://kubectl.docs.kubernetes.io/guides/config_management/components/)
