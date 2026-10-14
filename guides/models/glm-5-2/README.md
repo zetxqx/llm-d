@@ -31,7 +31,17 @@ The guide composes the [wide expert parallelism](../../wide-ep/README.md),
 DeepGemm MoE backend with tool-calling (`glm47`) and reasoning (`glm45`) parsers. Tested on
 CoreWeave (CKS) with InfiniBand networking.
 
+An SGLang variant (`MODEL_SERVER=sglang`) runs the same wide-EP P/D layout on GKE A3 Ultra (RoCE)
+with the SGLang Rust frontend, which gives every DP rank its own HTTP listener. It serves the
+OpenAI routes and SGLang's native `/generate` API, and has no benchmark numbers yet. It
+uses the same deploy, verify and cleanup steps below. Where a section differs per engine, pick the
+SGLang tab. The rest of this page describes the vLLM recipe unless it says otherwise.
+
 ## Default Configuration
+
+<!-- tabs:start group=engine -->
+<details open>
+<summary><b>vLLM</b></summary>
 
 The default deployment is the latency-leaning Pareto configuration from the blog post:
 **`p3w2d1w2`** — 3 DEP16 prefill replicas and 1 DEP16 decode replica, 8 nodes / 64 GPUs —
@@ -57,6 +67,30 @@ If your SLO target is throughput rather than TTFT, `p2w2d2w2` (2 prefill + 2 dec
 the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` — is in
 [Scaling and Alternative Topologies](#scaling-and-alternative-topologies).
 
+</details>
+<details>
+<summary><b>SGLang</b></summary>
+
+`DEPLOYMENT=default` deploys `p1w1d1w1`: 1 DEP8 prefill node and 1 DEP8 decode node (2 nodes / 16 GPUs). Each SGLang topology enables MTP and HiCache (host-memory KV cache) on prefill. For decode across 2 nodes, select a different topology in [Scaling and Alternative Topologies](#scaling-and-alternative-topologies).
+
+| Parameter                | Value                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| Model                    | [zai-org/GLM-5.2-FP8](https://huggingface.co/zai-org/GLM-5.2-FP8)            |
+| Accelerator              | NVIDIA H200 (8 GPUs per node)                                                |
+| Serving topology         | P/D disaggregated: 1 prefill replica (DEP8, 1 node) + 1 decode replica (DEP8, 1 node), attention TP=1, DP=EP |
+| DP model                 | Rust frontend, one HTTP listener per DP rank (`SGLANG_RUST_SERVER=1`)         |
+| All-to-all               | DeepEP v2 over NCCL GIN, hybrid mode, on both roles (`deepep_v2`)            |
+| MoE backend              | SGLang default (`--moe-runner-backend auto`)                                 |
+| KV transfer              | Mooncake (NIXL failed under long-context load on GKE RoCE)                   |
+| KV cache offloading      | HiCache on prefill, 64 GB per rank (`hicache`, in every SGLang topology)     |
+| MTP speculative decoding | On (EAGLE, 3 steps)                                                          |
+| `mem-fraction-static`    | 0.85 (prefill and decode)                                                    |
+| Routing                  | GPU + CPU approximate prefix-cache and active-request scoring ([`sglang.values.yaml`](router/sglang.values.yaml)) |
+| Reasoning / tool-call    | glm45 / glm47                                                                |
+
+</details>
+<!-- tabs:end -->
+
 ### Routing Modes
 
 This guide supports two prefix-cache routing modes (`ROUTING`), selected with tabs in
@@ -76,9 +110,9 @@ This guide supports two prefix-cache routing modes (`ROUTING`), selected with ta
 This guide includes configurations for the following accelerator and model server combinations:
 
 <!-- guide:support start -->
-| Accelerator | `ACCELERATOR_TYPE` | Served model | vLLM | Notes |
-| --- | --- | --- | --- | --- |
-| NVIDIA H200 | `gpu` | `zai-org/GLM-5.2-FP8` | 🟡 community | CoreWeave H200 (8 GPUs per node), InfiniBand · default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading); 2 to 10 nodes by `DEPLOYMENT` · P/D disaggregated wide-EP; needs an all-to-all RDMA fabric |
+| Accelerator | `ACCELERATOR_TYPE` | Served model | vLLM | SGLang | Notes |
+| --- | --- | --- | --- | --- | --- |
+| NVIDIA H200 | `gpu` | `zai-org/GLM-5.2-FP8` | 🟡 community | 🟡 community | P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, default 2 nodes / 16 GPUs (`p1w1d1w1`), 2 to 8 nodes by `DEPLOYMENT` |
 
 ✅ validated: covered by a nightly E2E workflow · 🟡 community: maintained by the hardware vendor or community, not covered by nightly E2E · ❌ not supported: tracked in the linked issue · — no configuration.
 <!-- guide:support end -->
@@ -100,6 +134,10 @@ This guide includes configurations for the following accelerator and model serve
   every NIC on all other hosts (rail-only networks fail). See
   [RDMA and Networking Configuration](../../../docs/infrastructure/rdma/README.md) and the
   [multi-node deployment guide](../../../docs/infrastructure/multi-node.md).
+
+- For `MODEL_SERVER=sglang` on GKE A3 Ultra, prepare the cluster as described in the
+  [GKE provider docs](../../../docs/infrastructure/providers/gke/README.md) (GPUDirect RDMA, DRA
+  and DRANET drivers) so the `gke-rdma-template` resource claims resolve.
 
 - Create a [HuggingFace token](../../../helpers/hf-token.md) and export it as `HF_TOKEN` in your shell.
 
@@ -130,7 +168,7 @@ export NAMESPACE=llm-d-glm-5-2
 export MONITORING=false # options: false, true
 export MONITORING_VALUES=
 export ACCELERATOR_TYPE=gpu # options: gpu
-export MODEL_SERVER=vllm # options: vllm
+export MODEL_SERVER=vllm # options: vllm, sglang
 export ROUTING=approximate # options: approximate, precise
 export DEPLOYMENT=default # options: default, p1w1d1w1, p1w1d1w2, p1w2d1w2, p2w1d1w1, p2w1d1w1-precise, p2w1d1w2, p2w2d1w2, p2w2d2w2, p3w2d1w2, p3w2d2w2
 export MODEL=zai-org/GLM-5.2-FP8 # the model every deployment serves
@@ -184,27 +222,49 @@ Layers [`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml) o
 - **CPU prefix-cache scorer** (weight 2) — fixed LRU capacity (200k entries per server), tracks CPU-offloaded prefix blocks.
 - **Active-request scorer** (weight 1 prefill, 3 decode) — load balancing.
 
+With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with GPU and CPU (HiCache) approximate prefix-cache scorers and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics`. The cache sizes in the router values are for a DEP8 prefill rank on H200.
+
 <!-- guide:deploy.router_values.approximate start -->
+<!-- variants:start -->
+<details open data-when="MODEL_SERVER=vllm">
+<summary><b>vLLM</b></summary>
+
 ```bash
-# only when ROUTING=approximate:
 # Paths to values files: the wide-EP router values, then the GLM-5.2
 # dual GPU+CPU prefix-cache scoring overrides on top
 export ROUTER_BASE_VALUES="${REPO_ROOT}/guides/recipes/router/base.values.yaml"
 export ROUTER_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml"
 export ROUTER_OVERRIDES_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/glm-5.2-overrides.values.yaml"
 ```
+
+</details>
+<details data-when="MODEL_SERVER=sglang">
+<summary><b>SGLang</b></summary>
+
+<!-- llm-d-cicd:skip start -->
+```bash
+# Paths to values files: the wide-EP router values, then the SGLang
+# overrides on top (/generate and OpenAI parsing, scorers without /metrics)
+export ROUTER_BASE_VALUES="${REPO_ROOT}/guides/recipes/router/base.values.yaml"
+export ROUTER_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml"
+export ROUTER_OVERRIDES_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/sglang.values.yaml"
+```
+<!-- llm-d-cicd:skip end -->
+
+</details>
+<!-- variants:end -->
 <!-- guide:deploy.router_values.approximate end -->
 
 </details>
 <details>
 <summary><b>Precise Prefix-Cache Routing</b></summary>
 
-Layers [`precise-routing.values.yaml`](router/precise-routing.values.yaml) on top of [`glm-5-2.values.yaml`](router/glm-5-2.values.yaml), replacing the approximate prefix index with exact KV-event-backed routing (`precise-prefix-cache-producer` + `prefix-cache-affinity-filter` + `token-load-scorer`). It also sets `DEPLOYMENT=p2w1d1w1-precise`, the only overlay that publishes per-rank KV events and deploys the `wide-ep-render` Service.
+Layers [`precise-routing.values.yaml`](router/precise-routing.values.yaml) on top of [`glm-5-2.values.yaml`](router/glm-5-2.values.yaml), replacing the approximate prefix index with exact KV-event-backed routing (`precise-prefix-cache-producer` + `prefix-cache-affinity-filter` + `token-load-scorer`). It also sets `DEPLOYMENT=p2w1d1w1-precise`, the only overlay that publishes per-rank KV events and deploys the `wide-ep-render` Service. vLLM only; the SGLang recipe has no KV-event routing yet.
 
 <!-- guide:deploy.router_values.precise start -->
 <!-- llm-d-cicd:skip start -->
 ```bash
-# only when ROUTING=precise:
+# only when ROUTING=precise and MODEL_SERVER=vllm:
 # Paths to values files: the wide-EP router values, then the GLM-5.2
 # precise KV-event-backed prefix-cache routing overrides on top
 export ROUTER_BASE_VALUES="${REPO_ROOT}/guides/recipes/router/base.values.yaml"
@@ -248,7 +308,7 @@ helm install ${GUIDE_NAME} \
 
 ### 2. Deploy the Model Server
 
-**Apply the Kustomize overlay** for your deployment (`DEPLOYMENT=default` deploys `p3w2d1w2` + tiered offloading for approximate routing; `ROUTING=precise` set `DEPLOYMENT=p2w1d1w1-precise` in the router step, which includes per-rank KV-event publishing and the `wide-ep-render` Service):
+**Apply the Kustomize overlay** for your deployment (`DEPLOYMENT=default` deploys `p3w2d1w2` + tiered offloading for approximate routing; `ROUTING=precise` set `DEPLOYMENT=p2w1d1w1-precise` in the router step, which includes per-rank KV-event publishing and the `wide-ep-render` Service). With `MODEL_SERVER=sglang`, `DEPLOYMENT=default` deploys `p1w1d1w1`:
 
 <!-- guide:deploy.modelserver start -->
 ```bash
@@ -257,7 +317,10 @@ kubectl apply -n ${NAMESPACE} \
 ```
 <!-- guide:deploy.modelserver end -->
 
-Two hardware notes: prefill workers request `1500Gi` DRAM for the CPU offload tier, and the
+Do not deploy the vLLM and SGLang recipes in the same namespace: the InferencePool selects pods by
+`llm-d.ai/guide` only and would mix both engines into one pool.
+
+For vLLM, two hardware notes: prefill workers request `1500Gi` DRAM for the CPU offload tier, and the
 NVMe tier uses a host-path volume at `/mnt/local/kv-cache`. On nodes without local NVMe, swap
 the overlay's `offloading-tiered` component for `offloading-cpu` (DRAM only).
 
@@ -322,6 +385,8 @@ kubectl run serve-check --rm -i --restart=Never \
 ```
 <!-- guide:verify.tests.served_model end -->
 
+With `MODEL_SERVER=sglang`, the same OpenAI requests work, and so do native `/generate` requests with `text` or `input_ids`.
+
 ### 3. Verify Precise Prefix-Cache Routing (`ROUTING=precise`)
 
 When running `ROUTING=precise` with `DEPLOYMENT=p2w1d1w1-precise`, verify that the `wide-ep-render` Service returns token IDs and that each engine pod maintains eight active ZMQ subscriptions (`5557`–`5564`) to the EPP:
@@ -329,7 +394,7 @@ When running `ROUTING=precise` with `DEPLOYMENT=p2w1d1w1-precise`, verify that t
 <!-- guide:verify.tests.precise_routing start -->
 <!-- llm-d-cicd:skip start -->
 ```bash
-# only when ROUTING=precise:
+# only when ROUTING=precise and MODEL_SERVER=vllm:
 # The render Service must return token IDs for MODEL
 kubectl run render-check --rm -i --restart=Never \
   --image=${CURL_TEST_IMAGE} \
@@ -337,7 +402,7 @@ kubectl run render-check --rm -i --restart=Never \
   --env="MODEL=${MODEL}" \
   -- /bin/sh -c 'curl -sS -X POST "http://wide-ep-render:8000/v1/completions/render" -H "Content-Type: application/json" -d "{\"model\": \"${MODEL}\", \"prompt\": \"render check\", \"max_tokens\": 1}"'
 
-# only when ROUTING=precise:
+# only when ROUTING=precise and MODEL_SERVER=vllm:
 # Each engine pod must hold 8 established ZMQ subscriptions (ports 5557-5564) from the EPP
 EPP_IP=$(kubectl -n ${NAMESPACE} get endpointslices \
   -l kubernetes.io/service-name=${GUIDE_NAME}-epp \
@@ -363,24 +428,31 @@ Send the same long prompt twice: the second request routes to the same prefill r
 
 ## Scaling and Alternative Topologies
 
-Every topology below is a Kustomize overlay under `modelserver/gpu/vllm/deployments/`: set
-`DEPLOYMENT` to its name and apply it with the [model server step](#2-deploy-the-model-server).
+Every topology below is a Kustomize overlay under `modelserver/gpu/${MODEL_SERVER}/deployments/`:
+set `DEPLOYMENT` to its name and apply it with the [model server step](#2-deploy-the-model-server).
+vLLM ships every topology; SGLang ships the ones marked in the SGLang column.
 
-| Deployment | Prefill                    | Decode                        | Nodes / GPUs |
-| ---------- | -------------------------- | ----------------------------- | ------------ |
-| `p1w1d1w1` | 1 replica, 1 node, DEP8    | 1 replica, 1 node, DEP8      | 2 / 16       |
-| `p1w1d1w2` | 1 replica, 1 node, DEP8    | 1 replica, 2 nodes, DEP16    | 3 / 24       |
-| `p1w2d1w2` | 1 replica, 2 nodes, DEP16  | 1 replica, 2 nodes, DEP16    | 4 / 32       |
-| `p2w1d1w1` | 2 replicas, 1 node, DEP8   | 1 replica, 1 node, DEP8      | 3 / 24       |
-| `p2w1d1w1-precise` | 2 replicas, 1 node, DEP8 (`kv-events` + `render`) | 1 replica, 1 node, DEP8 (`kv-events`) | 3 / 24 |
-| `p2w1d1w2` | 2 replicas, 1 node, DEP8   | 1 replica, 2 nodes, DEP16    | 4 / 32       |
-| `p2w2d1w2` | 2 replicas, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16    | 6 / 48       |
-| `p2w2d2w2` | 2 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16   | 8 / 64       |
-| `p3w2d1w2` | 3 replicas, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16    | 8 / 64       |
-| `p3w2d2w2` | 3 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16   | 10 / 80      |
+| Deployment | Prefill                    | Decode                        | Nodes / GPUs | SGLang |
+| ---------- | -------------------------- | ----------------------------- | ------------ | ------ |
+| `p1w1d1w1` | 1 replica, 1 node, DEP8    | 1 replica, 1 node, DEP8      | 2 / 16       | ✓      |
+| `p1w1d1w2` | 1 replica, 1 node, DEP8    | 1 replica, 2 nodes, DEP16    | 3 / 24       | ✓      |
+| `p1w2d1w2` | 1 replica, 2 nodes, DEP16  | 1 replica, 2 nodes, DEP16    | 4 / 32       | ✓      |
+| `p2w1d1w1` | 2 replicas, 1 node, DEP8   | 1 replica, 1 node, DEP8      | 3 / 24       |        |
+| `p2w1d1w1-precise` | 2 replicas, 1 node, DEP8 (`kv-events` + `render`) | 1 replica, 1 node, DEP8 (`kv-events`) | 3 / 24 | |
+| `p2w1d1w2` | 2 replicas, 1 node, DEP8   | 1 replica, 2 nodes, DEP16    | 4 / 32       | ✓      |
+| `p2w2d1w2` | 2 replicas, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16    | 6 / 48       |        |
+| `p2w2d2w2` | 2 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16   | 8 / 64       | ✓      |
+| `p3w2d1w2` | 3 replicas, 2 nodes, DEP16 | 1 replica, 2 nodes, DEP16    | 8 / 64       |        |
+| `p3w2d2w2` | 3 replicas, 2 nodes, DEP16 | 2 replicas, 2 nodes, DEP16   | 10 / 80      |        |
 
 > [!NOTE]
 > The alternatives are to be hardened until the coming llm-d release.
+
+The SGLang overlays all build on the GKE provider overlay (`modelserver/gpu/sglang/providers/gke`),
+the only one so far; other providers need their own `providers/<name>` overlay (RDMA device
+requests, HCA selection, cache volumes). The SGLang components are `no-mtp` and `hicache`.
+Every SGLang topology includes `hicache`, which enables HiCache (host-memory KV cache) on
+prefill with `HICACHE_SIZE_GB_PER_RANK=64`.
 
 Raw topology overlays ship with MTP on and offloading off; opt in or out per deployment by
 adding [Kustomize components](https://kubectl.docs.kubernetes.io/guides/config_management/components/)
@@ -397,10 +469,25 @@ entries merge by name, so their values replace the base defaults.
 
 ## Manifest Reference
 
+The KV cache offloading, InfiniBand and KV cache evictor sections apply to the vLLM recipe.
+
 ### MTP Speculative Decoding
+
+<!-- tabs:start group=engine -->
+<details open>
+<summary><b>vLLM</b></summary>
 
 On by default (3 tokens) for both prefill and decode. Disable with the `no-mtp` component or
 `ENABLE_MTP=0`. Token count: `MTP_NUM_TOKENS` (default `3`).
+
+</details>
+<details>
+<summary><b>SGLang</b></summary>
+
+On by default for both roles as EAGLE with 3 steps and 4 draft tokens. Disable with the `no-mtp` component or `ENABLE_MTP=0`; tune with `MTP_NUM_STEPS` and `MTP_NUM_DRAFT_TOKENS`.
+
+</details>
+<!-- tabs:end -->
 
 ### KV Cache Offloading (Prefill)
 
@@ -433,6 +520,8 @@ Both prefill and decode configure IB for multi-node communication:
 cache data from NVMe when utilization exceeds 90%, targeting 70%.
 
 ## Monitoring (Optional)
+
+This section applies to the vLLM recipe; the SGLang Rust listeners expose no `/metrics` yet.
 
 Node-exporter sidecars on each pod collect InfiniBand, CPU, memory pressure, and network
 retransmission metrics. Merge the per-DP-rank Prometheus scrape configs into an existing
