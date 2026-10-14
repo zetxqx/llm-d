@@ -478,7 +478,7 @@ entries merge by name, so their values replace the base defaults.
 
 ## Manifest Reference
 
-The KV cache offloading, InfiniBand and KV cache evictor sections apply to the vLLM recipe; the SGLang recipe has its own sections at the end.
+The KV cache offloading, InfiniBand and KV cache evictor sections apply to the vLLM recipe; the SGLang recipe has its own section at the end.
 
 ### MTP Speculative Decoding
 
@@ -555,22 +555,6 @@ prefill pod                                decode pod
 
 The InferencePool lists ports 8000 to 8007 (`router/glm-5-2.values.yaml`), so the EPP sees every rank of every pod as an endpoint.
 
-### SGLang Tunables
-
-All engine knobs are container env vars on the `sglang` container of each role, so overlays change them with name-based env merges as the `no-mtp` component does.
-
-| Variable | Role | Default | Purpose |
-| --- | --- | --- | --- |
-| `DP_SIZE_LOCAL` | both | `8` | Ranks per pod; `--tp-size`, `--attn-dp-size` and `--ep-size` are all `DP_SIZE_LOCAL` x group size |
-| `ENABLE_MTP`, `MTP_NUM_STEPS`, `MTP_NUM_DRAFT_TOKENS` | both | `1`, `3`, `4` | EAGLE/MTP speculative decoding |
-| `PREFILL_MEM_FRACTION_STATIC`, `DECODE_MEM_FRACTION_STATIC` | prefill, decode | `0.85` | `--mem-fraction-static` |
-| `PREFILL_CHUNK_TOKENS_PER_RANK` | prefill | `8192` | Per-rank chunked prefill budget; SGLang divides `--chunked-prefill-size` by DP, so the manifest passes per-rank x DP |
-| `PREFILL_MAX_RUNNING_REQUESTS_PER_RANK` | prefill | `64` | Per-rank running requests; SGLang splits `--max-running-requests` across DP, so the manifest passes per-rank x DP |
-| `DECODE_MAX_RUNNING_REQUESTS_PER_RANK`, `DECODE_CUDA_GRAPH_MAX_BS` | decode | `32`, `32` | Per-rank decode batch (passed as per-rank x DP); bounded by the DeepEP dispatch cap |
-| `SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK` | prefill, decode | `8192`, `128` | DeepEP v2 per-rank token buffer; prefill must hold one per-rank chunk |
-| `CONTEXT_LENGTH` | both | unset | `--context-length`; unset keeps the model default |
-| `DISAGG_TRANSFER_BACKEND` | both | `nixl` | `--disaggregation-transfer-backend` |
-
 ## Monitoring (Optional)
 
 This section applies to the vLLM recipe; the SGLang Rust listeners expose no `/metrics` yet.
@@ -587,22 +571,6 @@ If you run the Prometheus Operator instead, apply the PodMonitors with `MONITORI
 [model server step](#2-deploy-the-model-server).
 
 DCGM custom metrics: `modelserver/gpu/vllm/base/dcgm-custom-metrics.yaml`.
-
-## Troubleshooting
-
-### SGLang Startup and Health
-
-A pod is ready once `/health` on its local rank-0 listener returns `200`. Every Rust listener answers `503` until its own startup warmup, a one-token generation on its rank, succeeds. The warmup uses SGLang's fake bootstrap host, so at startup the prefill log shows one `Fake KVSender Exception` line per rank; that is the warmup, not a failing request.
-
-### SGLang P/D Bootstrap Check
-
-Every prefill rank listener must expose the full bootstrap topology. Query the rank-0 listener of each prefill pod (replace the pod IP):
-
-```bash
-curl -s "http://<prefill-pod-ip>:8000/route?prefill_dp_rank=-1&prefill_cp_rank=-1&target_tp_rank=-1&target_pp_rank=-1" | jq
-```
-
-A `200` with one row per DP rank means the registry is populated. A `503` means the pod's listener has no topology; check that the pod runs the pinned SGLang nightly.
 
 ## Limitations
 
