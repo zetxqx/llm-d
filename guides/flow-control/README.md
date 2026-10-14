@@ -105,6 +105,7 @@ export MODEL_NAME=Qwen/Qwen3-32B
 export INFRA_PROVIDER=base # options: base, gke
 export ROUTER_VALUES=${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml
 export EXTRA_HELM_ARGS=
+export MONITORING=false # options: false, true
 ```
 <!-- guide:env.static end -->
 
@@ -252,13 +253,13 @@ kubectl kustomize ${REPO_ROOT}/guides/optimized-baseline/modelserver/xpu/vllm/ \
 
 </details>
 
-Wait for the router deployment (`${GUIDE_NAME}-epp`) and the model server pods (`-l llm-d.ai/guide=${GUIDE_NAME}`, e.g., `flow-control-nvidia-gpu-vllm-decode-*`) to become `Ready` before continuing (`Qwen/Qwen3-32B` takes several minutes to download weights and compile graphs):
+Wait for the router deployment (`${GUIDE_NAME}-epp`) and the model server deployments (`-l llm-d.ai/guide=${GUIDE_NAME}`, e.g., `flow-control-nvidia-gpu-vllm-decode`) to become `Available` before continuing (`Qwen/Qwen3-32B` takes several minutes to download weights and compile graphs):
 
 <!-- guide:deploy.wait start -->
 <!-- llm-d-cicd:skip start -->
 ```bash
 kubectl wait --for=condition=Available deployment/${GUIDE_NAME}-epp -n ${NAMESPACE} --timeout=300s
-kubectl wait --for=condition=Ready pod -l llm-d.ai/guide=${GUIDE_NAME} -n ${NAMESPACE} --timeout=1800s
+kubectl wait --for=condition=Available deployment -l llm-d.ai/guide=${GUIDE_NAME} -n ${NAMESPACE} --timeout=1800s
 ```
 <!-- llm-d-cicd:skip end -->
 <!-- guide:deploy.wait end -->
@@ -268,10 +269,11 @@ kubectl wait --for=condition=Ready pod -l llm-d.ai/guide=${GUIDE_NAME} -n ${NAME
 If you want Prometheus scraping via `ServiceMonitor` and `PodMonitor`, the [Monitoring stack](../../docs/operations/observability/setup.md) must be installed in the cluster so those CRDs exist:
 
 * Set `export EXTRA_HELM_ARGS="--values=${REPO_ROOT}/guides/recipes/router/features/monitoring.values.yaml"` before running the [router installation command](#1-deploy-the-router) (or re-run `helm upgrade --install` with `EXTRA_HELM_ARGS` set if you already deployed the router without it).
-* Deploy the monitoring resources (`PodMonitor`) for the model servers:
+* Set `export MONITORING=true` to deploy the monitoring resources (`PodMonitor`) for the model servers:
 
 <!-- guide:deploy.monitoring start -->
 ```bash
+# only when MONITORING=true:
 kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring
 ```
 <!-- guide:deploy.monitoring end -->
@@ -378,7 +380,8 @@ grep llm_d_epp_flow_control_pool_saturation metrics.txt
 ```
 
 Expected: `stage="decode"` and `stage="effective"` series for the pool, both `0` on an
-idle pool (confirming the Flow Control layer is active and exporting metrics; per-flow
+idle pool (confirming the Flow Control layer is active and exporting metrics; a
+disaggregated pool also exports `stage="prefill"`; per-flow
 series such as `llm_d_epp_flow_control_queue_size` are registered lazily after a flow
 receives its first request). A `401` means the request carried no valid token; a `403`
 means the `${GUIDE_NAME}-metrics-reader` grant above was skipped; a `500` means the EPP's
@@ -558,13 +561,13 @@ To verify backpressure management, you must overwhelm the pool's capacity. Becau
     exit
     ```
 
-5. **Restore the model server replica count** recorded in step 2 and wait for all replicas
-   to become `Ready` (model server pods take several minutes to download weights and
-   compile graphs):
+5. **Restore the model server replica count** recorded in step 2 and wait for the rollout
+   to complete (model server pods take several minutes to download weights and compile
+   graphs):
 
     ```bash
     kubectl scale deployment -l llm-d.ai/guide=${GUIDE_NAME} -n ${NAMESPACE} --replicas=${ORIG_REPLICAS}
-    kubectl wait --for=condition=Ready pod -l llm-d.ai/guide=${GUIDE_NAME} -n ${NAMESPACE} --timeout=1800s
+    kubectl rollout status deployment -l llm-d.ai/guide=${GUIDE_NAME} -n ${NAMESPACE} --timeout=1800s
     ```
 
 ## Production Tuning: Deriving `maxConcurrency`
@@ -691,6 +694,7 @@ kubectl kustomize ${REPO_ROOT}/guides/optimized-baseline/modelserver/gpu/vllm/${
   | sed "s/optimized-baseline/${GUIDE_NAME}/g" \
   | kubectl delete -n ${NAMESPACE} -f - --ignore-not-found=true
 
+# only when MONITORING=true:
 kubectl delete -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring --ignore-not-found=true
 
 kubectl delete clusterrolebinding ${GUIDE_NAME}-metrics-reader ${GUIDE_NAME}-epp-auth-delegator --ignore-not-found=true
