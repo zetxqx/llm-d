@@ -105,9 +105,11 @@ spec:
                       # --enable-expert-parallel.
                       DP_SIZE=$(( LWS_GROUP_SIZE * DP_SIZE_LOCAL ))
 
+                      # SGLang rejects DeepEP v2 for the MTP draft layer, so the
+                      # draft runs its MoE without an all-to-all backend.
                       MTP_ARGS=""
                       if [ "${ENABLE_MTP:-1}" = "1" ]; then
-                        MTP_ARGS="--speculative-algorithm EAGLE --speculative-num-steps ${MTP_NUM_STEPS:-3} --speculative-eagle-topk 1 --speculative-num-draft-tokens ${MTP_NUM_DRAFT_TOKENS:-4}"
+                        MTP_ARGS="--speculative-algorithm EAGLE --speculative-num-steps ${MTP_NUM_STEPS:-3} --speculative-eagle-topk 1 --speculative-num-draft-tokens ${MTP_NUM_DRAFT_TOKENS:-4} --speculative-moe-a2a-backend none"
                       fi
 
                       # SGLang splits --chunked-prefill-size and
@@ -136,6 +138,10 @@ spec:
                       # the KV capacity. flashmla_kv is the DSA backend SGLang
                       # picks for fp8 on Hopper; it is pinned so the kernels do
                       # not change with SGLang defaults.
+                      #
+                      # DeepEP v2 (ElasticBuffer) moves tokens over NCCL GIN
+                      # instead of NVSHMEM. Its hybrid mode is the one that can
+                      # span nodes; the direct mode is NVLink only.
                       exec python3 -m sglang.launch_server \
                         --model-path zai-org/GLM-5.2-FP8 \
                         --trust-remote-code \
@@ -150,8 +156,8 @@ spec:
                         --kv-cache-dtype fp8_e4m3 \
                         --dsa-prefill-backend flashmla_kv \
                         --dsa-decode-backend flashmla_kv \
-                        --moe-a2a-backend deepep \
-                        --deepep-mode normal \
+                        --moe-a2a-backend deepep_v2 \
+                        --deepep-v2-mode hybrid \
                         --moe-dense-tp-size 1 \
                         --enable-dp-lm-head \
                         --disaggregation-mode prefill \
@@ -208,18 +214,17 @@ spec:
                       value: "8192"
                     - name: PREFILL_MAX_RUNNING_REQUESTS_PER_RANK
                       value: "64"
+                    # DeepEP v2 per-rank dispatch buffer. SGLang refuses to start
+                    # unless it holds a full per-rank prefill chunk, so keep it at
+                    # least PREFILL_CHUNK_TOKENS_PER_RANK.
+                    - name: SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK
+                      value: "8192"
                     - name: CONTEXT_LENGTH
                       value: ""
                     - name: DISAGG_TRANSFER_BACKEND
                       value: nixl
                     - name: NVIDIA_GDRCOPY
                       value: enabled
-                    - name: NVSHMEM_REMOTE_TRANSPORT
-                      value: ibgda
-                    - name: NVSHMEM_IB_ENABLE_IBGDA
-                      value: "true"
-                    - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
-                      value: eth0
                     - name: GLOO_SOCKET_IFNAME
                       value: eth0
                     - name: NCCL_SOCKET_IFNAME
@@ -411,19 +416,21 @@ spec:
                       # count, so attention TP is 1.
                       DP_SIZE=$(( LWS_GROUP_SIZE * DP_SIZE_LOCAL ))
 
+                      # See the prefill role: the MTP draft cannot use DeepEP v2.
                       MTP_ARGS=""
                       if [ "${ENABLE_MTP:-1}" = "1" ]; then
-                        MTP_ARGS="--speculative-algorithm EAGLE --speculative-num-steps ${MTP_NUM_STEPS:-3} --speculative-eagle-topk 1 --speculative-num-draft-tokens ${MTP_NUM_DRAFT_TOKENS:-4}"
+                        MTP_ARGS="--speculative-algorithm EAGLE --speculative-num-steps ${MTP_NUM_STEPS:-3} --speculative-eagle-topk 1 --speculative-num-draft-tokens ${MTP_NUM_DRAFT_TOKENS:-4} --speculative-moe-a2a-backend none"
                       fi
 
-                      # DeepEP low-latency dispatches at most
-                      # SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK tokens per
+                      # DeepEP v2 dispatches at most
+                      # SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK tokens per
                       # rank per step: running requests x draft tokens with MTP.
                       # SGLang splits --max-running-requests across the attention-DP
                       # ranks, so pass per-rank x DP; keep the per-rank value and
                       # the CUDA graph capture sizes within that budget.
                       MAX_RUNNING_REQUESTS=$(( ${DECODE_MAX_RUNNING_REQUESTS_PER_RANK:-32} * DP_SIZE ))
-                      # The KV cache dtype and DSA backends match the prefill role.
+                      # The KV cache dtype, DSA backends and DeepEP v2 mode match
+                      # the prefill role; hybrid mode is required across nodes.
                       exec python3 -m sglang.launch_server \
                         --model-path zai-org/GLM-5.2-FP8 \
                         --trust-remote-code \
@@ -438,8 +445,8 @@ spec:
                         --kv-cache-dtype fp8_e4m3 \
                         --dsa-prefill-backend flashmla_kv \
                         --dsa-decode-backend flashmla_kv \
-                        --moe-a2a-backend deepep \
-                        --deepep-mode low_latency \
+                        --moe-a2a-backend deepep_v2 \
+                        --deepep-v2-mode hybrid \
                         --moe-dense-tp-size 1 \
                         --enable-dp-lm-head \
                         --disaggregation-mode decode \
@@ -476,7 +483,7 @@ spec:
                     # can take up to 20s while a prefill batch is running.
                     - name: SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION
                       value: "false"
-                    - name: SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK
+                    - name: SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK
                       value: "128"
                     - name: DP_SIZE_LOCAL
                       value: "8"
@@ -498,12 +505,6 @@ spec:
                       value: nixl
                     - name: NVIDIA_GDRCOPY
                       value: enabled
-                    - name: NVSHMEM_REMOTE_TRANSPORT
-                      value: ibgda
-                    - name: NVSHMEM_IB_ENABLE_IBGDA
-                      value: "true"
-                    - name: NVSHMEM_BOOTSTRAP_UID_SOCK_IFNAME
-                      value: eth0
                     - name: GLOO_SOCKET_IFNAME
                       value: eth0
                     - name: NCCL_SOCKET_IFNAME

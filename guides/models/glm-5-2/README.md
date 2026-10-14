@@ -294,24 +294,6 @@ kubectl apply -n ${NAMESPACE} \
 ```
 <!-- guide:deploy.modelserver end -->
 
-With `MODEL_SERVER=sglang` on GKE, the stock SGLang nightly image cannot start the multi-node
-decode group because of an NVSHMEM bug on RoCE. Build the NVSHMEM-fixed image as described in the
-[SGLang engine reference](modelserver/gpu/sglang/README.md#limitations), then wrap the deployment
-in a small overlay that swaps in your build, and apply that overlay instead of
-`deployments/${DEPLOYMENT}`. The cleanup step below still works, because the overlay only changes
-the image.
-
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - <path-to>/guides/models/glm-5-2/modelserver/gpu/sglang/deployments/p1w1d1w2
-images:
-  - name: docker.io/lmsysorg/sglang
-    newName: <your-registry>/sglang-roce
-    newTag: <tag>
-```
-
 Do not deploy the vLLM and SGLang recipes in the same namespace: the InferencePool selects pods by
 `llm-d.ai/guide` only and would mix both engines into one pool.
 

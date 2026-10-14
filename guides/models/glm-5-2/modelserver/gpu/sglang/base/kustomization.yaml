@@ -16,11 +16,19 @@ components:
   # The recipe needs SGLang main from October 2026 or later: per-rank Rust
   # listeners and P/D bootstrap (sgl-project/sglang#34430, #36234),
   # --attn-dp-size (#41818) and per-listener /health warmup (#43004). No
-  # release tag contains all of them yet, so track the nightly image.
+  # release tag contains all of them yet, so use the nightly image.
   - ../../../../../../recipes/modelserver/components/images/gpu-sglang/nightly
   # The sidecar routes SGLang /generate through the P/D handler since
   # llm-d/llm-d-router#2525, which is only in the main image so far.
   - ../../../../../../recipes/modelserver/components/images/routing-sidecar/nightly
+
+# Pin the SGLang nightly this recipe was tested with
+# (nightly-dev-20261014-684fea8a): DeepEP v2 with MTP needs SGLang main from
+# October 2026, and later nightlies can change defaults without notice.
+images:
+  - name: docker.io/lmsysorg/sglang
+    newName: docker.io/lmsysorg/sglang
+    digest: sha256:ddae0e399d3d94f7827f16183301cf8dac4cf0eae0ef25590b7dac5881d713d8
 
 labels:
   - pairs:
