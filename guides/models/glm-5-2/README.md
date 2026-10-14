@@ -35,8 +35,7 @@ An SGLang variant (`MODEL_SERVER=sglang`) runs the same wide-EP P/D layout on GK
 with the SGLang Rust frontend, which gives every DP rank its own HTTP listener. It serves the
 OpenAI routes and SGLang's native `/generate` API, and has no benchmark numbers yet. It
 uses the same deploy, verify and cleanup steps below. Where a section differs per engine, pick the
-SGLang tab; [Limitations](#limitations) lists what it does not support yet. The rest of this page
-describes the vLLM recipe unless it says otherwise.
+SGLang tab. The rest of this page describes the vLLM recipe unless it says otherwise.
 
 ## Default Configuration
 
@@ -233,7 +232,7 @@ Layers [`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml) o
 - **CPU prefix-cache scorer** (weight 2) — fixed LRU capacity (200k entries per server), tracks CPU-offloaded prefix blocks.
 - **Active-request scorer** (weight 1 prefill, 3 decode) — load balancing.
 
-With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with the approximate prefix-cache scorer and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics` (see [Limitations](#limitations)).
+With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with the approximate prefix-cache scorer and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics`.
 
 <!-- guide:deploy.router_values.approximate start -->
 <!-- variants:start -->
@@ -571,17 +570,6 @@ If you run the Prometheus Operator instead, apply the PodMonitors with `MONITORI
 [model server step](#2-deploy-the-model-server).
 
 DCGM custom metrics: `modelserver/gpu/vllm/base/dcgm-custom-metrics.yaml`.
-
-## Limitations
-
-These apply to the SGLang recipe:
-
-- **No per-rank `/metrics`.** The Rust listeners do not expose `/metrics`, so the EPP config in `router/sglang.values.yaml` uses only the approximate prefix-cache scorer and the active-request scorer. Queue depth and KV utilization scoring, and the guide's monitoring overlay, do not apply.
-- **No KV-event based precise routing.** Per-rank KV-cache ownership for shared endpoints is still being designed, so there is no `kv-events` component here.
-- **Do not switch back to DeepEP v1 on RoCE.** The SGLang image ships NVSHMEM 3.4.5 (pinned by PyTorch), whose IBGDA transport fails on RoCE with `create DCT share err` / `nvshmem setup connections failed` (uninitialized `ibv_ah_attr`; fixed upstream in NVSHMEM 3.5). `--moe-a2a-backend deepep` and `--speculative-moe-a2a-backend deepep` both use that transport, so multi-node decode cannot start on GKE A3 Ultra with them. DeepEP v2 does not use NVSHMEM.
-- **Latency floor on the P/D path.** With the Rust frontend, a single request through P/D takes about 3s end to end even for a 5-token prompt, and the latency is quantized in 1s steps (3.0s, 4.0s, 5.0s). Long generations are fast once started (256 tokens in about 5.6s at 1 request), so the cost sits in the bootstrap and KV-transfer phase; the suspected cause is the Rust server's 1s idle tick gating the decode scheduler's bootstrap polling. Treat TTFT numbers from this recipe as not representative until this is resolved upstream.
-- **DeepEP v2 is untuned.** `SGLANG_DEEPEP_V2_NUM_SMS` stays at its default and the draft MoE layer runs without an all-to-all. Throughput numbers need tuning before they are comparable with the vLLM recipe.
-- **Nightly images.** The base pins the SGLang nightly by digest (`nightly-dev-20261014-684fea8a`) and tracks the `routing-sidecar/nightly` image component. Pin the sidecar in an overlay for anything beyond experimentation.
 
 ## Benchmarking
 
