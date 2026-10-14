@@ -532,14 +532,14 @@ cache data from NVMe when utilization exceeds 90%, targeting 70%.
 
 llm-d treats every attention-DP rank as its own endpoint (pod IP x port) so it can route per rank. Two SGLang choices make that work without a Python frontend in the middle:
 
-- **Rust frontend** (`SGLANG_RUST_SERVER=1`). Each DP rank embeds a Rust HTTP listener on `--port` + local rank, so a pod with 8 ranks listens on 8000 to 8007. Multi-node groups reuse the same port range on every pod ([sgl-project/sglang#34430](https://github.com/sgl-project/sglang/pull/34430)).
-- **OpenAI and native APIs**. Each Rust listener serves `/v1/chat/completions`, `/v1/completions` and SGLang's native `/generate`, and keeps the P/D bootstrap fields on all of them ([sgl-project/sglang#42989](https://github.com/sgl-project/sglang/pull/42989)). The EPP parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser` for prefix-cache scoring, and the routing sidecar disaggregates them ([llm-d/llm-d-router#2525](https://github.com/llm-d/llm-d-router/pull/2525)).
+- **Rust frontend** (`SGLANG_RUST_SERVER=1`). Each DP rank embeds a Rust HTTP listener on `--port` + local rank, so a pod with 8 ranks listens on 8000 to 8007. Multi-node groups reuse the same port range on every pod.
+- **OpenAI and native APIs**. Each Rust listener serves `/v1/chat/completions`, `/v1/completions` and SGLang's native `/generate`, and keeps the P/D bootstrap fields on all of them. The EPP parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser` for prefix-cache scoring, and the routing sidecar disaggregates them.
 
 Request flow for one request:
 
 1. The EPP picks a prefill rank (`prefillIP:800r`) and a decode rank (`decodeIP:800r`) and sends the request to the decode pod's routing sidecar.
 2. The sidecar (`--kv-connector=sglang`) adds `bootstrap_host` (the prefill pod IP), `bootstrap_port` (8000) and a random `bootstrap_room`, then sends the same body to the prefill rank and to its local decode rank (`localhost:820r`) at the same time.
-3. The prefill rank registers the room it served with the bootstrap registry. In Rust mode the registry is served by the rank-0 listener (port 8000) of every prefill pod ([sgl-project/sglang#36234](https://github.com/sgl-project/sglang/pull/36234)). Each listener sends requests straight to its own rank, so `--load-balance-method` only selects how decode finds the prefill rank: the P/D default `follow_bootstrap_room` assumes `bootstrap_room % dp_size` and fails other ranks, while `round_robin` makes the rank register the room.
+3. The prefill rank registers the room it served with the bootstrap registry. In Rust mode the registry is served by the rank-0 listener (port 8000) of every prefill pod. Each listener sends requests straight to its own rank, so `--load-balance-method` only selects how decode finds the prefill rank: the P/D default `follow_bootstrap_room` assumes `bootstrap_room % dp_size` and fails other ranks, while `round_robin` makes the rank register the room.
 4. The decode rank looks the room up on `bootstrap_host:8000`, pulls the KV cache over NIXL, and streams tokens back through the sidecar.
 
 ```text
@@ -602,7 +602,7 @@ Every prefill rank listener must expose the full bootstrap topology. Query the r
 curl -s "http://<prefill-pod-ip>:8000/route?prefill_dp_rank=-1&prefill_cp_rank=-1&target_tp_rank=-1&target_pp_rank=-1" | jq
 ```
 
-A `200` with one row per DP rank means the registry is populated. A `503` means the pod's listener has no topology; check that the image contains sgl-project/sglang#36234.
+A `200` with one row per DP rank means the registry is populated. A `503` means the pod's listener has no topology; check that the pod runs the pinned SGLang nightly.
 
 ## Limitations
 

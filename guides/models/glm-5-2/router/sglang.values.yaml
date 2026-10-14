@@ -4,7 +4,7 @@
 #
 # The SGLang Rust frontend serves the native /generate API and the OpenAI
 # /v1/chat/completions and /v1/completions routes on every DP rank, and keeps
-# the P/D bootstrap fields on all of them (sgl-project/sglang#42989). The EPP
+# the P/D bootstrap fields on all of them. The EPP
 # parses /generate bodies (pre-tokenized input_ids) with the sglanghttp-parser
 # and OpenAI bodies with the openai-parser. The explicit parser list means
 # other paths are rejected with 400 rather than forwarded to a listener that

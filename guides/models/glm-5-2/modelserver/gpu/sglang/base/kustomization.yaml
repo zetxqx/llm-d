@@ -14,12 +14,12 @@ openapi:
 
 components:
   # The recipe needs SGLang main from October 2026 or later: per-rank Rust
-  # listeners and P/D bootstrap (sgl-project/sglang#34430, #36234),
-  # --attn-dp-size (#41818) and per-listener /health warmup (#43004). No
-  # release tag contains all of them yet, so use the nightly image.
+  # listeners, P/D bootstrap on every listener, --attn-dp-size and
+  # per-listener /health warmup. No release tag contains all of them yet, so
+  # use the nightly image.
   - ../../../../../../recipes/modelserver/components/images/gpu-sglang/nightly
-  # The sidecar routes SGLang /generate through the P/D handler since
-  # llm-d/llm-d-router#2525, which is only in the main image so far.
+  # Only the main sidecar image routes SGLang requests through the P/D
+  # handler so far.
   - ../../../../../../recipes/modelserver/components/images/routing-sidecar/nightly
 
 # Pin the SGLang nightly this recipe was tested with
