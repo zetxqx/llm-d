@@ -119,6 +119,11 @@ spec:
                       CHUNKED_PREFILL_SIZE=$(( ${PREFILL_CHUNK_TOKENS_PER_RANK:-8192} * DP_SIZE ))
                       MAX_RUNNING_REQUESTS=$(( ${PREFILL_MAX_RUNNING_REQUESTS_PER_RANK:-64} * DP_SIZE ))
 
+                      # GLM-5.2 ships its chat template as chat_template.jinja,
+                      # which the Rust frontend does not read from the model
+                      # directory, so /v1/chat/completions needs it passed in.
+                      CHAT_TEMPLATE=$(python3 -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('zai-org/GLM-5.2-FP8', 'chat_template.jinja'))")
+
                       # P/D bootstrap with the Rust frontend: the bootstrap
                       # registry is served by the rank-0 listener (port 8000) of
                       # every prefill pod, not by a separate bootstrap server.
@@ -169,6 +174,7 @@ spec:
                         --chunked-prefill-size ${CHUNKED_PREFILL_SIZE} \
                         --max-running-requests ${MAX_RUNNING_REQUESTS} \
                         ${CONTEXT_LENGTH:+--context-length ${CONTEXT_LENGTH}} \
+                        --chat-template ${CHAT_TEMPLATE} \
                         --reasoning-parser glm45 \
                         --tool-call-parser glm47 \
                         --watchdog-timeout 3600 \
@@ -430,6 +436,8 @@ spec:
                       # ranks, so pass per-rank x DP; keep the per-rank value and
                       # the CUDA graph capture sizes within that budget.
                       MAX_RUNNING_REQUESTS=$(( ${DECODE_MAX_RUNNING_REQUESTS_PER_RANK:-32} * DP_SIZE ))
+                      # See the prefill role: pass GLM-5.2's chat template.
+                      CHAT_TEMPLATE=$(python3 -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('zai-org/GLM-5.2-FP8', 'chat_template.jinja'))")
                       # The KV cache dtype, DSA backends and DeepEP v2 mode match
                       # the prefill role; hybrid mode is required across nodes.
                       exec python3 -m sglang.launch_server \
@@ -456,6 +464,7 @@ spec:
                         --max-running-requests ${MAX_RUNNING_REQUESTS} \
                         --cuda-graph-max-bs-decode ${DECODE_CUDA_GRAPH_MAX_BS:-32} \
                         ${CONTEXT_LENGTH:+--context-length ${CONTEXT_LENGTH}} \
+                        --chat-template ${CHAT_TEMPLATE} \
                         --reasoning-parser glm45 \
                         --tool-call-parser glm47 \
                         --watchdog-timeout 3600 \
