@@ -467,7 +467,7 @@ entries merge by name, so their values replace the base defaults.
 
 ## Manifest Reference
 
-The KV cache offloading, InfiniBand and KV cache evictor sections apply to the vLLM recipe; the SGLang recipe has its own section at the end.
+The KV cache offloading, InfiniBand and KV cache evictor sections apply to the vLLM recipe.
 
 ### MTP Speculative Decoding
 
@@ -516,33 +516,6 @@ Both prefill and decode configure IB for multi-node communication:
 
 `modelserver/gpu/vllm/base/kv-cache-evictor.yaml` deploys a DaemonSet that evicts stale KV
 cache data from NVMe when utilization exceeds 90%, targeting 70%.
-
-### SGLang Per-Rank Listeners and P/D Bootstrap
-
-llm-d treats every attention-DP rank as its own endpoint (pod IP x port) so it can route per rank. Two SGLang choices make that work without a Python frontend in the middle:
-
-- **Rust frontend** (`SGLANG_RUST_SERVER=1`). Each DP rank embeds a Rust HTTP listener on `--port` + local rank, so a pod with 8 ranks listens on 8000 to 8007. Multi-node groups reuse the same port range on every pod.
-- **OpenAI and native APIs**. Each Rust listener serves `/v1/chat/completions`, `/v1/completions` and SGLang's native `/generate`, and keeps the P/D bootstrap fields on all of them. The EPP parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser` for prefix-cache scoring, and the routing sidecar disaggregates them.
-
-Request flow for one request:
-
-1. The EPP picks a prefill rank (`prefillIP:800r`) and a decode rank (`decodeIP:800r`) and sends the request to the decode pod's routing sidecar.
-2. The sidecar (`--kv-connector=sglang`) adds `bootstrap_host` (the prefill pod IP), `bootstrap_port` (8000) and a random `bootstrap_room`, then sends the same body to the prefill rank and to its local decode rank (`localhost:820r`) at the same time.
-3. The prefill rank registers the room with the bootstrap registry on its pod's rank-0 listener (port 8000). Prefill sets `--load-balance-method round_robin` so any rank can register; the P/D default `follow_bootstrap_room` fails when the EPP picks a rank other than `bootstrap_room % dp_size`.
-4. The decode rank looks the room up on `bootstrap_host:8000`, pulls the KV cache over NIXL, and streams tokens back through the sidecar.
-
-```text
-prefill pod                                decode pod
-+--------------------------------+         +----------------------------------------+
-| sglang (Rust frontend)         |         | routing-proxy   8000 8001 ... 8007     |
-|  rank0 8000  <- bootstrap      |         |   --kv-connector=sglang                |
-|  rank1 8001     registry       |         |   SGLANG_BOOTSTRAP_PORT=8000           |
-|  ...                           |         |        |    |          |               |
-|  rank7 8007                    |         | sglang  8200 8201 ... 8207 (Rust)      |
-+--------------------------------+         +----------------------------------------+
-```
-
-The InferencePool lists ports 8000 to 8007 (`router/glm-5-2.values.yaml`), so the EPP sees every rank of every pod as an endpoint.
 
 ## Monitoring (Optional)
 
