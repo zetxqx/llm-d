@@ -13,15 +13,13 @@
 # The Rust listeners expose no /metrics endpoint yet, so
 # only signals the EPP computes itself are used: the approximate prefix-cache
 # scorer (from the request it parsed) and the active-request scorer. The
-# queue and KV-cache utilization scorers would have no data.
+# queue and KV-cache utilization scorers would have no data, and
+# dataLayer.injectDefaults: false turns off the default /metrics scrape, which
+# would only return 404s.
 router:
   modelServers:
     type: sglang
   epp:
-    flags:
-      # The Rust listeners have no /metrics; the default 50ms scrape of every
-      # rank port only produces 404s and floods the SGLang access logs.
-      refresh-metrics-interval: 10s
     pluginsCustomConfig:
       wide-ep-config.yaml: |
         apiVersion: llm-d.ai/v1
@@ -54,3 +52,5 @@ router:
           parsers:
           - pluginRef: sglanghttp-parser
           - pluginRef: openai-parser
+        dataLayer:
+          injectDefaults: false
