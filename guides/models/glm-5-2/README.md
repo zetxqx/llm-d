@@ -32,8 +32,8 @@ DeepGemm MoE backend with tool-calling (`glm47`) and reasoning (`glm45`) parsers
 CoreWeave (CKS) with InfiniBand networking.
 
 An SGLang variant (`MODEL_SERVER=sglang`) runs the same wide-EP P/D layout on GKE A3 Ultra (RoCE)
-with the SGLang Rust frontend, which gives every DP rank its own HTTP listener. It serves only
-SGLang's native `/generate` API with pre-tokenized input, and has no benchmark numbers yet. It
+with the SGLang Rust frontend, which gives every DP rank its own HTTP listener. It serves the
+OpenAI routes and SGLang's native `/generate` API, and has no benchmark numbers yet. It
 uses the same deploy, verify and cleanup steps below; how it works, its engine settings, tunables
 and limitations are in the [SGLang engine reference](modelserver/gpu/sglang/README.md). The rest
 of this page describes the vLLM recipe unless it says otherwise.
@@ -89,7 +89,7 @@ This guide includes configurations for the following accelerator and model serve
 <!-- guide:support start -->
 | Accelerator | `ACCELERATOR_TYPE` | Served model | vLLM | SGLang | Notes |
 | --- | --- | --- | --- | --- | --- |
-| NVIDIA H200 | `gpu` | `zai-org/GLM-5.2-FP8` | 🟡 community | 🟡 community | P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, default 3 nodes / 24 GPUs (`p1w1d1w2`), `/generate` only |
+| NVIDIA H200 | `gpu` | `zai-org/GLM-5.2-FP8` | 🟡 community | 🟡 community | P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, default 3 nodes / 24 GPUs (`p1w1d1w2`) |
 
 ✅ validated: covered by a nightly E2E workflow · 🟡 community: maintained by the hardware vendor or community, not covered by nightly E2E · ❌ not supported: tracked in the linked issue · — no configuration.
 <!-- guide:support end -->
@@ -199,7 +199,7 @@ Layers [`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml) o
 - **CPU prefix-cache scorer** (weight 2) — fixed LRU capacity (200k entries per server), tracks CPU-offloaded prefix blocks.
 - **Active-request scorer** (weight 1 prefill, 3 decode) — load balancing.
 
-With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses `/generate` bodies with the `sglanghttp-parser` and scores with the approximate prefix-cache scorer and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics` (see the [SGLang engine reference](modelserver/gpu/sglang/README.md#limitations)).
+With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with the approximate prefix-cache scorer and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics` (see the [SGLang engine reference](modelserver/gpu/sglang/README.md#limitations)).
 
 <!-- guide:deploy.router_values.approximate start -->
 <!-- variants:start -->
@@ -221,7 +221,7 @@ export ROUTER_OVERRIDES_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/
 <!-- llm-d-cicd:skip start -->
 ```bash
 # Paths to values files: the wide-EP router values, then the SGLang
-# overrides on top (/generate parsing, scorers without /metrics)
+# overrides on top (/generate and OpenAI parsing, scorers without /metrics)
 export ROUTER_BASE_VALUES="${REPO_ROOT}/guides/recipes/router/base.values.yaml"
 export ROUTER_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml"
 export ROUTER_OVERRIDES_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/sglang.values.yaml"
@@ -335,10 +335,6 @@ export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{
 **Send a completion request from a temporary pod inside the cluster:**
 
 <!-- guide:verify.tests.request start -->
-<!-- variants:start -->
-<details open data-when="MODEL_SERVER=vllm">
-<summary><b>vLLM</b></summary>
-
 ```bash
 kubectl run curl-test --rm -i --restart=Never \
   --image=${CURL_TEST_IMAGE} \
@@ -347,37 +343,11 @@ kubectl run curl-test --rm -i --restart=Never \
   --env="MODEL=${MODEL}" \
   -- /bin/sh -c 'curl -sS -X POST "http://${IP}/v1/completions" -H "Content-Type: application/json" -d "{\"model\": \"${MODEL}\", \"prompt\": \"Explain how a simple agent loop works in 3 sentences.\"}"'
 ```
-
-</details>
-<details data-when="MODEL_SERVER=sglang">
-<summary><b>SGLang</b></summary>
-
-<!-- llm-d-cicd:skip start -->
-```bash
-# The SGLang recipe serves /generate with pre-tokenized input_ids only;
-# tokenize in a prefill pod, which has the tokenizer files cached
-PREFILL_POD=$(kubectl get pod -n ${NAMESPACE} -l llm-d.ai/role=prefill,llm-d.ai/engine-type=sglang -o jsonpath='{.items[0].metadata.name}')
-export INPUT_IDS=$(kubectl exec -n ${NAMESPACE} ${PREFILL_POD} -c sglang -- python3 -c "from transformers import AutoTokenizer; import json; print(json.dumps(AutoTokenizer.from_pretrained('${MODEL}', trust_remote_code=True).encode('Explain how a simple agent loop works in 3 sentences.')))")
-kubectl run curl-test --rm -i --restart=Never \
-  --image=${CURL_TEST_IMAGE} \
-  --namespace="${NAMESPACE}" \
-  --env="IP=${IP}" \
-  --env="INPUT_IDS=${INPUT_IDS}" \
-  -- /bin/sh -c 'curl -sS -X POST "http://${IP}/generate" -H "Content-Type: application/json" -d "{\"input_ids\": ${INPUT_IDS}, \"sampling_params\": {\"max_new_tokens\": 64}}"'
-```
-<!-- llm-d-cicd:skip end -->
-
-</details>
-<!-- variants:end -->
 <!-- guide:verify.tests.request end -->
 
 **Check that the router reaches a model server that serves `MODEL`:** the response must name the model and carry generated tokens:
 
 <!-- guide:verify.tests.served_model start -->
-<!-- variants:start -->
-<details open data-when="MODEL_SERVER=vllm">
-<summary><b>vLLM</b></summary>
-
 ```bash
 # The router must reach a model server that serves MODEL and returns tokens
 kubectl run serve-check --rm -i --restart=Never \
@@ -390,29 +360,6 @@ kubectl run serve-check --rm -i --restart=Never \
       && echo "OK: ${MODEL} served through the router" \
       || { echo "FAIL: ${R}"; exit 1; }'
 ```
-
-</details>
-<details data-when="MODEL_SERVER=sglang">
-<summary><b>SGLang</b></summary>
-
-<!-- llm-d-cicd:skip start -->
-```bash
-# The router must reach a model server that returns tokens for /generate
-# (INPUT_IDS comes from the request step above)
-kubectl run serve-check --rm -i --restart=Never \
-  --image=${CURL_TEST_IMAGE} \
-  --namespace="${NAMESPACE}" \
-  --env="IP=${IP}" \
-  --env="INPUT_IDS=${INPUT_IDS}" \
-  -- /bin/sh -c 'R=$(curl -sS -X POST "http://${IP}/generate" -H "Content-Type: application/json" -d "{\"input_ids\": ${INPUT_IDS}, \"sampling_params\": {\"max_new_tokens\": 16}}")
-    echo "${R}" | grep -q "\"text\"" && echo "${R}" | grep -q "\"completion_tokens\":[1-9]" \
-      && echo "OK: GLM-5.2 served through the router" \
-      || { echo "FAIL: ${R}"; exit 1; }'
-```
-<!-- llm-d-cicd:skip end -->
-
-</details>
-<!-- variants:end -->
 <!-- guide:verify.tests.served_model end -->
 
 ### 3. Verify Precise Prefix-Cache Routing (`ROUTING=precise`)

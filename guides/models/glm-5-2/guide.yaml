@@ -11,7 +11,7 @@ support:
   accelerators:
     gpu:
       label: NVIDIA H200
-      notes: "P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, default 3 nodes / 24 GPUs (`p1w1d1w2`), `/generate` only"
+      notes: "P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, default 3 nodes / 24 GPUs (`p1w1d1w2`)"
       model: zai-org/GLM-5.2-FP8
       engines: {vllm: community, sglang: community}
 
@@ -87,7 +87,7 @@ deploy:
       - when: {MODEL_SERVER: [sglang]}
         run: |
           # Paths to values files: the wide-EP router values, then the SGLang
-          # overrides on top (/generate parsing, scorers without /metrics)
+          # overrides on top (/generate and OpenAI parsing, scorers without /metrics)
           export ROUTER_BASE_VALUES="${REPO_ROOT}/guides/recipes/router/base.values.yaml"
           export ROUTER_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml"
           export ROUTER_OVERRIDES_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/sglang.values.yaml"
@@ -136,29 +136,15 @@ verify:
       - run: export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
   tests:
     request:
-      - when: {MODEL_SERVER: [vllm]}
-        run: |
+      - run: |
           kubectl run curl-test --rm -i --restart=Never \
             --image=${CURL_TEST_IMAGE} \
             --namespace="${NAMESPACE}" \
             --env="IP=${IP}" \
             --env="MODEL=${MODEL}" \
             -- /bin/sh -c 'curl -sS -X POST "http://${IP}/v1/completions" -H "Content-Type: application/json" -d "{\"model\": \"${MODEL}\", \"prompt\": \"Explain how a simple agent loop works in 3 sentences.\"}"'
-      - when: {MODEL_SERVER: [sglang]}
-        run: |
-          # The SGLang recipe serves /generate with pre-tokenized input_ids only;
-          # tokenize in a prefill pod, which has the tokenizer files cached
-          PREFILL_POD=$(kubectl get pod -n ${NAMESPACE} -l llm-d.ai/role=prefill,llm-d.ai/engine-type=sglang -o jsonpath='{.items[0].metadata.name}')
-          export INPUT_IDS=$(kubectl exec -n ${NAMESPACE} ${PREFILL_POD} -c sglang -- python3 -c "from transformers import AutoTokenizer; import json; print(json.dumps(AutoTokenizer.from_pretrained('${MODEL}', trust_remote_code=True).encode('Explain how a simple agent loop works in 3 sentences.')))")
-          kubectl run curl-test --rm -i --restart=Never \
-            --image=${CURL_TEST_IMAGE} \
-            --namespace="${NAMESPACE}" \
-            --env="IP=${IP}" \
-            --env="INPUT_IDS=${INPUT_IDS}" \
-            -- /bin/sh -c 'curl -sS -X POST "http://${IP}/generate" -H "Content-Type: application/json" -d "{\"input_ids\": ${INPUT_IDS}, \"sampling_params\": {\"max_new_tokens\": 64}}"'
     served_model:
-      - when: {MODEL_SERVER: [vllm]}
-        run: |
+      - run: |
           # The router must reach a model server that serves MODEL and returns tokens
           kubectl run serve-check --rm -i --restart=Never \
             --image=${CURL_TEST_IMAGE} \
@@ -168,19 +154,6 @@ verify:
             -- /bin/sh -c 'R=$(curl -sS -X POST "http://${IP}/v1/completions" -H "Content-Type: application/json" -d "{\"model\": \"${MODEL}\", \"prompt\": \"Say hello.\", \"max_tokens\": 16}")
               echo "${R}" | grep -q "\"model\":\"${MODEL}\"" && echo "${R}" | grep -q "\"choices\"" \
                 && echo "OK: ${MODEL} served through the router" \
-                || { echo "FAIL: ${R}"; exit 1; }'
-      - when: {MODEL_SERVER: [sglang]}
-        run: |
-          # The router must reach a model server that returns tokens for /generate
-          # (INPUT_IDS comes from the request step above)
-          kubectl run serve-check --rm -i --restart=Never \
-            --image=${CURL_TEST_IMAGE} \
-            --namespace="${NAMESPACE}" \
-            --env="IP=${IP}" \
-            --env="INPUT_IDS=${INPUT_IDS}" \
-            -- /bin/sh -c 'R=$(curl -sS -X POST "http://${IP}/generate" -H "Content-Type: application/json" -d "{\"input_ids\": ${INPUT_IDS}, \"sampling_params\": {\"max_new_tokens\": 16}}")
-              echo "${R}" | grep -q "\"text\"" && echo "${R}" | grep -q "\"completion_tokens\":[1-9]" \
-                && echo "OK: GLM-5.2 served through the router" \
                 || { echo "FAIL: ${R}"; exit 1; }'
     precise_routing:
       # skip_in: ROUTING is not a variant dimension (see deploy.router_values.precise)
