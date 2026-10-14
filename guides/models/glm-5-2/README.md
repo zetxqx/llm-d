@@ -88,12 +88,6 @@ the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` —
 | Routing                  | Approximate prefix-cache and active-request scoring ([`sglang.values.yaml`](router/sglang.values.yaml)) |
 | Reasoning / tool-call    | glm45 / glm47                                                                |
 
-SGLang's `--tp-size` is the size of the GPU group that holds one copy of the model, not the attention TP size. Attention runs one DP rank per GPU inside that group (attention TP=1) and the experts are split across all its GPUs. The vLLM recipe spells the same layout `--tensor-parallel-size 1 --data-parallel-size N --enable-expert-parallel`.
-
-SGLang defaults DSA models (GLM-5.2 uses DeepSeek Sparse Attention) to a bfloat16 KV cache on Hopper and only picks FP8 on Blackwell, so the recipe sets `--kv-cache-dtype fp8_e4m3` explicitly. That nearly doubles the KV capacity per GPU (656 instead of 1152 bytes per token); prefill and decode must use the same dtype. The recipe also pins both DSA backends to `flashmla_kv`, which is what SGLang picks for an FP8 KV cache on Hopper, so the kernels do not change with SGLang defaults. On Blackwell, SGLang would pick `trtllm` instead.
-
-DeepEP v2 moves tokens with NCCL GIN instead of NVSHMEM, so the stock SGLang image runs on RoCE; hybrid mode is needed because decode spans nodes. Its per-rank token budget (`SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK`, 128 on decode: 32 requests x 4 draft tokens) must change together with the decode batch size.
-
 </details>
 <!-- tabs:end -->
 

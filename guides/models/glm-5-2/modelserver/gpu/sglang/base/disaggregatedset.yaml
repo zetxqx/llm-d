@@ -1,22 +1,6 @@
-# GLM-5.2-FP8 on SGLang with the Rust frontend, P/D disaggregated, wide EP.
-#
-# Every attention-DP rank runs its own embedded Rust HTTP listener, so each
-# rank is a separate llm-d endpoint (pod IP x port), exactly like the vLLM
-# multi-port DP layout:
-#
-#   prefill pod:  SGLang rank r listens on 8000+r      (r = 0..7, node local)
-#   decode pod:   routing sidecar rank r on 8000+r  ->  SGLang rank r on 8200+r
-#
-# Requests use the OpenAI /v1/chat/completions and /v1/completions routes or
-# SGLang's native /generate API (text or input_ids). The sidecar
-# injects bootstrap_host/bootstrap_port/bootstrap_room and sends the same body
-# to the chosen prefill rank and to its local decode rank.
 apiVersion: disaggregatedset.x-k8s.io/v1
 kind: DisaggregatedSet
 metadata:
-  # Keep this name at 33 characters or fewer: LWS labels every pod with
-  # <name>-0-<8 char hash>-<role>-<10 char hash>, and labels are limited to
-  # 63 bytes. A longer name makes the StatefulSets fail to create pods.
   name: wide-ep-sglang-glm-5-2
   labels:
     llm-d.ai/model: GLM-5.2-FP8
@@ -96,14 +80,9 @@ spec:
                       # RUN SGLang GLM-5.2-FP8 prefill worker
                       #################
 
-                      # DEP layout over every GPU in the group. SGLang's --tp-size
-                      # is the size of the GPU group that holds one copy of the
-                      # model, not the attention TP size. Inside that group,
-                      # attention runs data parallel with one rank per GPU
-                      # (--attn-dp-size, so attention TP is 1) and the experts are
-                      # split across all GPUs (--ep-size). vLLM spells the same
-                      # layout --tensor-parallel-size 1 --data-parallel-size N
-                      # --enable-expert-parallel.
+                      # DEP over every GPU in the group: --tp-size (GPUs per model
+                      # copy), --attn-dp-size and --ep-size all equal the GPU count,
+                      # so attention TP is 1.
                       DP_SIZE=$(( LWS_GROUP_SIZE * DP_SIZE_LOCAL ))
 
                       # SGLang rejects DeepEP v2 for the MTP draft layer, so the
@@ -124,30 +103,15 @@ spec:
                       # directory, so /v1/chat/completions needs it passed in.
                       CHAT_TEMPLATE=$(python3 -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('zai-org/GLM-5.2-FP8', 'chat_template.jinja'))")
 
-                      # P/D bootstrap with the Rust frontend: the bootstrap
-                      # registry is served by the rank-0 listener (port 8000) of
-                      # every prefill pod, not by a separate bootstrap server.
-                      # --disaggregation-bootstrap-port must name that port, and
-                      # the decode sidecar injects the same port
-                      # (SGLANG_BOOTSTRAP_PORT).
+                      # The rank-0 Rust listener (port 8000) serves the P/D
+                      # bootstrap registry; the decode sidecar uses the same port.
+                      # round_robin makes each rank register its rooms so the EPP
+                      # can pick any rank (the default follow_bootstrap_room fails
+                      # unless the rank is room % dp_size).
                       #
-                      # --load-balance-method does no balancing here: each Rust
-                      # listener sends its requests straight to its own rank. The
-                      # value only selects how decode finds the prefill rank. The
-                      # P/D default follow_bootstrap_room assumes the rank is
-                      # room % dp_size and fails the request otherwise; any other
-                      # value makes the prefill rank register the room it served
-                      # so decode can look it up, which lets the EPP pick any rank.
-                      #
-                      # SGLang defaults to a bfloat16 KV cache for DSA models on
-                      # Hopper (fp8 only on Blackwell); fp8_e4m3 nearly doubles
-                      # the KV capacity. flashmla_kv is the DSA backend SGLang
-                      # picks for fp8 on Hopper; it is pinned so the kernels do
-                      # not change with SGLang defaults.
-                      #
-                      # DeepEP v2 (ElasticBuffer) moves tokens over NCCL GIN
-                      # instead of NVSHMEM. Its hybrid mode is the one that can
-                      # span nodes; the direct mode is NVLink only.
+                      # SGLang defaults DSA models to a bf16 KV cache on Hopper;
+                      # fp8_e4m3 nearly doubles the KV capacity. flashmla_kv is
+                      # SGLang's fp8 choice on Hopper, pinned here.
                       exec python3 -m sglang.launch_server \
                         --model-path zai-org/GLM-5.2-FP8 \
                         --trust-remote-code \
@@ -169,7 +133,6 @@ spec:
                         --disaggregation-mode prefill \
                         --disaggregation-transfer-backend ${DISAGG_TRANSFER_BACKEND:-nixl} \
                         --disaggregation-bootstrap-port 8000 \
-                        --load-balance-method round_robin \
                         --mem-fraction-static ${PREFILL_MEM_FRACTION_STATIC:-0.85} \
                         --chunked-prefill-size ${CHUNKED_PREFILL_SIZE} \
                         --max-running-requests ${MAX_RUNNING_REQUESTS} \
@@ -179,6 +142,7 @@ spec:
                         --tool-call-parser glm47 \
                         --watchdog-timeout 3600 \
                         --dist-timeout 3600 \
+                        $HICACHE_ARGS \
                         $MTP_ARGS
                   env:
                     - name: POD_IP
@@ -200,11 +164,9 @@ spec:
                     # instead of compiling it inside the container.
                     - name: SGLANG_RUST_BUILD_MODE
                       value: never
-                    # Keep /health a plain 200 after startup warmup. The decode
-                    # side heartbeats the prefill bootstrap address (port 8000)
-                    # with GET /health every 5s and drops the prefill, failing
-                    # in-flight transfers, after 2 misses; the default deep probe
-                    # can take up to 20s while a prefill batch is running.
+                    # Keep /health a plain 200: decode checks prefill's /health
+                    # every 5s and drops it after 2 misses, and the deep probe can
+                    # take 20s while a prefill batch runs.
                     - name: SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION
                       value: "false"
                     - name: DP_SIZE_LOCAL
@@ -261,10 +223,8 @@ spec:
                     - containerPort: 8007
                       name: dp7
                       protocol: TCP
-                  # Probes. Every Rust listener answers /health with 503 until
-                  # its own startup warmup (a one-token generation on its rank)
-                  # succeeds, then with a plain 200 (see
-                  # SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION above).
+                  # Each Rust listener answers /health with 503 until its startup
+                  # warmup succeeds.
                   startupProbe:
                     httpGet:
                       path: /health
@@ -486,11 +446,9 @@ spec:
                       value: "1"
                     - name: SGLANG_RUST_BUILD_MODE
                       value: never
-                    # Keep /health a plain 200 after startup warmup. The decode
-                    # side heartbeats the prefill bootstrap address (port 8000)
-                    # with GET /health every 5s and drops the prefill, failing
-                    # in-flight transfers, after 2 misses; the default deep probe
-                    # can take up to 20s while a prefill batch is running.
+                    # Keep /health a plain 200: decode checks prefill's /health
+                    # every 5s and drops it after 2 misses, and the deep probe can
+                    # take 20s while a prefill batch runs.
                     - name: SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION
                       value: "false"
                     - name: SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK
@@ -544,10 +502,8 @@ spec:
                     - containerPort: 8207
                       name: sglang-rank7
                       protocol: TCP
-                  # Probes. Every Rust listener answers /health with 503 until
-                  # its own startup warmup (a one-token generation on its rank)
-                  # succeeds, then with a plain 200 (see
-                  # SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION above).
+                  # Each Rust listener answers /health with 503 until its startup
+                  # warmup succeeds.
                   startupProbe:
                     httpGet:
                       path: /health
