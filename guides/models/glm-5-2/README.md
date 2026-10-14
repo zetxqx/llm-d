@@ -94,9 +94,7 @@ SGLang's `--tp-size` is the size of the GPU group that holds one copy of the mod
 
 SGLang defaults DSA models (GLM-5.2 uses DeepSeek Sparse Attention) to a bfloat16 KV cache on Hopper and only picks FP8 on Blackwell, so the recipe sets `--kv-cache-dtype fp8_e4m3` explicitly. That nearly doubles the KV capacity per GPU (656 instead of 1152 bytes per token); prefill and decode must use the same dtype. The recipe also pins both DSA backends to `flashmla_kv`, which is what SGLang picks for an FP8 KV cache on Hopper, so the kernels do not change with SGLang defaults. On Blackwell, SGLang would pick `trtllm` instead.
 
-DeepEP v2 (`ElasticBuffer`) moves tokens with NCCL GIN (GPU-initiated networking) instead of NVSHMEM, so the recipe does not load NVSHMEM's IBGDA transport and runs the stock SGLang image on RoCE. Hybrid mode is required because decode spans nodes; the `direct` mode is NVLink only. SGLang does not allow DeepEP v2 for the MTP draft layer, so `MTP_ARGS` sets `--speculative-moe-a2a-backend none` and the one draft MoE layer runs without an all-to-all.
-
-DeepEP v2 dispatches at most `SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK` tokens per rank per step, and SGLang checks the budget at startup. Decode uses 128: 32 running requests x 4 draft tokens; raise all three together. Prefill uses 8192, one full per-rank prefill chunk (`PREFILL_CHUNK_TOKENS_PER_RANK`); keep it at least that large.
+DeepEP v2 moves tokens with NCCL GIN instead of NVSHMEM, so the stock SGLang image runs on RoCE; hybrid mode is needed because decode spans nodes. Its per-rank token budget (`SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK`, 128 on decode: 32 requests x 4 draft tokens) must change together with the decode batch size.
 
 </details>
 <!-- tabs:end -->
@@ -395,7 +393,7 @@ kubectl run serve-check --rm -i --restart=Never \
 ```
 <!-- guide:verify.tests.served_model end -->
 
-With `MODEL_SERVER=sglang`, the same OpenAI requests work. Native `/generate` requests must carry `input_ids`: the EPP's `sglanghttp-parser` rejects bodies that only have `text`, because prefix-cache routing needs the token IDs. Their response is SGLang's native format: generated `text` plus `meta_info` with `prompt_tokens`, `completion_tokens` and `cached_tokens`. Add `"stream": true` on any route for server-sent events.
+With `MODEL_SERVER=sglang`, the same OpenAI requests work; native `/generate` requests must carry `input_ids`.
 
 ### 3. Verify Precise Prefix-Cache Routing (`ROUTING=precise`)
 
@@ -538,7 +536,7 @@ Request flow for one request:
 
 1. The EPP picks a prefill rank (`prefillIP:800r`) and a decode rank (`decodeIP:800r`) and sends the request to the decode pod's routing sidecar.
 2. The sidecar (`--kv-connector=sglang`) adds `bootstrap_host` (the prefill pod IP), `bootstrap_port` (8000) and a random `bootstrap_room`, then sends the same body to the prefill rank and to its local decode rank (`localhost:820r`) at the same time.
-3. The prefill rank registers the room it served with the bootstrap registry. In Rust mode the registry is served by the rank-0 listener (port 8000) of every prefill pod. Each listener sends requests straight to its own rank, so `--load-balance-method` only selects how decode finds the prefill rank: the P/D default `follow_bootstrap_room` assumes `bootstrap_room % dp_size` and fails other ranks, while `round_robin` makes the rank register the room.
+3. The prefill rank registers the room with the bootstrap registry on its pod's rank-0 listener (port 8000). Prefill sets `--load-balance-method round_robin` so any rank can register; the P/D default `follow_bootstrap_room` fails when the EPP picks a rank other than `bootstrap_room % dp_size`.
 4. The decode rank looks the room up on `bootstrap_host:8000`, pulls the KV cache over NIXL, and streams tokens back through the sidecar.
 
 ```text
