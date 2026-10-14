@@ -145,6 +145,7 @@ export ROUTER_VALUES="${REPO_ROOT}/guides/${GUIDE_NAME}/router/${HOST_TYPE}/${GU
 > | Overlay | CPU tier per pod | `lruCapacityPerServer` |
 > | --- | --- | --- |
 > | NVIDIA vLLM `native` (default) | 300 GiB | 19200 |
+> | NVIDIA vLLM `native`, `VARIANT=fs` | 100 GiB | 6400 |
 > | AMD or Intel XPU vLLM `native` | 100 GiB | 6400 |
 > | NVIDIA or AMD vLLM `lmcache-connector` | 100 GiB × 2 ranks | 12800 |
 > | NVIDIA SGLang `native` (HiCache) | 200 GB × 2 ranks | 23800 |
