@@ -393,7 +393,7 @@ kubectl run serve-check --rm -i --restart=Never \
 ```
 <!-- guide:verify.tests.served_model end -->
 
-With `MODEL_SERVER=sglang`, the same OpenAI requests work; native `/generate` requests must carry `input_ids`.
+With `MODEL_SERVER=sglang`, the same OpenAI requests work, and so do native `/generate` requests with `text` or `input_ids`.
 
 ### 3. Verify Precise Prefix-Cache Routing (`ROUTING=precise`)
 

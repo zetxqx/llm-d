@@ -8,7 +8,7 @@
 #   decode pod:   routing sidecar rank r on 8000+r  ->  SGLang rank r on 8200+r
 #
 # Requests use the OpenAI /v1/chat/completions and /v1/completions routes or
-# SGLang's native /generate API with pre-tokenized input_ids. The sidecar
+# SGLang's native /generate API (text or input_ids). The sidecar
 # injects bootstrap_host/bootstrap_port/bootstrap_room and sends the same body
 # to the chosen prefill rank and to its local decode rank.
 apiVersion: disaggregatedset.x-k8s.io/v1
