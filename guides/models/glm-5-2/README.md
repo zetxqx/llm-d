@@ -71,13 +71,13 @@ the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` —
 <details>
 <summary><b>SGLang</b></summary>
 
-Set `DEPLOYMENT` to one of the SGLang topologies in [Scaling and Alternative Topologies](#scaling-and-alternative-topologies). Each SGLang topology enables MTP and HiCache (host-memory KV cache) on prefill. The table below shows `p1w1d1w2` as an example: 1 DEP8 prefill node and 1 DEP16 decode replica on 2 nodes (3 nodes / 24 GPUs).
+`DEPLOYMENT=default` deploys `p1w1d1w1`: 1 DEP8 prefill node and 1 DEP8 decode node (2 nodes / 16 GPUs). Each SGLang topology enables MTP and HiCache (host-memory KV cache) on prefill. For decode across 2 nodes, select a different topology in [Scaling and Alternative Topologies](#scaling-and-alternative-topologies).
 
 | Parameter                | Value                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------- |
 | Model                    | [zai-org/GLM-5.2-FP8](https://huggingface.co/zai-org/GLM-5.2-FP8)            |
 | Accelerator              | NVIDIA H200 (8 GPUs per node)                                                |
-| Serving topology         | Example `p1w1d1w2`: 1 prefill replica (DEP8, 1 node) + 1 decode replica (DEP16, 2 nodes), attention TP=1, DP=EP |
+| Serving topology         | P/D disaggregated: 1 prefill replica (DEP8, 1 node) + 1 decode replica (DEP8, 1 node), attention TP=1, DP=EP |
 | DP model                 | Rust frontend, one HTTP listener per DP rank (`SGLANG_RUST_SERVER=1`)         |
 | All-to-all               | DeepEP v2 over NCCL GIN, hybrid mode, on both roles (`deepep_v2`)            |
 | MoE backend              | SGLang default (`--moe-runner-backend auto`)                                 |
@@ -112,7 +112,7 @@ This guide includes configurations for the following accelerator and model serve
 <!-- guide:support start -->
 | Accelerator | `ACCELERATOR_TYPE` | Served model | vLLM | SGLang | Notes |
 | --- | --- | --- | --- | --- | --- |
-| NVIDIA H200 | `gpu` | `zai-org/GLM-5.2-FP8` | 🟡 community | 🟡 community | P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, 2 to 8 nodes by `DEPLOYMENT` |
+| NVIDIA H200 | `gpu` | `zai-org/GLM-5.2-FP8` | 🟡 community | 🟡 community | P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, default 2 nodes / 16 GPUs (`p1w1d1w1`), 2 to 8 nodes by `DEPLOYMENT` |
 
 ✅ validated: covered by a nightly E2E workflow · 🟡 community: maintained by the hardware vendor or community, not covered by nightly E2E · ❌ not supported: tracked in the linked issue · — no configuration.
 <!-- guide:support end -->
@@ -308,7 +308,7 @@ helm install ${GUIDE_NAME} \
 
 ### 2. Deploy the Model Server
 
-**Apply the Kustomize overlay** for your deployment (`DEPLOYMENT=default` deploys `p3w2d1w2` + tiered offloading for approximate routing; `ROUTING=precise` set `DEPLOYMENT=p2w1d1w1-precise` in the router step, which includes per-rank KV-event publishing and the `wide-ep-render` Service). With `MODEL_SERVER=sglang`, set `DEPLOYMENT` to one SGLang topology:
+**Apply the Kustomize overlay** for your deployment (`DEPLOYMENT=default` deploys `p3w2d1w2` + tiered offloading for approximate routing; `ROUTING=precise` set `DEPLOYMENT=p2w1d1w1-precise` in the router step, which includes per-rank KV-event publishing and the `wide-ep-render` Service). With `MODEL_SERVER=sglang`, `DEPLOYMENT=default` deploys `p1w1d1w1`:
 
 <!-- guide:deploy.modelserver start -->
 ```bash
