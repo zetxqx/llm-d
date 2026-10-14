@@ -67,7 +67,7 @@ The latency predictor is engine-agnostic: it reads the same server state the rou
 
 - Create a [HuggingFace token](../../helpers/hf-token.md) and export it as `HF_TOKEN` in your shell.
 
-- (Optional) Install the [monitoring stack](../../docs/operations/observability/setup.md) if you plan to enable Prometheus monitoring.
+- (Optional) Set up the [monitoring stack](../../docs/operations/observability/setup.md) if you plan to enable Prometheus monitoring.
 
 ### Get the guide
 
@@ -154,16 +154,36 @@ export ROUTER_VALUES="${REPO_ROOT}/guides/${GUIDE_NAME}/router/predicted-latency
 
 Both values files enable the latency predictor sidecars (`router.latencyPredictor.enabled: true`) and select model server pods labeled `llm-d.ai/guide=optimized-baseline`, the label of the Optimized Baseline model servers this guide reuses.
 
-**(Optional) Enable Prometheus monitoring on the `llm-d` router** by defining the `helm` values file (requires installing the monitoring stack mentioned in [Prerequisites](#prerequisites)). It also disables authentication on the router's `/metrics` endpoint, which the [router metrics check](#3-verify-predicted-latency-routing) relies on:
+**(Optional) Enable Prometheus monitoring on the `llm-d` router** by defining `MONITORING_VALUES` (see [Collect Metrics](../../docs/operations/observability/metrics.md)):
 
-<!-- guide:deploy.monitoring_values start -->
+<!-- tabs:start group=monitoring -->
+<details open>
+<summary><b>OSS Prometheus / OpenShift</b></summary>
+
+<!-- guide:deploy.monitoring_values.standard start -->
 <!-- llm-d-cicd:skip start -->
 ```bash
 # only when MONITORING=true:
 export MONITORING_VALUES="-f ${REPO_ROOT}/guides/recipes/router/features/monitoring.values.yaml"
 ```
 <!-- llm-d-cicd:skip end -->
-<!-- guide:deploy.monitoring_values end -->
+<!-- guide:deploy.monitoring_values.standard end -->
+
+</details>
+<details>
+<summary><b>GKE (Managed Prometheus)</b></summary>
+
+<!-- guide:deploy.monitoring_values.gke start -->
+<!-- llm-d-cicd:skip start -->
+```bash
+# only when MONITORING=true and INFRA_PROVIDER=gke:
+export MONITORING_VALUES="-f ${REPO_ROOT}/guides/recipes/router/features/monitoring-gke.values.yaml"
+```
+<!-- llm-d-cicd:skip end -->
+<!-- guide:deploy.monitoring_values.gke end -->
+
+</details>
+<!-- tabs:end -->
 
 **Deploy the router** in [Standalone Mode](../../docs/architecture/router/proxy.md), with an Envoy sidecar in front of the router and the latency predictor sidecars (one training server, one prediction server) next to it. To front the router with a Kubernetes Gateway instead, see Gateway Mode in the [Optimized Baseline](../optimized-baseline/README.md#1-deploy-the-llm-d-router).
 
@@ -191,7 +211,11 @@ kubectl apply -n ${NAMESPACE} \
 ```
 <!-- guide:deploy.modelserver end -->
 
-**(Optional) Deploy the monitoring resources for model servers** (requires installing the monitoring stack mentioned in [Prerequisites](#prerequisites)):
+**(Optional) Deploy the monitoring resources for model servers** (see [Collect Metrics](../../docs/operations/observability/metrics.md)):
+
+<!-- tabs:start group=monitoring -->
+<details open>
+<summary><b>OSS Prometheus / OpenShift</b></summary>
 
 <!-- guide:deploy.monitoring start -->
 ```bash
@@ -199,6 +223,15 @@ kubectl apply -n ${NAMESPACE} \
 kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring
 ```
 <!-- guide:deploy.monitoring end -->
+
+</details>
+<details>
+<summary><b>GKE (Managed Prometheus)</b></summary>
+
+No manual `PodMonitor` deployment is required when [GKE automatic application monitoring](../../docs/operations/observability/metrics.md#step-1-scrape-model-server-metrics) is enabled; GKE automatically provisions `PodMonitoring` resources for the model servers.
+
+</details>
+<!-- tabs:end -->
 
 ## Verification
 
@@ -267,7 +300,11 @@ What to expect: all 200 requests return HTTP 200. The training server reports `t
 
 **With `MONITORING=true`, compare the router's predicted and actual TTFT histograms:**
 
-<!-- guide:verify.tests.router_metrics start -->
+<!-- tabs:start group=monitoring -->
+<details open>
+<summary><b>OSS Prometheus / OpenShift</b></summary>
+
+<!-- guide:verify.tests.router_metrics.standard start -->
 ```bash
 # only when MONITORING=true:
 # Actual vs. predicted TTFT histograms of the router, read through the
@@ -275,7 +312,32 @@ What to expect: all 200 requests return HTTP 200. The training server reports `t
 kubectl get --raw "/api/v1/namespaces/${NAMESPACE}/services/${GUIDE_NAME}-epp:9090/proxy/metrics" \
   | grep -E '^llm_d_epp_request_(predicted_)?ttft_seconds_count' || true
 ```
-<!-- guide:verify.tests.router_metrics end -->
+<!-- guide:verify.tests.router_metrics.standard end -->
+
+</details>
+<details>
+<summary><b>GKE (Managed Prometheus)</b></summary>
+
+<!-- guide:verify.tests.router_metrics.gke start -->
+<!-- llm-d-cicd:skip start -->
+```bash
+# only when MONITORING=true and INFRA_PROVIDER=gke:
+# Actual vs. predicted TTFT histograms of the router, authenticated
+# with the GMP metrics-reader secret
+TOKEN=$(kubectl get secret ${GUIDE_NAME}-metrics-reader-secret -n ${NAMESPACE} -o jsonpath='{.data.token}' | base64 -d)
+kubectl run metrics-test --rm -i --restart=Never \
+  --image=${CURL_TEST_IMAGE} \
+  --namespace="${NAMESPACE}" \
+  --env="GUIDE_NAME=${GUIDE_NAME}" \
+  --env="TOKEN=${TOKEN}" \
+  -- /bin/sh -c 'curl -sS -H "Authorization: Bearer ${TOKEN}" "http://${GUIDE_NAME}-epp:9090/metrics"' \
+  | grep -E '^llm_d_epp_request_(predicted_)?ttft_seconds_count' || true
+```
+<!-- llm-d-cicd:skip end -->
+<!-- guide:verify.tests.router_metrics.gke end -->
+
+</details>
+<!-- tabs:end -->
 
 `llm_d_epp_request_predicted_ttft_seconds_count` is above zero and grows with `llm_d_epp_request_ttft_seconds_count`: the router recorded a prediction for the requests it routed. If it stays at zero while the actual count grows, the router fell back to heuristic scoring; see [Observability & Troubleshooting](#observability--troubleshooting).
 
