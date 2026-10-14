@@ -20,9 +20,16 @@
 # Like the vLLM overrides, prefill scores the GPU and the CPU (HiCache) prefix
 # caches separately. autoTune reads the KV size from /metrics, so both
 # producers are sized by hand per DP rank (one rank = one endpoint) in 64-token
-# blocks (the SGLang page size), for the default topology on H200:
+# blocks (the SGLang page size), for a DEP8 prefill rank on H200:
 # - GPU: 125,696 KV tokens per DEP8 prefill rank -> 1,964 blocks;
 # - CPU: hicache component, 64 GB per rank = 1,235,008 tokens -> 19,297 blocks.
+#
+# The CPU scorer needs the hicache component. Every SGLang deployment overlay
+# includes hicache. If you remove hicache from an overlay, also remove
+# cpu-prefix-cache-producer, cpu-prefix-cache-scorer and the
+# cpu-prefix-cache-scorer entry in the prefill profile. If you do not remove
+# them, the router scores CPU cache blocks that do not exist. Then prefill
+# requests go to ranks that do not have the prefix.
 router:
   modelServers:
     type: sglang

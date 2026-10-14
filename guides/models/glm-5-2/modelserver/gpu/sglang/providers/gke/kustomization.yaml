@@ -107,8 +107,8 @@ patches:
                             value: "none"
                           - name: NCCL_NET_PLUGIN
                             value: ""
-                          # NIXL/UCX: allow RoCE reachability across all
-                          # subnet interfaces for the P/D KV transfer.
+                          # Only used with DISAGG_TRANSFER_BACKEND=nixl: allow
+                          # UCX RoCE reachability across all subnet interfaces.
                           - name: UCX_IB_ROCE_REACHABILITY_MODE
                             value: "all"
                           # Disable HF XET when loading from the shared host

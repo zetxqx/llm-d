@@ -11,7 +11,7 @@ support:
   accelerators:
     gpu:
       label: NVIDIA H200
-      notes: "P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, default 3 nodes / 24 GPUs (`p1w1d1w2`)"
+      notes: "P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, 2 to 8 nodes by `DEPLOYMENT`"
       model: zai-org/GLM-5.2-FP8
       engines: {vllm: community, sglang: community}
 
@@ -32,8 +32,8 @@ env:
     ROUTING: {default: approximate, values: [approximate, precise]}
     # vLLM: default = p3w2d1w2 + tiered KV offloading; ROUTING=precise sets
     # p2w1d1w1-precise; the others are the raw topologies (see Scaling and
-    # Alternative Topologies). SGLang: default = p1w1d1w2; it ships
-    # p1w1d1w1, p1w1d1w2, p1w2d1w2, p2w1d1w2 and p2w2d2w2 only.
+    # Alternative Topologies). SGLang: set DEPLOYMENT to p1w1d1w1, p1w1d1w2,
+    # p1w2d1w2, p2w1d1w2 or p2w2d2w2.
     DEPLOYMENT:
       default: default
       values:

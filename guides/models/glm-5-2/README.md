@@ -71,18 +71,18 @@ the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` —
 <details>
 <summary><b>SGLang</b></summary>
 
-`DEPLOYMENT=default` deploys `p1w1d1w2`: 1 DEP8 prefill node and 1 DEP16 decode replica on 2 nodes (3 nodes / 24 GPUs), with MTP on and HiCache (host-memory KV cache) on prefill. The other SGLang topologies are in [Scaling and Alternative Topologies](#scaling-and-alternative-topologies).
+Set `DEPLOYMENT` to one of the SGLang topologies in [Scaling and Alternative Topologies](#scaling-and-alternative-topologies). Each SGLang topology enables MTP and HiCache (host-memory KV cache) on prefill. The table below shows `p1w1d1w2` as an example: 1 DEP8 prefill node and 1 DEP16 decode replica on 2 nodes (3 nodes / 24 GPUs).
 
 | Parameter                | Value                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------- |
 | Model                    | [zai-org/GLM-5.2-FP8](https://huggingface.co/zai-org/GLM-5.2-FP8)            |
 | Accelerator              | NVIDIA H200 (8 GPUs per node)                                                |
-| Serving topology         | P/D disaggregated: 1 prefill replica (DEP8, 1 node) + 1 decode replica (DEP16, 2 nodes), attention TP=1, DP=EP |
+| Serving topology         | Example `p1w1d1w2`: 1 prefill replica (DEP8, 1 node) + 1 decode replica (DEP16, 2 nodes), attention TP=1, DP=EP |
 | DP model                 | Rust frontend, one HTTP listener per DP rank (`SGLANG_RUST_SERVER=1`)         |
 | All-to-all               | DeepEP v2 over NCCL GIN, hybrid mode, on both roles (`deepep_v2`)            |
 | MoE backend              | SGLang default (`--moe-runner-backend auto`)                                 |
-| KV transfer              | NIXL                                                                         |
-| KV cache offloading      | HiCache in host memory on prefill, 64 GB per rank (`hicache` component)      |
+| KV transfer              | Mooncake (NIXL failed under long-context load on GKE RoCE)                   |
+| KV cache offloading      | HiCache on prefill, 64 GB per rank (`hicache`, in every SGLang topology)     |
 | MTP speculative decoding | On (EAGLE, 3 steps)                                                          |
 | `mem-fraction-static`    | 0.85 (prefill and decode)                                                    |
 | Routing                  | GPU + CPU approximate prefix-cache and active-request scoring ([`sglang.values.yaml`](router/sglang.values.yaml)) |
@@ -112,7 +112,7 @@ This guide includes configurations for the following accelerator and model serve
 <!-- guide:support start -->
 | Accelerator | `ACCELERATOR_TYPE` | Served model | vLLM | SGLang | Notes |
 | --- | --- | --- | --- | --- | --- |
-| NVIDIA H200 | `gpu` | `zai-org/GLM-5.2-FP8` | 🟡 community | 🟡 community | P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, default 3 nodes / 24 GPUs (`p1w1d1w2`) |
+| NVIDIA H200 | `gpu` | `zai-org/GLM-5.2-FP8` | 🟡 community | 🟡 community | P/D disaggregated wide-EP on 8-GPU nodes; needs an all-to-all RDMA fabric · vLLM: CoreWeave InfiniBand, default 8 nodes / 64 GPUs (`p3w2d1w2` + tiered KV offloading), 2 to 10 nodes by `DEPLOYMENT` · SGLang: GKE A3 Ultra RoCE, 2 to 8 nodes by `DEPLOYMENT` |
 
 ✅ validated: covered by a nightly E2E workflow · 🟡 community: maintained by the hardware vendor or community, not covered by nightly E2E · ❌ not supported: tracked in the linked issue · — no configuration.
 <!-- guide:support end -->
@@ -222,7 +222,7 @@ Layers [`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml) o
 - **CPU prefix-cache scorer** (weight 2) — fixed LRU capacity (200k entries per server), tracks CPU-offloaded prefix blocks.
 - **Active-request scorer** (weight 1 prefill, 3 decode) — load balancing.
 
-With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with GPU and CPU (HiCache) approximate prefix-cache scorers and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics`. The two prefix caches are sized by hand for the default topology on H200.
+With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with GPU and CPU (HiCache) approximate prefix-cache scorers and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics`. The cache sizes in the router values are for a DEP8 prefill rank on H200.
 
 <!-- guide:deploy.router_values.approximate start -->
 <!-- variants:start -->
@@ -308,7 +308,7 @@ helm install ${GUIDE_NAME} \
 
 ### 2. Deploy the Model Server
 
-**Apply the Kustomize overlay** for your deployment (`DEPLOYMENT=default` deploys `p3w2d1w2` + tiered offloading for approximate routing; `ROUTING=precise` set `DEPLOYMENT=p2w1d1w1-precise` in the router step, which includes per-rank KV-event publishing and the `wide-ep-render` Service). With `MODEL_SERVER=sglang`, `DEPLOYMENT=default` deploys `p1w1d1w2`:
+**Apply the Kustomize overlay** for your deployment (`DEPLOYMENT=default` deploys `p3w2d1w2` + tiered offloading for approximate routing; `ROUTING=precise` set `DEPLOYMENT=p2w1d1w1-precise` in the router step, which includes per-rank KV-event publishing and the `wide-ep-render` Service). With `MODEL_SERVER=sglang`, set `DEPLOYMENT` to one SGLang topology:
 
 <!-- guide:deploy.modelserver start -->
 ```bash
@@ -450,9 +450,9 @@ vLLM ships every topology; SGLang ships the ones marked in the SGLang column.
 
 The SGLang overlays all build on the GKE provider overlay (`modelserver/gpu/sglang/providers/gke`),
 the only one so far; other providers need their own `providers/<name>` overlay (RDMA device
-requests, HCA selection, cache volumes). The SGLang components are `no-mtp` and `hicache`
-(HiCache host-memory KV cache on prefill, `HICACHE_SIZE_GB_PER_RANK=64`); the SGLang default
-overlay is `p1w1d1w2` + `hicache`.
+requests, HCA selection, cache volumes). The SGLang components are `no-mtp` and `hicache`.
+Every SGLang topology includes `hicache`, which enables HiCache (host-memory KV cache) on
+prefill with `HICACHE_SIZE_GB_PER_RANK=64`.
 
 Raw topology overlays ship with MTP on and offloading off; opt in or out per deployment by
 adding [Kustomize components](https://kubectl.docs.kubernetes.io/guides/config_management/components/)

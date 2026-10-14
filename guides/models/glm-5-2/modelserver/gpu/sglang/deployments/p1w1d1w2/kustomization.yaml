@@ -3,6 +3,8 @@ kind: Kustomization
 # GLM-5.2-FP8 on SGLang: 1 prefill node (DEP8) + 2 decode nodes (DEP16, wide) -> 3 nodes / 24 GPUs.
 resources:
   - ../../providers/gke
+components:
+  - ../../components/hicache
 patches:
   - target:
       group: disaggregatedset.x-k8s.io

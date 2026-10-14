@@ -133,7 +133,7 @@ spec:
                         --moe-dense-tp-size 1 \
                         --enable-dp-lm-head \
                         --disaggregation-mode prefill \
-                        --disaggregation-transfer-backend ${DISAGG_TRANSFER_BACKEND:-nixl} \
+                        --disaggregation-transfer-backend ${DISAGG_TRANSFER_BACKEND:-mooncake} \
                         --disaggregation-bootstrap-port 8000 \
                         --mem-fraction-static ${PREFILL_MEM_FRACTION_STATIC:-0.85} \
                         --chunked-prefill-size ${CHUNKED_PREFILL_SIZE} \
@@ -199,8 +199,11 @@ spec:
                     # HiCache size in GB per rank; empty keeps HiCache off.
                     - name: HICACHE_SIZE_GB_PER_RANK
                       value: ""
+                    # Mooncake, not NIXL: under long-context agentic load on GKE
+                    # RoCE, NIXL KV transfers failed with
+                    # NIXL_ERR_REMOTE_DISCONNECT for 10-74% of requests.
                     - name: DISAGG_TRANSFER_BACKEND
-                      value: nixl
+                      value: mooncake
                     - name: NVIDIA_GDRCOPY
                       value: enabled
                     - name: GLOO_SOCKET_IFNAME
@@ -425,7 +428,7 @@ spec:
                         --moe-dense-tp-size 1 \
                         --enable-dp-lm-head \
                         --disaggregation-mode decode \
-                        --disaggregation-transfer-backend ${DISAGG_TRANSFER_BACKEND:-nixl} \
+                        --disaggregation-transfer-backend ${DISAGG_TRANSFER_BACKEND:-mooncake} \
                         --mem-fraction-static ${DECODE_MEM_FRACTION_STATIC:-0.85} \
                         --max-running-requests ${MAX_RUNNING_REQUESTS} \
                         --cuda-graph-max-bs-decode ${DECODE_CUDA_GRAPH_MAX_BS:-32} \
@@ -476,7 +479,7 @@ spec:
                     - name: CONTEXT_LENGTH
                       value: ""
                     - name: DISAGG_TRANSFER_BACKEND
-                      value: nixl
+                      value: mooncake
                     - name: NVIDIA_GDRCOPY
                       value: enabled
                     - name: GLOO_SOCKET_IFNAME
