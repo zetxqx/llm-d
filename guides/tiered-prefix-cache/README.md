@@ -22,7 +22,7 @@ The default deployment serves `Qwen/Qwen3-32B` on NVIDIA GPUs with two replicas 
 | `lmcache-connector` | [LMCache](https://lmcache.ai) | `cpu`, `fs` | vLLM on NVIDIA GPU, AMD GPU, Intel XPU |
 | `mooncake-store` | MooncakeStore (`cpu`: embedded CPU DRAM pool; `fs`: standalone [Mooncake Client](../../helpers/mooncake-client/) that owns a CPU DRAM + SSD pool) | `cpu`, `fs` | vLLM on NVIDIA GPU |
 
-Use `native` unless you need a capability it does not provide yet. The vLLM native overlays give each replica a 100 GB CPU tier (`cpu_bytes_to_use`), SGLang uses `--hicache-size=200`, LMCache uses `LMCACHE_MAX_LOCAL_CPU_SIZE`, and the TPU connector uses `TPU_OFFLOAD_NUM_CPU_CHUNKS`. Keep the CPU tier within the pod's memory limit when you change it. Serving a model whose attention layers use different head dimensions (e.g. Gemma 4) with the vLLM native connector needs one extra flag; see [KV-Cache Offloading](../../docs/architecture/kv-management/kv-offloader.md#vllm-native-cpu-offloading).
+Use `native` unless you need a capability it does not provide yet. The NVIDIA vLLM native overlay gives each replica a 300 GiB CPU tier (`cpu_bytes_to_use`). The AMD and Intel XPU vLLM native overlays use 100 GiB. SGLang uses `--hicache-size=200` (GB per tensor-parallel rank), LMCache uses `LMCACHE_MAX_LOCAL_CPU_SIZE` (GiB per tensor-parallel rank), and the TPU connector uses `TPU_OFFLOAD_NUM_CPU_CHUNKS`. vLLM keeps its CPU tier in `/dev/shm`, so the tier counts toward the pod's memory limit. When you change the tier size, change the pod's memory request and limit, and the router's `lruCapacityPerServer` (see the note in [Deploy the llm-d Router](#1-deploy-the-llm-d-router)). Serving a model whose attention layers use different head dimensions (e.g. Gemma 4) with the vLLM native connector needs one extra flag; see [KV-Cache Offloading](../../docs/architecture/kv-management/kv-offloader.md#vllm-native-cpu-offloading).
 
 For why offloading helps, the storage tiers and when to add each, and how the CPU and filesystem tiers work, see [KV-Cache Offloading](../../docs/architecture/kv-management/kv-offloader.md).
 
@@ -136,7 +136,21 @@ export ROUTER_VALUES="${REPO_ROOT}/guides/${GUIDE_NAME}/router/${HOST_TYPE}/${GU
 <!-- guide:deploy.router_values end -->
 
 > [!NOTE]
-> The router values configure two prefix-cache scorers: one for the accelerator (HBM) cache and one for the CPU tier. vLLM does not report how full its CPU tier is, so the CPU producer's capacity is set by hand (`lruCapacityPerServer`): the `single-host` values are sized for Qwen3-32B and the `multi-host` values for Qwen3-Coder-480B. Recompute it for other models.
+> The router values configure two prefix-cache scorers: one for the accelerator (HBM) cache and one for the CPU tier. vLLM does not report the size of its CPU tier, so you set the CPU producer's capacity (`lruCapacityPerServer`) by hand. The unit is a router block of 64 tokens:
+>
+> `lruCapacityPerServer` = CPU tier bytes per pod / (64 × KV bytes per token)
+>
+> The `single-host` value (19200) is for the default NVIDIA vLLM native overlay. If you use a different connector, model, or tier size, change it. For Qwen3-32B, the KV cache is 256 KiB per token, so one router block is 16 MiB:
+>
+> | Overlay | CPU tier per pod | `lruCapacityPerServer` |
+> | --- | --- | --- |
+> | NVIDIA vLLM `native` (default) | 300 GiB | 19200 |
+> | AMD or Intel XPU vLLM `native` | 100 GiB | 6400 |
+> | NVIDIA or AMD vLLM `lmcache-connector` | 100 GiB × 2 ranks | 12800 |
+> | NVIDIA SGLang `native` (HiCache) | 200 GB × 2 ranks | 23800 |
+> | Intel XPU vLLM `lmcache-connector` (Qwen3-8B, 144 KiB per token) | 20 GiB | 2275 |
+>
+> For TPU, one CPU chunk is one KV block: multiply `TPU_OFFLOAD_NUM_CPU_CHUNKS` by the block size to get tokens. MooncakeStore uses one pool for all pods, so a per-pod value does not apply. The `multi-host` values are for Qwen3-Coder-480B on TPU v7.
 
 **(Optional) Enable Prometheus monitoring on the `llm-d` router** by defining `MONITORING_VALUES` (see [Collect Metrics](../../docs/operations/observability/metrics.md)):
 
