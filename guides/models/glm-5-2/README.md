@@ -73,22 +73,20 @@ the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` —
 
 `DEPLOYMENT=default` deploys `p1w1d1w2`: 1 DEP8 prefill node and 1 DEP16 decode replica on 2 nodes (3 nodes / 24 GPUs), with MTP on and no KV offloading. The other SGLang topologies are in [Scaling and Alternative Topologies](#scaling-and-alternative-topologies).
 
-| Parameter | Value |
-| --- | --- |
-| Model | [zai-org/GLM-5.2-FP8](https://huggingface.co/zai-org/GLM-5.2-FP8) |
-| Accelerator | NVIDIA H200 (8 GPUs per node) |
-| Frontend | SGLang Rust server, one listener per DP rank (`SGLANG_RUST_SERVER=1`) |
-| API | `/v1/chat/completions`, `/v1/completions`, `/generate` |
-| Prefill parallelism | DEP8: attention DP=8, EP=8 (`--tp-size 8 --attn-dp-size 8 --ep-size 8`), 1 node |
-| Decode parallelism | DEP16 (wide): attention DP=16, EP=16 (`--tp-size 16 --attn-dp-size 16 --ep-size 16`), 2 nodes |
-| All-to-all | DeepEP v2 over NCCL GIN, hybrid mode, on both roles (`--moe-a2a-backend deepep_v2 --deepep-v2-mode hybrid`) |
-| KV cache | FP8 (`--kv-cache-dtype fp8_e4m3`, `--dsa-prefill-backend flashmla_kv --dsa-decode-backend flashmla_kv`) |
-| KV transfer | NIXL over UCX (`DISAGG_TRANSFER_BACKEND`) |
-| MTP speculative decoding | On (EAGLE, 3 steps, 4 draft tokens; draft MoE without all-to-all; opt-out via `no-mtp` component) |
-| `mem-fraction-static` | 0.85 on both roles |
-| Decode running requests | 32 per rank (`DECODE_MAX_RUNNING_REQUESTS_PER_RANK`, passed to SGLang as per-rank x DP), CUDA graph max batch 32 |
-| Prefill chunk | 8192 tokens per rank (`PREFILL_CHUNK_TOKENS_PER_RANK`) |
-| Reasoning / tool-call parsers | glm45 / glm47 (used by the OpenAI routes) |
+| Parameter                | Value                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| Model                    | [zai-org/GLM-5.2-FP8](https://huggingface.co/zai-org/GLM-5.2-FP8)            |
+| Accelerator              | NVIDIA H200 (8 GPUs per node)                                                |
+| Serving topology         | P/D disaggregated: 1 prefill replica (DEP8, 1 node) + 1 decode replica (DEP16, 2 nodes), attention TP=1, DP=EP |
+| DP model                 | Rust frontend, one HTTP listener per DP rank (`SGLANG_RUST_SERVER=1`)         |
+| All-to-all               | DeepEP v2 over NCCL GIN, hybrid mode, on both roles (`deepep_v2`)            |
+| MoE backend              | SGLang default (`--moe-runner-backend auto`)                                 |
+| KV transfer              | NIXL                                                                         |
+| KV cache offloading      | Off                                                                          |
+| MTP speculative decoding | On (EAGLE, 3 steps)                                                          |
+| `mem-fraction-static`    | 0.85 (prefill and decode)                                                    |
+| Routing                  | Approximate prefix-cache and active-request scoring ([`sglang.values.yaml`](router/sglang.values.yaml)) |
+| Reasoning / tool-call    | glm45 / glm47                                                                |
 
 SGLang's `--tp-size` is the size of the GPU group that holds one copy of the model, not the attention TP size. Attention runs one DP rank per GPU inside that group (attention TP=1) and the experts are split across all its GPUs. The vLLM recipe spells the same layout `--tensor-parallel-size 1 --data-parallel-size N --enable-expert-parallel`.
 
