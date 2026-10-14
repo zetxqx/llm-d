@@ -71,7 +71,7 @@ the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` —
 <details>
 <summary><b>SGLang</b></summary>
 
-`DEPLOYMENT=default` deploys `p1w1d1w2`: 1 DEP8 prefill node and 1 DEP16 decode replica on 2 nodes (3 nodes / 24 GPUs), with MTP on and no KV offloading. The other SGLang topologies are in [Scaling and Alternative Topologies](#scaling-and-alternative-topologies).
+`DEPLOYMENT=default` deploys `p1w1d1w2`: 1 DEP8 prefill node and 1 DEP16 decode replica on 2 nodes (3 nodes / 24 GPUs), with MTP on and HiCache (host-memory KV cache) on prefill. The other SGLang topologies are in [Scaling and Alternative Topologies](#scaling-and-alternative-topologies).
 
 | Parameter                | Value                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------- |
@@ -82,10 +82,10 @@ the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` —
 | All-to-all               | DeepEP v2 over NCCL GIN, hybrid mode, on both roles (`deepep_v2`)            |
 | MoE backend              | SGLang default (`--moe-runner-backend auto`)                                 |
 | KV transfer              | NIXL                                                                         |
-| KV cache offloading      | Off                                                                          |
+| KV cache offloading      | HiCache in host memory on prefill, 64 GB per rank (`hicache` component)      |
 | MTP speculative decoding | On (EAGLE, 3 steps)                                                          |
 | `mem-fraction-static`    | 0.85 (prefill and decode)                                                    |
-| Routing                  | Approximate prefix-cache and active-request scoring ([`sglang.values.yaml`](router/sglang.values.yaml)) |
+| Routing                  | GPU + CPU approximate prefix-cache and active-request scoring ([`sglang.values.yaml`](router/sglang.values.yaml)) |
 | Reasoning / tool-call    | glm45 / glm47                                                                |
 
 </details>
@@ -222,7 +222,7 @@ Layers [`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml) o
 - **CPU prefix-cache scorer** (weight 2) — fixed LRU capacity (200k entries per server), tracks CPU-offloaded prefix blocks.
 - **Active-request scorer** (weight 1 prefill, 3 decode) — load balancing.
 
-With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with the approximate prefix-cache scorer and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics`.
+With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with GPU and CPU (HiCache) approximate prefix-cache scorers and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics`. The two prefix caches are sized by hand for the default topology on H200.
 
 <!-- guide:deploy.router_values.approximate start -->
 <!-- variants:start -->
@@ -450,7 +450,9 @@ vLLM ships every topology; SGLang ships the ones marked in the SGLang column.
 
 The SGLang overlays all build on the GKE provider overlay (`modelserver/gpu/sglang/providers/gke`),
 the only one so far; other providers need their own `providers/<name>` overlay (RDMA device
-requests, HCA selection, cache volumes). The only SGLang component is `no-mtp`.
+requests, HCA selection, cache volumes). The SGLang components are `no-mtp` and `hicache`
+(HiCache host-memory KV cache on prefill, `HICACHE_SIZE_GB_PER_RANK=64`); the SGLang default
+overlay is `p1w1d1w2` + `hicache`.
 
 Raw topology overlays ship with MTP on and offloading off; opt in or out per deployment by
 adding [Kustomize components](https://kubectl.docs.kubernetes.io/guides/config_management/components/)

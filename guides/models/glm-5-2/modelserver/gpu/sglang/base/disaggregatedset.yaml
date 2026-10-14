@@ -92,6 +92,11 @@ spec:
                         MTP_ARGS="--speculative-algorithm EAGLE --speculative-num-steps ${MTP_NUM_STEPS:-3} --speculative-eagle-topk 1 --speculative-num-draft-tokens ${MTP_NUM_DRAFT_TOKENS:-4} --speculative-moe-a2a-backend none"
                       fi
 
+                      HICACHE_ARGS=""
+                      if [ -n "${HICACHE_SIZE_GB_PER_RANK:-}" ]; then
+                        HICACHE_ARGS="--enable-hierarchical-cache --hicache-size ${HICACHE_SIZE_GB_PER_RANK} --hicache-io-backend kernel --hicache-mem-layout layer_first --hicache-write-policy write_back"
+                      fi
+
                       # SGLang splits --chunked-prefill-size and
                       # --max-running-requests evenly across the attention-DP
                       # ranks, so scale the per-rank budgets up.
@@ -105,9 +110,6 @@ spec:
 
                       # The rank-0 Rust listener (port 8000) serves the P/D
                       # bootstrap registry; the decode sidecar uses the same port.
-                      # round_robin makes each rank register its rooms so the EPP
-                      # can pick any rank (the default follow_bootstrap_room fails
-                      # unless the rank is room % dp_size).
                       #
                       # SGLang defaults DSA models to a bf16 KV cache on Hopper;
                       # fp8_e4m3 nearly doubles the KV capacity. flashmla_kv is
@@ -169,6 +171,10 @@ spec:
                     # take 20s while a prefill batch runs.
                     - name: SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION
                       value: "false"
+                    # The EPP, not room % dp_size, picks the prefill rank, so
+                    # prefill registers each room and decode looks it up.
+                    - name: SGLANG_DISAGGREGATION_FORCE_QUERY_PREFILL_DP_RANK
+                      value: "1"
                     - name: DP_SIZE_LOCAL
                       value: "8"
                     - name: ENABLE_MTP
@@ -189,6 +195,9 @@ spec:
                     - name: SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK
                       value: "8192"
                     - name: CONTEXT_LENGTH
+                      value: ""
+                    # HiCache size in GB per rank; empty keeps HiCache off.
+                    - name: HICACHE_SIZE_GB_PER_RANK
                       value: ""
                     - name: DISAGG_TRANSFER_BACKEND
                       value: nixl
@@ -378,9 +387,7 @@ spec:
                       # RUN SGLang GLM-5.2-FP8 decode worker
                       #################
 
-                      # Same DEP layout as the prefill role: --tp-size,
-                      # --attn-dp-size and --ep-size all equal the group's GPU
-                      # count, so attention TP is 1.
+                      # Same DEP layout as the prefill role.
                       DP_SIZE=$(( LWS_GROUP_SIZE * DP_SIZE_LOCAL ))
 
                       # See the prefill role: the MTP draft cannot use DeepEP v2.
@@ -392,9 +399,8 @@ spec:
                       # DeepEP v2 dispatches at most
                       # SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK tokens per
                       # rank per step: running requests x draft tokens with MTP.
-                      # SGLang splits --max-running-requests across the attention-DP
-                      # ranks, so pass per-rank x DP; keep the per-rank value and
-                      # the CUDA graph capture sizes within that budget.
+                      # Keep the per-rank requests and the CUDA graph capture
+                      # sizes within that budget.
                       MAX_RUNNING_REQUESTS=$(( ${DECODE_MAX_RUNNING_REQUESTS_PER_RANK:-32} * DP_SIZE ))
                       # See the prefill role: pass GLM-5.2's chat template.
                       CHAT_TEMPLATE=$(python3 -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('zai-org/GLM-5.2-FP8', 'chat_template.jinja'))")
@@ -446,11 +452,11 @@ spec:
                       value: "1"
                     - name: SGLANG_RUST_BUILD_MODE
                       value: never
-                    # Keep /health a plain 200: decode checks prefill's /health
-                    # every 5s and drops it after 2 misses, and the deep probe can
-                    # take 20s while a prefill batch runs.
+                    # Same two settings as the prefill role.
                     - name: SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION
                       value: "false"
+                    - name: SGLANG_DISAGGREGATION_FORCE_QUERY_PREFILL_DP_RANK
+                      value: "1"
                     - name: SGLANG_DEEPEP_V2_NUM_MAX_DISPATCH_TOKENS_PER_RANK
                       value: "128"
                     - name: DP_SIZE_LOCAL
@@ -502,8 +508,6 @@ spec:
                     - containerPort: 8207
                       name: sglang-rank7
                       protocol: TCP
-                  # Each Rust listener answers /health with 503 until its startup
-                  # warmup succeeds.
                   startupProbe:
                     httpGet:
                       path: /health

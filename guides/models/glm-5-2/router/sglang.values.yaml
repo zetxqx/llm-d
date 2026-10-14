@@ -12,10 +12,17 @@
 #
 # The Rust listeners expose no /metrics endpoint yet, so
 # only signals the EPP computes itself are used: the approximate prefix-cache
-# scorer (from the request it parsed) and the active-request scorer. The
+# scorers (from the request it parsed) and the active-request scorer. The
 # queue and KV-cache utilization scorers would have no data, and
 # dataLayer.injectDefaults: false turns off the default /metrics scrape, which
 # would only return 404s.
+#
+# Like the vLLM overrides, prefill scores the GPU and the CPU (HiCache) prefix
+# caches separately. autoTune reads the KV size from /metrics, so both
+# producers are sized by hand per DP rank (one rank = one endpoint) in 64-token
+# blocks (the SGLang page size), for the default topology on H200:
+# - GPU: 125,696 KV tokens per DEP8 prefill rank -> 1,964 blocks;
+# - CPU: hicache component, 64 GB per rank = 1,235,008 tokens -> 19,297 blocks.
 router:
   modelServers:
     type: sglang
@@ -34,16 +41,37 @@ router:
               prefill: always-disagg-pd-decider
         - type: prefill-filter
         - type: decode-filter
+        - type: approx-prefix-cache-producer
+          name: gpu-prefix-cache-producer
+          parameters:
+            autoTune: false
+            blockSizeTokens: 64
+            lruCapacityPerServer: 1964
+        - type: approx-prefix-cache-producer
+          name: cpu-prefix-cache-producer
+          parameters:
+            autoTune: false
+            blockSizeTokens: 64
+            lruCapacityPerServer: 19297
         - type: prefix-cache-scorer
+          name: gpu-prefix-cache-scorer
+          parameters:
+            prefixMatchInfoProducerName: gpu-prefix-cache-producer
+        - type: prefix-cache-scorer
+          name: cpu-prefix-cache-scorer
+          parameters:
+            prefixMatchInfoProducerName: cpu-prefix-cache-producer
         - type: active-request-scorer
         schedulingProfiles:
         - name: prefill
           plugins:
           - pluginRef: prefill-filter
-          - pluginRef: prefix-cache-scorer
-            weight: 3
-          - pluginRef: active-request-scorer
+          - pluginRef: gpu-prefix-cache-scorer
+            weight: 5
+          - pluginRef: cpu-prefix-cache-scorer
             weight: 2
+          - pluginRef: active-request-scorer
+            weight: 1
         - name: decode
           plugins:
           - pluginRef: decode-filter
