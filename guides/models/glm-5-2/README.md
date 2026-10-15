@@ -17,13 +17,14 @@ best earlier main-agent turn). Each layer addresses a specific pressure of that 
 - **P/D disaggregation** (NIXL KV transfer) — input processing and token generation use
   separate pools, so each side can use the backend and replica count suited to its work.
   Prefill runs DeepEP high-throughput all-to-all; decode runs low-latency (IBGDA + NVSHMEM).
-- **Dual-tier prefix-cache routing** — the EPP scores both GPU- and CPU-resident prefix caches
-  when picking an endpoint, so resumed sessions land where their context can be restored rather
-  than recomputed.
+- **Token-aware, GPU+CPU prefix-cache routing** — the EPP keeps prefix groups on ranks that
+  hold them in GPU or CPU memory with the prefix-cache affinity filter, and picks by queued
+  prefill token load, so resumed sessions land where their context can be restored rather than
+  recomputed.
 - **CPU+NVMe tiered KV offloading** — CPU memory keeps evicted prefixes reusable after HBM
   fills. Local NVMe supplies a lower tier when needed.
 - **MTP speculative decoding** (3 draft tokens) — cuts median time between output tokens by
-  about half on this workload (see [Benchmark Results](#benchmark-results)).
+  about half on this workload (see the [blog post](https://llm-d.ai/blog/serving-glm-5-2-agentic-workloads-on-llm-d)).
 
 The guide composes the [wide expert parallelism](../../wide-ep/README.md),
 [P/D disaggregation](../../pd-disaggregation/README.md) and
@@ -59,7 +60,7 @@ with MTP and tiered KV offloading enabled.
 | KV cache offloading      | CPU + NVMe tiered on prefill (`offloading-tiered` component)                 |
 | MTP speculative decoding | On (3 draft tokens)                                                          |
 | `gpu-memory-utilization` | 0.935 (prefill), 0.95 (decode)                                               |
-| Routing                  | Dual GPU+CPU prefix-cache scoring ([`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml)) |
+| Routing                  | GPU+CPU prefix-cache affinity + token load ([`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml)) |
 | Reasoning / tool-call    | glm45 / glm47                                                                |
 
 If your SLO target is throughput rather than TTFT, `p2w2d2w2` (2 prefill + 2 decode, also
@@ -85,7 +86,7 @@ the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` —
 | KV cache offloading      | HiCache on prefill, 64 GB per rank (`hicache`, in every SGLang topology)     |
 | MTP speculative decoding | On (EAGLE, 3 steps)                                                          |
 | `mem-fraction-static`    | 0.85 (prefill and decode)                                                    |
-| Routing                  | GPU + CPU approximate prefix-cache and active-request scoring ([`sglang.values.yaml`](router/sglang.values.yaml)) |
+| Routing                  | GPU+CPU (HiCache) prefix-cache affinity + token load ([`sglang.values.yaml`](router/sglang.values.yaml)) |
 | Reasoning / tool-call    | glm45 / glm47                                                                |
 
 </details>
@@ -96,8 +97,9 @@ the 2-node `p1w1d1w1` for functional validation up to the 10-node `p3w2d2w2` —
 This guide supports two prefix-cache routing modes (`ROUTING`), selected with tabs in
 [Deploy the llm-d Router](#1-deploy-the-llm-d-router):
 
-- **Approximate prefix routing (`ROUTING=approximate`, default)** — scores GPU- and CPU-resident
-  prefix caches heuristically (`glm-5.2-overrides.values.yaml`), paired with the `default`
+- **Approximate prefix routing (`ROUTING=approximate`, default)** — gates on prefix-cache
+  affinity across GPU- and CPU-resident KV and on token load, using an approximate prefix index
+  (`glm-5.2-overrides.values.yaml`), paired with the `default`
   (`p3w2d1w2` + tiered offloading) or any raw topology overlay.
 - **Precise prefix-cache routing (`ROUTING=precise`)** — replaces the approximate
   prefix index with exact KV-event-backed routing (`precise-routing.values.yaml`) on the 3-node
@@ -216,13 +218,13 @@ All 8 DP rank ports (8000-8007) are exposed as `targetPorts` on the `InferencePo
 <details open>
 <summary><b>Approximate Prefix Routing (Default)</b></summary>
 
-Layers [`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml) on top of [`glm-5-2.values.yaml`](router/glm-5-2.values.yaml), replacing the single prefix-cache scorer with dual prefix-cache scoring for P/D routing:
+Layers [`glm-5.2-overrides.values.yaml`](router/glm-5.2-overrides.values.yaml) on top of [`glm-5-2.values.yaml`](router/glm-5-2.values.yaml), sizing the prefix index to cover CPU-offloaded KV as well as GPU-resident KV:
 
-- **GPU prefix-cache scorer** (weight 5) — auto-tuned, tracks GPU-resident prefix blocks.
-- **CPU prefix-cache scorer** (weight 2) — fixed LRU capacity (200k entries per server), tracks CPU-offloaded prefix blocks.
-- **Active-request scorer** (weight 1 prefill, 3 decode) — load balancing.
+- **Prefix-cache affinity filter** (prefill) — keeps prefix groups on ranks that hold them in GPU or CPU memory, falling back to all ranks when the warm ones are overloaded (`peakPrefillThroughput: 3585`, measured on an H200 DP8 cell). The approximate prefix index has a fixed capacity of 31,000 blocks per rank: ~3,700 GPU-resident plus ~27,300 for the 100 GiB per-rank CPU offload tier.
+- **Token-load scorer** (prefill) — picks by queued prefill tokens.
+- **Active-request scorer** (decode) — load balancing.
 
-With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and scores with GPU and CPU (HiCache) approximate prefix-cache scorers and the active-request scorer only, because the SGLang Rust listeners expose no `/metrics`. The cache sizes in the router values are for a DEP8 prefill rank on H200.
+With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is layered instead: it parses OpenAI bodies with the `openai-parser` and `/generate` bodies with the `sglanghttp-parser`, and routes like the vLLM path: one approximate prefix index sized for GPU and CPU (HiCache) KV feeds the prefix-cache affinity filter, then the token-load scorer on prefill and the active-request scorer on decode. None of these need `/metrics`, which the SGLang Rust listeners do not expose. The index size in the router values is for a DEP8 prefill rank on H200.
 
 <!-- guide:deploy.router_values.approximate start -->
 <!-- variants:start -->
@@ -231,7 +233,7 @@ With `MODEL_SERVER=sglang`, [`sglang.values.yaml`](router/sglang.values.yaml) is
 
 ```bash
 # Paths to values files: the wide-EP router values, then the GLM-5.2
-# dual GPU+CPU prefix-cache scoring overrides on top
+# GPU+CPU prefix-cache affinity overrides on top
 export ROUTER_BASE_VALUES="${REPO_ROOT}/guides/recipes/router/base.values.yaml"
 export ROUTER_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml"
 export ROUTER_OVERRIDES_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/glm-5.2-overrides.values.yaml"
@@ -244,7 +246,7 @@ export ROUTER_OVERRIDES_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/
 <!-- llm-d-cicd:skip start -->
 ```bash
 # Paths to values files: the wide-EP router values, then the SGLang
-# overrides on top (/generate and OpenAI parsing, scorers without /metrics)
+# overrides on top (/generate and OpenAI parsing, routing without /metrics)
 export ROUTER_BASE_VALUES="${REPO_ROOT}/guides/recipes/router/base.values.yaml"
 export ROUTER_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml"
 export ROUTER_OVERRIDES_VALUES="${REPO_ROOT}/guides/models/${GUIDE_NAME}/router/sglang.values.yaml"
@@ -541,7 +543,7 @@ DCGM custom metrics: `modelserver/gpu/vllm/base/dcgm-custom-metrics.yaml`.
 
 ## Benchmarking
 
-The results below use requests derived from production agentic traces and replayed with
+The benchmark configuration below uses requests derived from production agentic traces and replayed with
 [aiperf](https://github.com/ai-dynamo/aiperf) on CoreWeave H200 nodes with InfiniBand between
 nodes and NVLink within a node. Limited-input-length runs filter aiperf to only use shorter
 requests for apples-to-apples comparisons with EP8 deployments that cannot handle the entire
@@ -651,21 +653,20 @@ configurations:
 `142000` truncates the trace dataset to requests that fit an EP8 (1-node) prefill deployment.
 `10000000` is effectively unbounded and replays full traces (up to ~1M input tokens) — this is
 the "Full ISL" config. At concurrency 256/512, some Full ISL runs on smaller topologies exceeded
-server capacity (warmup failures) and are excluded from the reported results.
+server capacity (warmup failures) and were excluded from the blog post results.
 
 ## Benchmark Results
 
-### Recommended 64-GPU Deployment
-
-The full-input-length reference uses `p3w2d1w2`, native MTP, CPU KV offloading, and dual
-GPU+CPU prefix-cache routing:
-
-| Concurrency | Requests | TTFT p50 / p90 | ITL p50 / p90 | Turn completion p50 | Output throughput |
-| ----------- | -------- | --------------- | --------------- | ------------------- | ----------------- |
-| 64 | 3,543 | 1.71 s / 6.36 s | 15.5 ms / 18.9 ms | 9.6 s | 3,679 tok/s |
-| 128 | 6,242 | 2.18 s / 15.82 s | 19.1 ms / 23.1 ms | 14.0 s | 6,281 tok/s |
+> [!NOTE]
+> **TODO:** results for the current router config (prefix-cache affinity filter and token-load
+> scorer on prefill, active-request scorer on decode) are not yet published. Earlier results,
+> measured with the previous dual GPU+CPU prefix-cache and active-request scorers, are in
+> the [blog post](https://llm-d.ai/blog/serving-glm-5-2-agentic-workloads-on-llm-d).
 
 ### What Each Optimization Changes
+
+These matched comparisons were measured with the previous router config, which was the same in
+both runs of each comparison. They compare model-server and topology choices, not routing.
 
 - **CPU offloading keeps evicted prefixes reusable.** In matched 24-GPU runs at concurrency
   32, offloading raises output 13%, cuts median TTFT 32%, and cuts median turn completion 27%,
