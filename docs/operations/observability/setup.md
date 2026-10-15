@@ -56,7 +56,7 @@ OpenShift provides a built-in Prometheus stack via [User Workload Monitoring](ht
 <summary><b>GKE (Managed Prometheus)</b></summary>
 
 GKE clusters include [Google Cloud Managed Service for Prometheus (GMP)](https://cloud.google.com/stackdriver/docs/managed-prometheus) by default, so no Prometheus installation is required.
-Enable [automatic application monitoring](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/configure-automatic-application-monitoring) (`--auto-monitoring-scope=ALL`) as described in [GKE Monitoring & Telemetry](../../infrastructure/providers/gke/README.md#monitoring--telemetry) to automatically collect model server metrics and provision out-of-the-box Cloud Monitoring dashboards (including the [GKE Inference Gateway dashboard](https://cloud.google.com/kubernetes-engine/docs/how-to/customize-gke-inference-gateway-configurations#inference-gateway-dashboard) when using GKE Gateway).
+Enable [automatic application monitoring](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/configure-automatic-application-monitoring) (`--auto-monitoring-scope=ALL`) as described in [GKE Monitoring & Telemetry](../../infrastructure/providers/gke/README.md#monitoring--telemetry).
 
 To use GMP as a Grafana data source, follow the [GMP Grafana integration guide](https://docs.cloud.google.com/stackdriver/docs/managed-prometheus/query#ui-grafana).
 
@@ -179,7 +179,8 @@ For the list of dashboards and how to verify the import, see [Use Grafana Dashbo
 <details>
 <summary><b>GKE (Managed Prometheus)</b></summary>
 
-When [automatic application monitoring](../../infrastructure/providers/gke/README.md#monitoring--telemetry) is enabled, out-of-the-box dashboards for vLLM, SGLang, and the [GKE Inference Gateway dashboard](https://cloud.google.com/kubernetes-engine/docs/how-to/customize-gke-inference-gateway-configurations#inference-gateway-dashboard) are available directly in Cloud Monitoring (**Monitoring → Dashboards**). Proceed to [Collect Metrics](./metrics.md) to verify workload scraping.
+Out-of-the-box Cloud Monitoring dashboards are provided automatically; see [GKE Monitoring & Telemetry](../../infrastructure/providers/gke/README.md#monitoring--telemetry).
+Proceed to [Collect Metrics](./metrics.md) to configure and verify workload scraping.
 
 </details>
 <!-- tabs:end -->

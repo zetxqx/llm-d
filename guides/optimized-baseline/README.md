@@ -480,7 +480,7 @@ View the imported [Grafana dashboards](../../docs/operations/observability/dashb
 <details>
 <summary><b>GKE (Managed Prometheus)</b></summary>
 
-View the out-of-the-box Cloud Monitoring dashboards for vLLM/SGLang and, when deployed in Gateway Mode with [GKE Gateway](../../docs/infrastructure/gateway/gke.md) (`GW_PROVIDER_NAME=gke`), the [GKE Inference Gateway dashboard](https://cloud.google.com/kubernetes-engine/docs/how-to/customize-gke-inference-gateway-configurations#inference-gateway-dashboard) (**Monitoring → Dashboards → Integrations → GMP → Gateway**), or query metrics in [Cloud Monitoring Metrics Explorer](https://console.cloud.google.com/monitoring/metrics-explorer).
+View the out-of-the-box Cloud Monitoring dashboards described in [GKE Monitoring & Telemetry](../../docs/infrastructure/providers/gke/README.md#monitoring--telemetry) or query metrics in [Cloud Monitoring Metrics Explorer](https://console.cloud.google.com/monitoring/metrics-explorer).
 
 </details>
 <!-- tabs:end -->
