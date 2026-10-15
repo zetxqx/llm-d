@@ -55,7 +55,8 @@ OpenShift provides a built-in Prometheus stack via [User Workload Monitoring](ht
 <details>
 <summary><b>GKE (Managed Prometheus)</b></summary>
 
-GKE clusters include [Google Cloud Managed Service for Prometheus (GMP)](https://cloud.google.com/stackdriver/docs/managed-prometheus) by default, so no Prometheus installation is required. Enable [automatic application monitoring](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/configure-automatic-application-monitoring) (`--auto-monitoring-scope=ALL`) as described in [GKE Monitoring & Telemetry](../../infrastructure/providers/gke/README.md#monitoring--telemetry) to automatically collect model server metrics and provision out-of-the-box Cloud Monitoring dashboards (including the [GKE Inference Gateway dashboard](https://cloud.google.com/kubernetes-engine/docs/how-to/customize-gke-inference-gateway-configurations#inference-gateway-dashboard) when using GKE Gateway).
+GKE clusters include [Google Cloud Managed Service for Prometheus (GMP)](https://cloud.google.com/stackdriver/docs/managed-prometheus) by default, so no Prometheus installation is required.
+Enable [automatic application monitoring](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/configure-automatic-application-monitoring) (`--auto-monitoring-scope=ALL`) as described in [GKE Monitoring & Telemetry](../../infrastructure/providers/gke/README.md#monitoring--telemetry) to automatically collect model server metrics and provision out-of-the-box Cloud Monitoring dashboards (including the [GKE Inference Gateway dashboard](https://cloud.google.com/kubernetes-engine/docs/how-to/customize-gke-inference-gateway-configurations#inference-gateway-dashboard) when using GKE Gateway).
 
 To use GMP as a Grafana data source, follow the [GMP Grafana integration guide](https://docs.cloud.google.com/stackdriver/docs/managed-prometheus/query#ui-grafana).
 
@@ -185,6 +186,10 @@ When [automatic application monitoring](../../infrastructure/providers/gke/READM
 
 ## Step 3: Install Distributed Tracing (Optional)
 
+<!-- tabs:start group=monitoring -->
+<details open>
+<summary><b>OSS Prometheus / OpenShift</b></summary>
+
 Deploy the OTel Collector and Jaeger into the same namespace as your llm-d workload:
 
 ```bash
@@ -205,6 +210,17 @@ To link the exemplar dots on the latency panel to their traces, re-run the Step 
 ```
 
 If Jaeger runs in more than one namespace, set `TRACING_NAMESPACE` to the one to link. If you open the Jaeger UI somewhere other than `http://localhost:16686`, set `JAEGER_UI_URL`.
+
+</details>
+<details>
+<summary><b>GKE (Google Cloud Trace)</b></summary>
+
+Enable [GKE Managed OpenTelemetry](../../infrastructure/providers/gke/README.md#monitoring--telemetry) (`--managed-otel-scope=COLLECTION_AND_INSTRUMENTATION_COMPONENTS`), which runs a managed OpenTelemetry Collector in the `gke-managed-otel` namespace (`http://opentelemetry-collector.gke-managed-otel.svc.cluster.local:4317`) and exports traces directly to [Google Cloud Trace](https://cloud.google.com/trace/docs) without deploying a collector in your workload namespace.
+
+If `--managed-otel-scope` is not enabled on your cluster, you can deploy a standalone collector configured for Cloud Trace with `./guides/recipes/observability/install-otel-collector-jaeger.sh --gke -n ${NAMESPACE}` (see [Trace Requests](./tracing.md)).
+
+</details>
+<!-- tabs:end -->
 
 For full tracing configuration across vLLM, the routing proxy, and the EPP, see [Trace Requests](./tracing.md).
 
